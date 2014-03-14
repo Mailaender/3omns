@@ -1,5 +1,7 @@
 #include "b3.h"
 
+#include <errno.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -22,4 +24,11 @@ _Noreturn void b3_fatal_(
     va_end(args);
 
     exit(1);
+}
+
+void *b3_malloc(size_t size) {
+    void *ptr = malloc(size);
+    if(!ptr)
+        b3_fatal("Error allocating %'zu bytes: %s", size, strerror(errno));
+    return ptr;
 }

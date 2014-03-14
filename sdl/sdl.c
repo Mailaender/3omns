@@ -1,11 +1,17 @@
-#define b3_sprite SDL_Texture
-
 #include "b3.h"
 
 #include <stddef.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+
+struct b3_sprite {
+    int refs;
+    SDL_Texture *texture;
+    SDL_Rect rect;
+    struct b3_sprite *parent;
+};
+#define B3_SPRITE_INIT {0, NULL, {0,0,0,0}, NULL}
 
 
 static SDL_Window *window = NULL;
@@ -63,20 +69,55 @@ void b3_quit(void) {
     }
 }
 
+static b3_sprite *ref_sprite(b3_sprite *restrict sprite) {
+    sprite->refs++;
+    return sprite;
+}
+
 b3_sprite *b3_load_sprite(const char *restrict filename) {
     SDL_Surface *surface = IMG_Load(filename);
     if(!surface)
         b3_fatal("Error loading sprite %s: %s", filename, IMG_GetError());
+
+    int width = surface->w;
+    int height = surface->h;
     SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_FreeSurface(surface);
     if(!texture)
         b3_fatal("Error creating texture from %s: %s", filename, SDL_GetError());
-    return texture;
+
+    b3_sprite *sprite = b3_malloc(sizeof(*sprite));
+    *sprite = (b3_sprite)B3_SPRITE_INIT;
+    sprite->texture = texture;
+    sprite->rect = (SDL_Rect){0, 0, width, height};
+    return ref_sprite(sprite);
+}
+
+b3_sprite *b3_sub_sprite(
+    b3_sprite *restrict sprite,
+    int x,
+    int y,
+    int width,
+    int height
+) {
+    b3_sprite *sub_sprite = b3_malloc(sizeof(*sub_sprite));
+    *sub_sprite = (b3_sprite)B3_SPRITE_INIT;
+    sub_sprite->texture = sprite->texture;
+    sub_sprite->rect = (SDL_Rect){x, y, width, height};
+    sub_sprite->parent = ref_sprite(sprite);
+    return ref_sprite(sub_sprite);
 }
 
 void b3_free_sprite(b3_sprite *restrict sprite) {
-    if(sprite)
-        SDL_DestroyTexture(sprite);
+    if(sprite) {
+        b3_sprite *parent = sprite->parent;
+        if(!(--(sprite->refs))) {
+            if(!parent)
+                SDL_DestroyTexture(sprite->texture);
+            b3_free(sprite);
+        }
+        b3_free_sprite(parent);
+    }
 }
 
 void b3_begin_scene(void) {
@@ -87,6 +128,11 @@ void b3_end_scene(void) {
     SDL_RenderPresent(renderer);
 }
 
-void b3_draw_sprite(b3_sprite *restrict sprite) {
-    SDL_RenderCopy(renderer, sprite, NULL, NULL);
+void b3_draw_sprite(b3_sprite *restrict sprite, int x, int y) {
+    SDL_RenderCopy(
+        renderer,
+        sprite->texture,
+        &sprite->rect,
+        &(SDL_Rect){x, y, sprite->rect.w, sprite->rect.h}
+    );
 }
