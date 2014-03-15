@@ -23,15 +23,21 @@ void b3_init(const char *restrict title, int width, int height);
 void b3_quit(void);
 
 
+typedef struct b3_rect {
+    int x;
+    int y;
+    int width;
+    int height;
+} b3_rect;
+#define B3_RECT_INIT {0, 0, 0, 0}
+
+
 typedef struct b3_image b3_image;
 
 b3_image *b3_load_image(const char *restrict filename);
 b3_image *b3_new_sub_image(
     b3_image *restrict image,
-    int x,
-    int y,
-    int width,
-    int height
+    const b3_rect *restrict rect
 );
 void b3_free_image(b3_image *restrict image);
 

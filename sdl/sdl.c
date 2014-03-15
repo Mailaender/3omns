@@ -96,15 +96,12 @@ b3_image *b3_load_image(const char *restrict filename) {
 
 b3_image *b3_new_sub_image(
     b3_image *restrict image,
-    int x,
-    int y,
-    int width,
-    int height
+    const b3_rect *restrict rect
 ) {
     b3_image *sub_image = b3_malloc(sizeof(*sub_image));
     *sub_image = (b3_image)B3_IMAGE_INIT;
     sub_image->texture = image->texture;
-    sub_image->rect = (SDL_Rect){x, y, width, height};
+    sub_image->rect = (SDL_Rect){rect->x, rect->y, rect->width, rect->height};
     sub_image->parent = ref_image(image);
     return ref_image(sub_image);
 }

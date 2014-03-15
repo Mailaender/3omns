@@ -8,7 +8,7 @@ int main(void) {
     atexit(b3_quit);
 
     b3_image *images = b3_load_image("sprites.png");
-    b3_image *image = b3_new_sub_image(images, 16, 16, 16, 16);
+    b3_image *image = b3_new_sub_image(images, &(b3_rect){16, 16, 16, 16});
     b3_begin_scene();
     b3_draw_image(image, 100, 100);
     b3_end_scene();
