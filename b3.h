@@ -16,7 +16,7 @@ _Noreturn void b3_fatal_(
 );
 
 void *b3_malloc(size_t size);
-#define b3_free free
+void b3_free(void *restrict ptr, size_t zero_size);
 
 
 void b3_init(const char *restrict title, int width, int height);

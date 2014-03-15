@@ -32,3 +32,9 @@ void *b3_malloc(size_t size) {
         b3_fatal("Error allocating %'zu bytes: %s", size, strerror(errno));
     return ptr;
 }
+
+void b3_free(void *restrict ptr, size_t zero_size) {
+    if(ptr && zero_size)
+        memset(ptr, 0, zero_size);
+    free(ptr);
+}
