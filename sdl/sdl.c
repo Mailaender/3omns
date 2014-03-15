@@ -15,17 +15,21 @@ struct b3_image {
 #define B3_IMAGE_INIT {0, NULL, {0,0,0,0}, NULL}
 
 
+uint64_t b3_tick_frequency = 0;
+
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 
 
 static void init_sdl(void) {
-    if(SDL_Init(SDL_INIT_VIDEO) != 0)
+    if(SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_TIMER | SDL_INIT_VIDEO) != 0)
         b3_fatal("Error initializing SDL: %s", SDL_GetError());
     atexit(SDL_Quit);
     if((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG)
         b3_fatal("Error initializing SDL_image: %s", IMG_GetError());
     atexit(IMG_Quit);
+
+    b3_tick_frequency = SDL_GetPerformanceFrequency();
 }
 
 static void create_window(const char *restrict title, int width, int height) {
@@ -68,6 +72,10 @@ void b3_quit(void) {
         SDL_DestroyRenderer(renderer);
         renderer = NULL;
     }
+}
+
+uint64_t b3_get_tick_count() {
+    return SDL_GetPerformanceCounter();
 }
 
 b3_image *b3_load_image(const char *restrict filename) {
