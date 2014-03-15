@@ -23,22 +23,22 @@ void b3_init(const char *restrict title, int width, int height);
 void b3_quit(void);
 
 
-typedef struct b3_sprite b3_sprite;
+typedef struct b3_image b3_image;
 
-b3_sprite *b3_load_sprite(const char *restrict filename);
-b3_sprite *b3_sub_sprite(
-    b3_sprite *restrict sprite,
+b3_image *b3_load_image(const char *restrict filename);
+b3_image *b3_new_sub_image(
+    b3_image *restrict image,
     int x,
     int y,
     int width,
     int height
 );
-void b3_free_sprite(b3_sprite *restrict sprite);
+void b3_free_image(b3_image *restrict image);
 
 void b3_begin_scene(void);
 void b3_end_scene(void);
 
-void b3_draw_sprite(b3_sprite *restrict sprite, int x, int y);
+void b3_draw_image(b3_image *restrict image, int x, int y);
 
 
 #endif
