@@ -39,6 +39,7 @@ b3_image *b3_new_sub_image(
     b3_image *restrict image,
     const b3_rect *restrict rect
 );
+b3_image *b3_ref_image(b3_image *restrict image);
 void b3_free_image(b3_image *restrict image);
 
 void b3_begin_scene(void);

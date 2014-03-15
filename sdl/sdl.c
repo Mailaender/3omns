@@ -7,7 +7,7 @@
 
 
 struct b3_image {
-    int refs;
+    int ref_count;
     SDL_Texture *texture;
     SDL_Rect rect;
     struct b3_image *parent;
@@ -70,11 +70,6 @@ void b3_quit(void) {
     }
 }
 
-static b3_image *ref_image(b3_image *restrict image) {
-    image->refs++;
-    return image;
-}
-
 b3_image *b3_load_image(const char *restrict filename) {
     SDL_Surface *surface = IMG_Load(filename);
     if(!surface)
@@ -91,7 +86,7 @@ b3_image *b3_load_image(const char *restrict filename) {
     *image = (b3_image)B3_IMAGE_INIT;
     image->texture = texture;
     image->rect = (SDL_Rect){0, 0, width, height};
-    return ref_image(image);
+    return b3_ref_image(image);
 }
 
 b3_image *b3_new_sub_image(
@@ -102,14 +97,19 @@ b3_image *b3_new_sub_image(
     *sub_image = (b3_image)B3_IMAGE_INIT;
     sub_image->texture = image->texture;
     sub_image->rect = (SDL_Rect){rect->x, rect->y, rect->width, rect->height};
-    sub_image->parent = ref_image(image);
-    return ref_image(sub_image);
+    sub_image->parent = b3_ref_image(image);
+    return b3_ref_image(sub_image);
+}
+
+b3_image *b3_ref_image(b3_image *restrict image) {
+    image->ref_count++;
+    return image;
 }
 
 void b3_free_image(b3_image *restrict image) {
     if(image) {
         b3_image *parent = image->parent;
-        if(!(--(image->refs))) {
+        if(!(--(image->ref_count))) {
             if(!parent)
                 SDL_DestroyTexture(image->texture);
             b3_free(image, sizeof(*image));
