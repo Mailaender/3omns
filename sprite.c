@@ -118,7 +118,16 @@ void b3_free_sprite(b3_sprite *restrict sprite) {
 void b3_update_sprite(b3_sprite *restrict sprite, b3_ticks elapsed) {
     if(sprite->simple_image)
         return;
-    //TODO
+
+    if(sprite->state.remaining > elapsed) {
+        sprite->state.remaining -= elapsed;
+        return;
+    }
+
+    if(++(sprite->state.frame_index) >= sprite->type->frame_count)
+        sprite->state.frame_index = 0;
+    sprite->state.remaining +=
+            sprite->type->frames[sprite->state.frame_index].duration - elapsed;
 }
 
 void b3_draw_sprite(b3_sprite *restrict sprite, int x, int y) {
