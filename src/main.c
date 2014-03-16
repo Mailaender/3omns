@@ -24,7 +24,7 @@ int main(void) {
     b3_init("3omns", 640, 480);
     atexit(b3_quit);
 
-    b3_image *image = b3_load_image("sprites.png");
+    b3_image *image = b3_load_image("gfx/sprites.png");
     b3_sprite *blue = b3_new_simple_sprite(image, &(b3_rect){16, 16, 16, 16});
 
     b3_sprite_type *bomn_sprite_type = b3_new_sprite_type(
