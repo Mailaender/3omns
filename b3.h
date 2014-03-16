@@ -20,6 +20,7 @@ _Noreturn void b3_fatal_(
 );
 
 void *b3_malloc(size_t size, _Bool zero);
+void *b3_alloc_copy(const void *restrict ptr, size_t size);
 void b3_free(void *restrict ptr, size_t zero_size);
 
 
@@ -27,20 +28,22 @@ void b3_init(const char *restrict title, int width, int height);
 void b3_quit(void);
 
 
-uint64_t b3_get_tick_count();
-extern uint64_t b3_tick_frequency;
+typedef uint64_t b3_ticks;
 
-static inline uint64_t b3_secs_to_ticks(double secs) {
-    return (uint64_t)(secs * b3_tick_frequency + 0.5);
+b3_ticks b3_get_tick_count();
+extern b3_ticks b3_tick_frequency;
+
+static inline b3_ticks b3_secs_to_ticks(double secs) {
+    return (b3_ticks)(secs * b3_tick_frequency + 0.5);
 }
 
-static inline double b3_ticks_to_secs(uint64_t ticks) {
+static inline double b3_ticks_to_secs(b3_ticks ticks) {
     return (double)ticks / b3_tick_frequency;
 }
 
 static inline double b3_get_duration(
-    uint64_t start_ticks,
-    uint64_t finish_ticks
+    b3_ticks start_ticks,
+    b3_ticks finish_ticks
 ) {
     return b3_ticks_to_secs(finish_ticks - start_ticks);
 }

@@ -1,6 +1,5 @@
 #include "b3.h"
 
-#include <stdint.h>
 #include <stdlib.h>
 
 
@@ -14,7 +13,7 @@ int main(void) {
     b3_draw_image(image, 100, 100);
     b3_end_scene();
 
-    uint64_t start_ticks = b3_get_tick_count();
+    b3_ticks start_ticks = b3_get_tick_count();
     while(b3_get_duration(start_ticks, b3_get_tick_count()) < 3.0)
         continue;
 

@@ -33,6 +33,12 @@ void *b3_malloc(size_t size, _Bool zero) {
     return ptr;
 }
 
+void *b3_alloc_copy(const void *restrict ptr, size_t size) {
+    void *copy = b3_malloc(size, 0);
+    memcpy(copy, ptr, size);
+    return copy;
+}
+
 void b3_free(void *restrict ptr, size_t zero_size) {
     if(ptr && zero_size)
         memset(ptr, 0, zero_size);
