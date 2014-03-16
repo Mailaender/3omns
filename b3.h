@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 
-#define b3_array_count(a) (sizeof(a)/sizeof(*(a)))
+#define b3_static_array_count(a) (sizeof(a)/sizeof(*(a)))
 
 
 #define b3_fatal(format, ...) \
@@ -46,12 +46,16 @@ static inline double b3_get_duration(
 }
 
 
-typedef struct b3_rect {
+typedef struct b3_rect b3_rect;
+struct b3_rect {
     int x;
     int y;
     int width;
     int height;
-} b3_rect;
+};
+
+void b3_begin_scene(void);
+void b3_end_scene(void);
 
 
 typedef struct b3_image b3_image;
@@ -63,9 +67,6 @@ b3_image *b3_new_sub_image(
 );
 b3_image *b3_ref_image(b3_image *restrict image);
 void b3_free_image(b3_image *restrict image);
-
-void b3_begin_scene(void);
-void b3_end_scene(void);
 
 void b3_draw_image(b3_image *restrict image, int x, int y);
 
