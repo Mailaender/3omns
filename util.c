@@ -26,6 +26,10 @@ _Noreturn void b3_fatal_(
     exit(1);
 }
 
+// TODO: add some DEBUG code to track allocations and tests to make sure there
+// are no memory leaks.  Also enable other things to hook in, so we can make
+// sure all SDL_Textures are properly freed in b3_images, etc.
+
 void *b3_malloc(size_t size, _Bool zero) {
     void *ptr = (zero ? calloc(1, size) : malloc(size));
     if(!ptr)
