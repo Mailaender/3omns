@@ -124,16 +124,11 @@ b3_image *b3_ref_image(b3_image *restrict image) {
 }
 
 void b3_free_image(b3_image *restrict image) {
-    if(image) {
-        b3_image *parent = image->parent;
-
-        if(!(--(image->ref_count))) {
-            if(!parent)
-                SDL_DestroyTexture(image->texture);
-            b3_free(image, sizeof(*image));
-        }
-
-        b3_free_image(parent);
+    if(image && !--(image->ref_count)) {
+        if(!image->parent)
+            SDL_DestroyTexture(image->texture);
+        b3_free_image(image->parent);
+        b3_free(image, sizeof(*image));
     }
 }
 
