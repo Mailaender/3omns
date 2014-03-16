@@ -27,6 +27,8 @@ void b3_free(void *restrict ptr, size_t zero_size);
 void b3_init(const char *restrict title, int width, int height);
 void b3_quit(void);
 
+_Bool b3_process_events(void);
+
 
 typedef uint64_t b3_ticks;
 

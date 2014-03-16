@@ -39,10 +39,9 @@ int main(void) {
     b3_sprite *bomn = b3_new_sprite(bomn_sprite_type, 0);
     b3_free_sprite_type(bomn_sprite_type);
 
-    b3_ticks start = b3_get_tick_count();
-    b3_ticks now = start;
+    b3_ticks now = b3_get_tick_count();
     b3_ticks last;
-    do {
+    while(!b3_process_events()) {
         last = now;
         now = b3_get_tick_count();
         b3_update_sprite(bomn, now - last);
@@ -51,8 +50,7 @@ int main(void) {
         b3_draw_sprite(blue, 100, 100);
         b3_draw_sprite(bomn, 200, 200);
         b3_end_scene();
-
-    } while(b3_get_duration(start, now) < 10.0);
+    }
 
     b3_free_sprite(blue);
     b3_free_sprite(bomn);

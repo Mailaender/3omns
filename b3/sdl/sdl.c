@@ -76,6 +76,18 @@ void b3_quit(void) {
     }
 }
 
+_Bool b3_process_events(void) {
+    static _Bool quit = 0;
+
+    SDL_Event event;
+    while(SDL_PollEvent(&event)) {
+        if(event.type == SDL_QUIT)
+            quit = 1;
+    }
+
+    return quit;
+}
+
 uint64_t b3_get_tick_count() {
     return SDL_GetPerformanceCounter();
 }
