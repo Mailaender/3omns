@@ -1,7 +1,6 @@
 #include "b3.h"
 
 #include <stddef.h>
-#include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
@@ -18,21 +17,22 @@ uint64_t b3_tick_frequency = 0;
 
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
+static _Bool quit = 0;
 
 
-static void init_sdl(void) {
+void b3_init(const char *restrict title, int width, int height) {
+    quit = 0;
+
     if(SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_TIMER | SDL_INIT_VIDEO) != 0)
         b3_fatal("Error initializing SDL: %s", SDL_GetError());
-    atexit(SDL_Quit);
 
-    if((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG)
+    if((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
+        SDL_Quit();
         b3_fatal("Error initializing SDL_image: %s", IMG_GetError());
-    atexit(IMG_Quit);
+    }
 
     b3_tick_frequency = SDL_GetPerformanceFrequency();
-}
 
-static void create_window(const char *restrict title, int width, int height) {
     window = SDL_CreateWindow(
         title,
         SDL_WINDOWPOS_UNDEFINED,
@@ -41,32 +41,22 @@ static void create_window(const char *restrict title, int width, int height) {
         height,
         SDL_WINDOW_OPENGL
     );
-    if(!window)
+    if(!window) {
+        b3_quit();
         b3_fatal("Error creating the main window: %s", SDL_GetError());
+    }
 
     SDL_DisableScreenSaver();
-}
-
-static void destroy_window(void) {
-    if(window) {
-        SDL_DestroyWindow(window);
-        window = NULL;
-    }
-}
-
-void b3_init(const char *restrict title, int width, int height) {
-    init_sdl();
-
-    create_window(title, width, height);
-    atexit(destroy_window);
 
     // From the docs (<http://wiki.libsdl.org/SDL_CreateRenderer>) it sounds
     // like this prefers hardware-accelerated renderers.  If we need more
     // control, we may want to try creating different types of renderers in a
     // loop until one succeeds or something.
     renderer = SDL_CreateRenderer(window, -1, 0);
-    if(!renderer)
+    if(!renderer) {
+        b3_quit();
         b3_fatal("Error creating rendering context: %s", SDL_GetError());
+    }
 }
 
 void b3_quit(void) {
@@ -74,11 +64,16 @@ void b3_quit(void) {
         SDL_DestroyRenderer(renderer);
         renderer = NULL;
     }
+    if(window) {
+        SDL_DestroyWindow(window);
+        window = NULL;
+    }
+
+    IMG_Quit();
+    SDL_Quit();
 }
 
 _Bool b3_process_events(void) {
-    static _Bool quit = 0;
-
     SDL_Event event;
     while(SDL_PollEvent(&event)) {
         if(event.type == SDL_QUIT)
