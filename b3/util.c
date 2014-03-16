@@ -37,6 +37,13 @@ void *b3_malloc(size_t size, _Bool zero) {
     return ptr;
 }
 
+void *b3_realloc(void *restrict ptr, size_t size) {
+    void *new_ptr = realloc(ptr, size);
+    if(!new_ptr)
+        b3_fatal("Error (re)allocating %'zu bytes: %s", size, strerror(errno));
+    return new_ptr;
+}
+
 void *b3_alloc_copy(const void *restrict ptr, size_t size) {
     void *copy = b3_malloc(size, 0);
     memcpy(copy, ptr, size);

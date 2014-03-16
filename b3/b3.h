@@ -21,6 +21,7 @@ _Noreturn void b3_fatal_(
 
 void *b3_malloc(size_t size, _Bool zero);
 void *b3_alloc_copy(const void *restrict ptr, size_t size);
+void *b3_realloc(void *restrict ptr, size_t size);
 void b3_free(void *restrict ptr, size_t zero_size);
 
 
