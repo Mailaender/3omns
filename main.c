@@ -1,4 +1,4 @@
-#include "b3.h"
+#include "b3/b3.h"
 
 #include <stdlib.h>
 
