@@ -12,7 +12,6 @@ struct b3_image {
     SDL_Rect rect;
     b3_image *parent;
 };
-#define B3_IMAGE_INIT {0, NULL, {0,0,0,0}, NULL}
 
 
 uint64_t b3_tick_frequency = 0;
@@ -102,9 +101,7 @@ b3_image *b3_load_image(const char *restrict filename) {
     if(!texture)
         b3_fatal("Error creating texture from %s: %s", filename, SDL_GetError());
 
-    b3_image *image = b3_malloc(sizeof(*image));
-    *image = (b3_image)B3_IMAGE_INIT;
-
+    b3_image *image = b3_malloc(sizeof(*image), 1);
     image->texture = texture;
     image->rect = (SDL_Rect){0, 0, width, height};
     return b3_ref_image(image);
@@ -114,9 +111,7 @@ b3_image *b3_new_sub_image(
     b3_image *restrict image,
     const b3_rect *restrict rect
 ) {
-    b3_image *sub_image = b3_malloc(sizeof(*sub_image));
-    *sub_image = (b3_image)B3_IMAGE_INIT;
-
+    b3_image *sub_image = b3_malloc(sizeof(*sub_image), 1);
     sub_image->texture = image->texture;
     sub_image->rect = (SDL_Rect){rect->x, rect->y, rect->width, rect->height};
     sub_image->parent = b3_ref_image(image);

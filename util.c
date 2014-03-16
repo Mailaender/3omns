@@ -26,8 +26,8 @@ _Noreturn void b3_fatal_(
     exit(1);
 }
 
-void *b3_malloc(size_t size) {
-    void *ptr = malloc(size);
+void *b3_malloc(size_t size, _Bool zero) {
+    void *ptr = (zero ? calloc(1, size) : malloc(size));
     if(!ptr)
         b3_fatal("Error allocating %'zu bytes: %s", size, strerror(errno));
     return ptr;
