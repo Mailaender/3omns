@@ -1,4 +1,5 @@
 #include "b3/b3.h"
+#include "l3/l3.h"
 
 #include <stdlib.h>
 
@@ -23,6 +24,8 @@ static b3_sprite_frame bomn_sprite_frames[] = {
 int main(void) {
     b3_init("3omns", 640, 480);
     atexit(b3_quit);
+    l3_init();
+    atexit(l3_quit);
 
     b3_image *image = b3_load_image("gfx/sprites.png");
     b3_sprite *blue = b3_new_simple_sprite(image, &(b3_rect){16, 16, 16, 16});
