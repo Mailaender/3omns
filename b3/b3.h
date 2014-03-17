@@ -8,8 +8,8 @@
 #define b3_static_array_count(a) (sizeof(a)/sizeof(*(a)))
 
 
-#define b3_fatal(format, ...) \
-        b3_fatal_(__FILE__, __LINE__, __func__, format, __VA_ARGS__)
+#define b3_fatal(...) \
+        b3_fatal_(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
 _Noreturn void b3_fatal_(
     const char *restrict file,
