@@ -51,6 +51,8 @@ static inline double b3_get_duration(
     return b3_ticks_to_secs(finish_ticks - start_ticks);
 }
 
+void b3_sleep(int ms);
+
 
 typedef struct b3_rect b3_rect;
 struct b3_rect {

@@ -87,6 +87,10 @@ uint64_t b3_get_tick_count() {
     return SDL_GetPerformanceCounter();
 }
 
+void b3_sleep(int ms) {
+    SDL_Delay((Uint32)ms);
+}
+
 void b3_begin_scene(void) {
     SDL_RenderClear(renderer);
 }

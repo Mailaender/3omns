@@ -20,6 +20,7 @@ int main(void) {
         b3_draw_image(blue, 100, 100);
         b3_draw_image(bomn, 200, 200);
         b3_end_scene();
+        b3_sleep(10);
     }
 
     b3_free_image(blue);
