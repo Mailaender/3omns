@@ -77,48 +77,4 @@ void b3_free_image(b3_image *restrict image);
 void b3_draw_image(b3_image *restrict image, int x, int y);
 
 
-typedef struct b3_sprite_frame b3_sprite_frame;
-struct b3_sprite_frame {
-    int image_index;
-    double duration;
-};
-
-typedef struct b3_sprite_definition b3_sprite_definition;
-struct b3_sprite_definition {
-    int image_count;
-    b3_rect *image_rects;
-
-    int frame_count;
-    b3_sprite_frame *frames;
-};
-#define B3_STATIC_SPRITE_DEFINITION(image_rects, frames) { \
-    b3_static_array_count(image_rects), (image_rects), \
-    b3_static_array_count(frames), (frames), \
-}
-
-typedef struct b3_sprite_type b3_sprite_type;
-typedef struct b3_sprite b3_sprite;
-
-b3_sprite_type *b3_new_sprite_type(
-    b3_image *restrict image,
-    const b3_sprite_definition *restrict definition
-);
-b3_sprite_type *b3_ref_sprite_type(b3_sprite_type *restrict sprite_type);
-void b3_free_sprite_type(b3_sprite_type *restrict sprite_type);
-
-b3_sprite *b3_new_sprite(
-    b3_sprite_type *restrict type,
-    int starting_frame_index
-);
-b3_sprite *b3_new_simple_sprite(
-    b3_image *restrict image,
-    const b3_rect *restrict sub_rect
-);
-b3_sprite *b3_ref_sprite(b3_sprite *restrict sprite);
-void b3_free_sprite(b3_sprite *restrict sprite);
-
-void b3_update_sprite(b3_sprite *restrict sprite, b3_ticks elapsed);
-void b3_draw_sprite(b3_sprite *restrict sprite, int x, int y);
-
-
 #endif
