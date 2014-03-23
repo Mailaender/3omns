@@ -9,7 +9,7 @@
 static lua_State *lua = NULL;
 
 
-static void *alloc(
+static void *lalloc(
     void *restrict ud,
     void *restrict ptr,
     size_t osize,
@@ -26,13 +26,19 @@ _Noreturn static int panic(lua_State *restrict l) {
     b3_fatal("Lua error: %s", lua_tostring(l, -1));
 }
 
-void l3_init(void) {
-    lua = lua_newstate(alloc, NULL);
+static lua_State *new_lua(void) {
+    lua_State *lua = lua_newstate(lalloc, NULL);
     if(!lua)
         b3_fatal("Error creating lua context");
 
     lua_atpanic(lua, panic);
     luaL_openlibs(lua);
+
+    return lua;
+}
+
+void l3_init(void) {
+    lua = new_lua();
 }
 
 void l3_quit(void) {
