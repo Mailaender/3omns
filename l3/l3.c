@@ -4,10 +4,72 @@
 #include <stddef.h>
 #include <lua5.2/lua.h>
 #include <lua5.2/lauxlib.h>
+#include <lua5.2/lualib.h>
+
+
+#define L3_NAME "l3"
+#define IMAGE_NAME "image"
+
+#define IMAGE_METATABLE L3_NAME "." IMAGE_NAME
 
 
 static lua_State *lua = NULL;
 
+
+static int image_new(lua_State *restrict l) {
+    return 0;
+}
+
+static int image_gc(lua_State *restrict l) {
+    return 0;
+}
+
+static int image_sub(lua_State *restrict l) {
+    return 0;
+}
+
+static int open_image(lua_State *restrict l) {
+    static const luaL_Reg functions[] = {
+        {"new", image_new},
+        {NULL, NULL}
+    };
+    static const luaL_Reg methods[] = {
+        {"sub", image_sub},
+        {NULL, NULL}
+    };
+
+    luaL_newmetatable(l, IMAGE_METATABLE);
+
+    lua_pushcfunction(l, image_gc);
+    lua_setfield(l, -2, "__gc");
+    lua_pushvalue(l, -1);
+    lua_setfield(l, -2, "__index");
+
+    luaL_setfuncs(l, methods, 0);
+    lua_pop(l, 1);
+
+    luaL_newlib(l, functions);
+    return 1;
+}
+
+static int open_all(lua_State *restrict l) {
+    static const luaL_Reg submodules[] = {
+        {IMAGE_NAME, open_image},
+        {NULL, NULL}
+    };
+
+    luaL_newlibtable(l, submodules);
+    for(const luaL_Reg *submodule = submodules; submodule->func; submodule++) {
+        submodule->func(l);
+        lua_setfield(l, -2, submodule->name);
+    }
+    return 1;
+}
+
+int luaopen_l3(lua_State *restrict l) {
+    luaL_requiref(l, L3_NAME, open_all, 1);
+    return 1;
+}
 
 static void *lalloc(
     void *restrict ud,
@@ -33,6 +95,9 @@ static lua_State *new_lua(void) {
 
     lua_atpanic(lua, panic);
     luaL_openlibs(lua);
+
+    luaopen_l3(lua);
+    lua_pop(lua, 1);
 
     return lua;
 }
