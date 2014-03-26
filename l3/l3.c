@@ -16,11 +16,11 @@
 static lua_State *lua = NULL;
 
 
-static b3_rect get_rect(lua_State *restrict l, int index) {
-    lua_getfield(l, index, "x");
-    lua_getfield(l, index, "y");
-    lua_getfield(l, index, "width");
-    lua_getfield(l, index, "height");
+static b3_rect get_rect_arg(lua_State *restrict l, int arg_index) {
+    lua_getfield(l, arg_index, "x");
+    lua_getfield(l, arg_index, "y");
+    lua_getfield(l, arg_index, "width");
+    lua_getfield(l, arg_index, "height");
 
     int x_is_num, y_is_num, width_is_num, height_is_num;
     int x = (int)lua_tointegerx(l, -4, &x_is_num);
@@ -65,11 +65,20 @@ static int image_gc(lua_State *restrict l) {
 static int image_sub(lua_State *restrict l) {
     b3_image *image = check_image(l, 1);
     luaL_checktype(l, 2, LUA_TTABLE);
-    b3_rect rect = get_rect(l, 2);
+    b3_rect rect = get_rect_arg(l, 2);
 
     b3_image **p_image = push_new_image(l);
     *p_image = b3_new_sub_image(image, &rect);
     return 1;
+}
+
+static int image_draw(lua_State *restrict l) {
+    b3_image *image = check_image(l, 1);
+    int x = (int)luaL_checkinteger(l, 2);
+    int y = (int)luaL_checkinteger(l, 3);
+
+    b3_draw_image(image, x, y);
+    return 0;
 }
 
 static int open_image(lua_State *restrict l) {
@@ -79,6 +88,7 @@ static int open_image(lua_State *restrict l) {
     };
     static const luaL_Reg methods[] = {
         {"sub", image_sub},
+        {"draw", image_draw},
         {NULL, NULL}
     };
 
@@ -133,21 +143,27 @@ _Noreturn static int panic(lua_State *restrict l) {
 }
 
 static lua_State *new_lua(void) {
-    lua_State *lua = lua_newstate(lalloc, NULL);
-    if(!lua)
-        b3_fatal("Error creating lua context");
+    lua_State *l = lua_newstate(lalloc, NULL);
+    if(!l)
+        b3_fatal("Error creating Lua context");
 
-    lua_atpanic(lua, panic);
-    luaL_openlibs(lua);
+    lua_atpanic(l, panic);
+    luaL_openlibs(l);
 
-    luaopen_l3(lua);
-    lua_pop(lua, 1);
+    luaopen_l3(l);
+    lua_pop(l, 1);
 
-    return lua;
+    return l;
 }
 
-void l3_init(void) {
+static void run(lua_State *restrict l, const char *restrict filename) {
+    if(luaL_dofile(l, filename))
+        b3_fatal("Error running Lua file %s: %s", filename, lua_tostring(l, -1));
+}
+
+void l3_init(const char *restrict init_filename) {
     lua = new_lua();
+    run(lua, init_filename);
 }
 
 void l3_quit(void) {
@@ -155,4 +171,9 @@ void l3_quit(void) {
         lua_close(lua);
         lua = NULL;
     }
+}
+
+void l3_draw_sprites(void) {
+    lua_getglobal(lua, "draw_sprites");
+    lua_call(lua, 0, 0);
 }
