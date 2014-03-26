@@ -12,7 +12,9 @@ int main(void) {
 
     while(!b3_process_events()) {
         b3_begin_scene();
-        l3_draw_sprites();
+
+        // TODO
+
         b3_end_scene();
         b3_sleep(10);
     }

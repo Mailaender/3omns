@@ -72,15 +72,6 @@ static int image_sub(lua_State *restrict l) {
     return 1;
 }
 
-static int image_draw(lua_State *restrict l) {
-    b3_image *image = check_image(l, 1);
-    int x = (int)luaL_checkinteger(l, 2);
-    int y = (int)luaL_checkinteger(l, 3);
-
-    b3_draw_image(image, x, y);
-    return 0;
-}
-
 static int open_image(lua_State *restrict l) {
     static const luaL_Reg functions[] = {
         {"load", image_load},
@@ -88,7 +79,6 @@ static int open_image(lua_State *restrict l) {
     };
     static const luaL_Reg methods[] = {
         {"sub", image_sub},
-        {"draw", image_draw},
         {NULL, NULL}
     };
 
@@ -171,9 +161,4 @@ void l3_quit(void) {
         lua_close(lua);
         lua = NULL;
     }
-}
-
-void l3_draw_sprites(void) {
-    lua_getglobal(lua, "draw_sprites");
-    lua_call(lua, 0, 0);
 }
