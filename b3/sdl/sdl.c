@@ -143,6 +143,14 @@ void b3_free_image(b3_image *restrict image) {
     }
 }
 
+int b3_get_image_width(b3_image *restrict image) {
+    return image->rect.w;
+}
+
+int b3_get_image_height(b3_image *restrict image) {
+    return image->rect.h;
+}
+
 void b3_draw_image(b3_image *restrict image, int x, int y) {
     SDL_RenderCopy(
         renderer,
