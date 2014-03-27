@@ -50,6 +50,10 @@ void *b3_alloc_copy(const void *restrict ptr, size_t size) {
     return copy;
 }
 
+char *b3_copy_string(const char *restrict string) {
+    return b3_alloc_copy(string, strlen(string) + 1);
+}
+
 void b3_free(void *restrict ptr, size_t zero_size) {
     if(ptr && zero_size)
         memset(ptr, 0, zero_size);
