@@ -7,7 +7,7 @@
 int main(void) {
     b3_init("3omns", 640, 480);
     atexit(b3_quit);
-    l3_init("game/init");
+    l3_init("."); // TODO: installed path?
     atexit(l3_quit);
 
     while(!b3_process_events()) {

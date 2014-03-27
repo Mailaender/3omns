@@ -2,6 +2,7 @@
 #include "b3/b3.h"
 
 #include <stddef.h>
+#include <stdio.h>
 #include <lua5.2/lua.h>
 #include <lua5.2/lauxlib.h>
 #include <lua5.2/lualib.h>
@@ -15,6 +16,7 @@
 #define MAP_METATABLE L3_NAME "." MAP_NAME
 
 
+static char *resource_path = NULL;
 static lua_State *lua = NULL;
 
 
@@ -203,11 +205,10 @@ static int open_all(lua_State *restrict l) {
         submodule->func(l);
         lua_setfield(l, -2, submodule->name);
     }
-    return 1;
-}
 
-int luaopen_l3(lua_State *restrict l) {
-    luaL_requiref(l, L3_NAME, open_all, 1);
+    lua_pushstring(l, resource_path);
+    lua_setfield(l, -2, "RESOURCE_PATH");
+
     return 1;
 }
 
@@ -236,20 +237,26 @@ static lua_State *new_lua(void) {
     lua_atpanic(l, panic);
     luaL_openlibs(l);
 
-    luaopen_l3(l);
+    luaL_requiref(l, L3_NAME, open_all, 1);
     lua_pop(l, 1);
 
     return l;
 }
 
-static void run(lua_State *restrict l, const char *restrict filename) {
-    if(luaL_dofile(l, filename))
-        b3_fatal("Error running Lua file %s: %s", filename, lua_tostring(l, -1));
+static void run_game_file(lua_State *restrict l, const char *restrict base) {
+    char f[1024];
+    snprintf(f, sizeof(f), "%s/game/%s.lua", resource_path, base);
+    f[sizeof(f) - 1] = '\0';
+
+    if(luaL_dofile(l, f))
+        b3_fatal("Error running game file %s: %s", base, lua_tostring(l, -1));
 }
 
-void l3_init(const char *restrict init_filename) {
+void l3_init(const char *restrict resource_path_) {
+    resource_path = b3_copy_string(resource_path_);
+
     lua = new_lua();
-    run(lua, init_filename);
+    run_game_file(lua, "init");
 }
 
 void l3_quit(void) {
@@ -257,4 +264,6 @@ void l3_quit(void) {
         lua_close(lua);
         lua = NULL;
     }
+    b3_free(resource_path, 0);
+    resource_path = NULL;
 }
