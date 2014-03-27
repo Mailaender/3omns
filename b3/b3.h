@@ -79,4 +79,24 @@ void b3_free_image(b3_image *restrict image);
 void b3_draw_image(b3_image *restrict image, int x, int y);
 
 
+typedef uint8_t b3_tile;
+
+typedef struct b3_map b3_map;
+struct b3_map {
+    int ref_count;
+    int width;
+    int height;
+    b3_tile tiles[];
+};
+
+#define B3_SIZEOF_MAP(map, width, height) \
+        (sizeof(*(map)) + (width) * (height) * sizeof((map)->tiles[0]))
+
+#define B3_MAP_TILE(map, x, y) ((map)->tiles[(x) + (y) * (map)->width])
+
+b3_map *b3_new_map(int width, int height);
+b3_map *b3_ref_map(b3_map *restrict map);
+void b3_free_map(b3_map *restrict map);
+
+
 #endif
