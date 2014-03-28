@@ -16,6 +16,8 @@
 #define MAP_METATABLE L3_NAME "." MAP_NAME
 
 
+b3_image *l3_tile_images[L3_TILE_COUNT] = {NULL};
+
 static char *resource_path = NULL;
 static lua_State *lua = NULL;
 
@@ -147,7 +149,7 @@ static int map_get_tile(lua_State *restrict l) {
     luaL_argcheck(l, x >= 0 && x < map->width, 2, "x must satisfy 1 <= x <= map:width()");
     luaL_argcheck(l, y >= 0 && y < map->height, 3, "y must satisfy 1 <= y <= map:height()");
 
-    lua_pushinteger(l, (lua_Integer)B3_MAP_TILE(map, x, y));
+    lua_pushunsigned(l, (lua_Unsigned)B3_MAP_TILE(map, x, y));
     return 1;
 }
 
@@ -155,7 +157,7 @@ static int map_set_tile(lua_State *restrict l) {
     b3_map *map = check_map(l, 1);
     int x = (int)luaL_checkinteger(l, 2) - 1;
     int y = (int)luaL_checkinteger(l, 3) - 1;
-    b3_tile tile = (b3_tile)luaL_checkinteger(l, 4);
+    b3_tile tile = (b3_tile)luaL_checkunsigned(l, 4);
 
     luaL_argcheck(l, x >= 0 && x < map->width, 2, "x must satisfy 1 <= x <= map:width()");
     luaL_argcheck(l, y >= 0 && y < map->height, 3, "y must satisfy 1 <= y <= map:height()");
@@ -252,14 +254,38 @@ static void run_game_file(lua_State *restrict l, const char *restrict base) {
         b3_fatal("Error running game file %s: %s", base, lua_tostring(l, -1));
 }
 
+static void set_tile_images(lua_State *restrict l) {
+    lua_getglobal(l, "TILE_IMAGES");
+    if(!lua_istable(l, -1))
+        b3_fatal("Missing global table TILE_IMAGES");
+
+    for(int i = 0; i < L3_TILE_COUNT; i++) {
+        lua_pushunsigned(l, (lua_Unsigned)i);
+        lua_gettable(l, -2);
+
+        b3_image **p_image = luaL_testudata(l, -1, IMAGE_METATABLE);
+        if(p_image)
+            l3_tile_images[i] = b3_ref_image(*p_image);
+
+        lua_pop(l, 1);
+    }
+    lua_pop(l, 1);
+}
+
 void l3_init(const char *restrict resource_path_) {
     resource_path = b3_copy_string(resource_path_);
 
     lua = new_lua();
     run_game_file(lua, "init");
+
+    set_tile_images(lua);
 }
 
 void l3_quit(void) {
+    for(int i = 0; i < L3_TILE_COUNT; i++) {
+        b3_free_image(l3_tile_images[i]);
+        l3_tile_images[i] = NULL;
+    }
     if(lua) {
         lua_close(lua);
         lua = NULL;
@@ -270,12 +296,14 @@ void l3_quit(void) {
 
 b3_map *l3_generate_map(void) {
     lua_getglobal(lua, "generate_map");
+    if(!lua_isfunction(lua, -1))
+        b3_fatal("Missing global function generate_map");
 
     lua_call(lua, 0, 1); // Rely on panic to handle errors.
 
     b3_map **p_map = luaL_testudata(lua, -1, MAP_METATABLE);
     if(!p_map)
-        b3_fatal("Lua function generate_map must return a map");
+        b3_fatal("generate_map didn't return a map");
     b3_map *map = b3_ref_map(*p_map);
     lua_pop(lua, 1);
 
