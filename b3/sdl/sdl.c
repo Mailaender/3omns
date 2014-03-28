@@ -155,11 +155,11 @@ int b3_get_image_height(b3_image *restrict image) {
     return image->rect.h;
 }
 
-void b3_draw_image(b3_image *restrict image, int x, int y) {
+void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect) {
     SDL_RenderCopy(
         renderer,
         image->texture,
         &image->rect,
-        &(SDL_Rect){x, y, image->rect.w, image->rect.h}
+        &(SDL_Rect){rect->x, rect->y, rect->width, rect->height}
     );
 }

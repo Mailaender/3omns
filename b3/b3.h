@@ -83,7 +83,7 @@ void b3_free_image(b3_image *restrict image);
 int b3_get_image_width(b3_image *restrict image);
 int b3_get_image_height(b3_image *restrict image);
 
-void b3_draw_image(b3_image *restrict image, int x, int y);
+void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect);
 
 
 typedef uint8_t b3_tile;
