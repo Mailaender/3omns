@@ -13,7 +13,7 @@ struct b3_image {
 };
 
 
-uint64_t b3_tick_frequency = 0;
+b3_ticks b3_tick_frequency = 0;
 
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
@@ -83,7 +83,7 @@ _Bool b3_process_events(void) {
     return quit;
 }
 
-uint64_t b3_get_tick_count() {
+b3_ticks b3_get_tick_count() {
     return SDL_GetPerformanceCounter();
 }
 
