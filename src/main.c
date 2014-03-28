@@ -10,6 +10,8 @@ int main(void) {
     l3_init("."); // TODO: installed path?
     atexit(l3_quit);
 
+    b3_map *map = l3_generate_map();
+
     while(!b3_process_events()) {
         b3_begin_scene();
 
@@ -19,5 +21,6 @@ int main(void) {
         b3_sleep(10);
     }
 
+    b3_free_map(map);
     return 0;
 }

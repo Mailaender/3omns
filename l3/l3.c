@@ -267,3 +267,17 @@ void l3_quit(void) {
     b3_free(resource_path, 0);
     resource_path = NULL;
 }
+
+b3_map *l3_generate_map(void) {
+    lua_getglobal(lua, "generate_map");
+
+    lua_call(lua, 0, 1); // Rely on panic to handle errors.
+
+    b3_map **p_map = luaL_testudata(lua, -1, MAP_METATABLE);
+    if(!p_map)
+        b3_fatal("Lua function generate_map must return a map");
+    b3_map *map = b3_ref_map(*p_map);
+    lua_pop(lua, 1);
+
+    return map;
+}
