@@ -14,9 +14,7 @@ int main(void) {
 
     while(!b3_process_events()) {
         b3_begin_scene();
-
-        // TODO
-
+        b3_draw_map(map, &(b3_rect){0, 0, 480, 480}, l3_tile_images);
         b3_end_scene();
         b3_sleep(10);
     }

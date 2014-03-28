@@ -16,7 +16,7 @@
 #define MAP_METATABLE L3_NAME "." MAP_NAME
 
 
-b3_image *l3_tile_images[L3_TILE_COUNT] = {NULL};
+b3_image *l3_tile_images[B3_TILE_COUNT] = {NULL};
 
 static char *resource_path = NULL;
 static lua_State *lua = NULL;
@@ -130,14 +130,14 @@ static int map_gc(lua_State *restrict l) {
 static int map_width(lua_State *restrict l) {
     b3_map *map = check_map(l, 1);
 
-    lua_pushinteger(l, (lua_Integer)map->width);
+    lua_pushinteger(l, (lua_Integer)b3_get_map_width(map));
     return 1;
 }
 
 static int map_height(lua_State *restrict l) {
     b3_map *map = check_map(l, 1);
 
-    lua_pushinteger(l, (lua_Integer)map->height);
+    lua_pushinteger(l, (lua_Integer)b3_get_map_height(map));
     return 1;
 }
 
@@ -146,10 +146,10 @@ static int map_get_tile(lua_State *restrict l) {
     int x = (int)luaL_checkinteger(l, 2) - 1;
     int y = (int)luaL_checkinteger(l, 3) - 1;
 
-    luaL_argcheck(l, x >= 0 && x < map->width, 2, "x must satisfy 1 <= x <= map:width()");
-    luaL_argcheck(l, y >= 0 && y < map->height, 3, "y must satisfy 1 <= y <= map:height()");
+    luaL_argcheck(l, x >= 0 && x < b3_get_map_width(map), 2, "x must satisfy 1 <= x <= map:width()");
+    luaL_argcheck(l, y >= 0 && y < b3_get_map_height(map), 3, "y must satisfy 1 <= y <= map:height()");
 
-    lua_pushunsigned(l, (lua_Unsigned)B3_MAP_TILE(map, x, y));
+    lua_pushunsigned(l, (lua_Unsigned)b3_get_map_tile(map, x, y));
     return 1;
 }
 
@@ -159,10 +159,10 @@ static int map_set_tile(lua_State *restrict l) {
     int y = (int)luaL_checkinteger(l, 3) - 1;
     b3_tile tile = (b3_tile)luaL_checkunsigned(l, 4);
 
-    luaL_argcheck(l, x >= 0 && x < map->width, 2, "x must satisfy 1 <= x <= map:width()");
-    luaL_argcheck(l, y >= 0 && y < map->height, 3, "y must satisfy 1 <= y <= map:height()");
+    luaL_argcheck(l, x >= 0 && x < b3_get_map_width(map), 2, "x must satisfy 1 <= x <= map:width()");
+    luaL_argcheck(l, y >= 0 && y < b3_get_map_height(map), 3, "y must satisfy 1 <= y <= map:height()");
 
-    B3_MAP_TILE(map, x, y) = tile;
+    b3_set_map_tile(map, x, y, tile);
 
     lua_pushvalue(l, 1);
     return 1;
@@ -259,7 +259,7 @@ static void set_tile_images(lua_State *restrict l) {
     if(!lua_istable(l, -1))
         b3_fatal("Missing global table TILE_IMAGES");
 
-    for(int i = 0; i < L3_TILE_COUNT; i++) {
+    for(int i = 0; i < B3_TILE_COUNT; i++) {
         lua_pushunsigned(l, (lua_Unsigned)i);
         lua_gettable(l, -2);
 
@@ -282,7 +282,7 @@ void l3_init(const char *restrict resource_path_) {
 }
 
 void l3_quit(void) {
-    for(int i = 0; i < L3_TILE_COUNT; i++) {
+    for(int i = 0; i < B3_TILE_COUNT; i++) {
         b3_free_image(l3_tile_images[i]);
         l3_tile_images[i] = NULL;
     }
