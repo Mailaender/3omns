@@ -13,6 +13,8 @@ struct b3_image {
 };
 
 
+int b3_width = 0;
+int b3_height = 0;
 b3_ticks b3_tick_frequency = 0;
 
 static SDL_Window *window = NULL;
@@ -45,6 +47,8 @@ void b3_init(const char *restrict title, int width, int height) {
         b3_quit();
         b3_fatal("Error creating the main window: %s", SDL_GetError());
     }
+    b3_width = width;
+    b3_height = height;
 
     SDL_DisableScreenSaver();
 
