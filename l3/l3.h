@@ -8,6 +8,7 @@ void l3_init(const char *restrict resource_path);
 void l3_quit(void);
 
 
+extern b3_image *l3_border_image;
 extern b3_image *l3_tile_images[B3_TILE_COUNT];
 
 b3_map *l3_generate_map(void);

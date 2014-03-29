@@ -50,8 +50,8 @@ b3_map *b3_set_map_tile(b3_map *restrict map, int x, int y, b3_tile tile) {
 
 void b3_draw_map(
     b3_map *restrict map,
-    const b3_rect *restrict rect,
-    b3_image *tile_images[B3_TILE_COUNT]
+    b3_image *tile_images[B3_TILE_COUNT],
+    const b3_rect *restrict rect
 ) {
     int tile_width = rect->width / map->width;
     int tile_height = rect->height / map->height;

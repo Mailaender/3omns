@@ -15,6 +15,7 @@ do
     WALL = sprites:sub(sprite_rect(16, 0)),
   }
 end
+IMAGES.BORDER = IMAGES.WALL
 
 TILES = {
   BLANK           = string.byte(" "),

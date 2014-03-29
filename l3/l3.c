@@ -16,6 +16,7 @@
 #define MAP_METATABLE L3_NAME "." MAP_NAME
 
 
+b3_image *l3_border_image = NULL;
 b3_image *l3_tile_images[B3_TILE_COUNT] = {NULL};
 
 static char *resource_path = NULL;
@@ -254,6 +255,20 @@ static void run_game_file(lua_State *restrict l, const char *restrict base) {
         b3_fatal("Error running game file %s: %s", base, lua_tostring(l, -1));
 }
 
+static void set_border_image(lua_State *restrict l) {
+    lua_getglobal(l, "IMAGES");
+    if(!lua_istable(l, -1))
+        b3_fatal("Missing global table IMAGES");
+
+    lua_getfield(l, -1, "BORDER");
+    b3_image **p_image = luaL_testudata(l, -1, IMAGE_METATABLE);
+    if(!p_image)
+        b3_fatal("Missing IMAGES.BORDER image");
+    l3_border_image = b3_ref_image(*p_image);
+
+    lua_pop(l, 2);
+}
+
 static void set_tile_images(lua_State *restrict l) {
     lua_getglobal(l, "TILE_IMAGES");
     if(!lua_istable(l, -1))
@@ -278,6 +293,7 @@ void l3_init(const char *restrict resource_path_) {
     lua = new_lua();
     run_game_file(lua, "init");
 
+    set_border_image(lua);
     set_tile_images(lua);
 }
 
@@ -286,6 +302,8 @@ void l3_quit(void) {
         b3_free_image(l3_tile_images[i]);
         l3_tile_images[i] = NULL;
     }
+    b3_free_image(l3_border_image);
+    l3_border_image = NULL;
     if(lua) {
         lua_close(lua);
         lua = NULL;
