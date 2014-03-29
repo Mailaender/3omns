@@ -53,5 +53,19 @@ void b3_draw_map(
     const b3_rect *restrict rect,
     b3_image *tile_images[B3_TILE_COUNT]
 ) {
-    // TODO
+    int tile_width = rect->width / map->width;
+    int tile_height = rect->height / map->height;
+
+    b3_tile *tile = map->tiles;
+    b3_rect tile_rect = {rect->x, rect->y, tile_width, tile_height};
+    for(int y = 0; y < map->height; y++) {
+        for(int x = 0; x < map->width; x++) {
+            b3_image *image = tile_images[*tile++];
+            if(image)
+                b3_draw_image(image, &tile_rect);
+            tile_rect.x += tile_width;
+        }
+        tile_rect.x = rect->x;
+        tile_rect.y += tile_height;
+    }
 }
