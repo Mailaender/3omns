@@ -51,12 +51,23 @@ local function generate_walls(map_ctx)
   wall_grid(map_ctx, MAP_WIDTH / 2, MAP_HEIGHT / 2)
 end
 
+local function fill_space(map_ctx)
+  for x = 1, MAP_WIDTH do
+    for y = 1, MAP_HEIGHT do
+      if map_ctx.map:get_tile(x, y) == 0 then
+        map_ctx.map:set_tile(x, y, TILES.BLANK)
+      end
+    end
+  end
+end
+
 function generate_map()
   local map_ctx = {}
   map_ctx.map = l3.map.new(MAP_WIDTH, MAP_HEIGHT)
 
   generate_spawns(map_ctx)
   generate_walls(map_ctx)
+  fill_space(map_ctx)
 
   return map_ctx.map
 end
