@@ -40,8 +40,11 @@ local function wall_grid(map_ctx, center_x, center_y)
 end
 
 local function generate_walls(map_ctx)
-  for x = MAP_WIDTH / 4, MAP_WIDTH / 4 + MAP_WIDTH / 2, MAP_WIDTH / 2 do
-    for y = MAP_HEIGHT / 4, MAP_HEIGHT / 4 + MAP_HEIGHT / 2, MAP_HEIGHT / 2 do
+  local quarter_width = math.floor(MAP_WIDTH / 4)
+  local quarter_height = math.floor(MAP_HEIGHT / 4)
+
+  for _, x in pairs({quarter_width, MAP_WIDTH - quarter_width}) do
+    for _, y in pairs({quarter_height, MAP_HEIGHT - quarter_height}) do
       wall_grid(map_ctx, x, y)
     end
   end
