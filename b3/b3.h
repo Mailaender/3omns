@@ -107,4 +107,22 @@ void b3_draw_map(
     const b3_rect *restrict rect
 );
 
+static inline b3_rect b3_get_absolute_tile_rect(
+    int map_width,
+    int map_height,
+    const b3_rect *restrict draw_map_rect,
+    int tile_x,
+    int tile_y
+) {
+    int tile_width = draw_map_rect->width / map_width;
+    int tile_height = draw_map_rect->height / map_height;
+    return (b3_rect){
+        draw_map_rect->x + tile_x * tile_width,
+        draw_map_rect->y + tile_y * tile_height,
+        tile_width,
+        tile_height,
+    };
+}
+
+
 #endif
