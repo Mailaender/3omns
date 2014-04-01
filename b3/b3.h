@@ -125,4 +125,22 @@ static inline b3_rect b3_get_absolute_tile_rect(
 }
 
 
+typedef struct b3_entity b3_entity;
+
+b3_entity *b3_new_entity(void);
+b3_entity *b3_ref_entity(b3_entity *restrict entity);
+void b3_free_entity(b3_entity *restrict entity);
+
+b3_entity *b3_set_entity_image(
+    b3_entity *restrict entity,
+    b3_image *restrict image
+);
+b3_entity *b3_set_entity_rect(
+    b3_entity *restrict entity,
+    const b3_rect *restrict rect
+);
+
+void b3_draw_entity(b3_entity *restrict entity);
+
+
 #endif
