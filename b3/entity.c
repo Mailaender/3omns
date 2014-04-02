@@ -4,7 +4,7 @@
 struct b3_entity {
     int ref_count;
     b3_image *image;
-    b3_rect rect;
+    b3_rect image_rect;
     // TODO: lua stuff?
 };
 
@@ -37,15 +37,15 @@ b3_entity *b3_set_entity_image(
     return entity;
 }
 
-b3_entity *b3_set_entity_rect(
+b3_entity *b3_set_entity_image_rect(
     b3_entity *restrict entity,
-    const b3_rect *restrict rect
+    const b3_rect *restrict image_rect
 ) {
-    entity->rect = *rect;
+    entity->image_rect = *image_rect;
     return entity;
 }
 
 void b3_draw_entity(b3_entity *restrict entity) {
     if(entity->image)
-        b3_draw_image(entity->image, &entity->rect);
+        b3_draw_image(entity->image, &entity->image_rect);
 }

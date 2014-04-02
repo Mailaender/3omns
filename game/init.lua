@@ -31,6 +31,9 @@ TILE_IMAGES = {
   [TILES.WALL] = IMAGES.WALL,
 }
 
+ENTITIES = {}
+
+
 math.randomseed(os.time())
 
 dofile(l3.RESOURCE_PATH .. "/game/map.lua")

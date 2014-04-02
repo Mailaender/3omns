@@ -11,9 +11,13 @@
 #define L3_NAME "l3"
 #define IMAGE_NAME "image"
 #define MAP_NAME "map"
+#define ENTITY_NAME "entity"
 
 #define IMAGE_METATABLE L3_NAME "." IMAGE_NAME
 #define MAP_METATABLE L3_NAME "." MAP_NAME
+#define ENTITY_METATABLE L3_NAME "." ENTITY_NAME
+
+#define ENTITY_BACKING_FIELD "_b3_entity"
 
 
 b3_image *l3_border_image = NULL;
@@ -196,10 +200,50 @@ static int open_map(lua_State *restrict l) {
     return 1;
 }
 
+static b3_entity *check_entity(lua_State *restrict l, int index) {
+    return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
+}
+
+static int entity_new(lua_State *restrict l) {
+    lua_newtable(l);
+
+    b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
+    luaL_getmetatable(l, ENTITY_METATABLE);
+    lua_setmetatable(l, -2);
+
+    *p_entity = b3_new_entity();
+    lua_setfield(l, -2, ENTITY_BACKING_FIELD);
+    return 1;
+}
+
+static int entity_gc(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+    b3_free_entity(entity);
+    return 0;
+}
+
+static int open_entity(lua_State *restrict l) {
+    static const luaL_Reg functions[] = {
+        {"new", entity_new},
+        {NULL, NULL}
+    };
+
+    luaL_newmetatable(l, ENTITY_METATABLE);
+
+    lua_pushcfunction(l, entity_gc);
+    lua_setfield(l, -2, "__gc");
+
+    lua_pop(l, 1);
+
+    luaL_newlib(l, functions);
+    return 1;
+}
+
 static int open_all(lua_State *restrict l) {
     static const luaL_Reg submodules[] = {
         {IMAGE_NAME, open_image},
         {MAP_NAME, open_map},
+        {ENTITY_NAME, open_entity},
         {NULL, NULL}
     };
 
@@ -326,4 +370,30 @@ b3_map *l3_generate_map(void) {
     lua_pop(lua, 1);
 
     return map;
+}
+
+// TODO: separate generate_entities function (make sure b3_entity params are
+// set for everything when it finishes).
+
+static void update_entity(lua_State *restrict l) {
+    lua_getfield(l, -1, "run");
+    lua_State *thread = lua_tothread(l, -1);
+    if(thread) { // TODO: and thread hasn't exited yet?
+        lua_resume(thread, l, 0);
+        // TODO: then set b3_entity params from new values.
+    }
+    lua_pop(l, 1);
+}
+
+void l3_update_entities(b3_ticks elapsed) {
+    lua_getglobal(lua, "ENTITIES");
+    if(!lua_istable(lua, -1))
+        b3_fatal("Missing global table ENTITIES");
+
+    lua_pushnil(lua);
+    while(lua_next(lua, -2)) {
+        update_entity(lua);
+        lua_pop(lua, 1);
+    }
+    lua_pop(lua, 1);
 }

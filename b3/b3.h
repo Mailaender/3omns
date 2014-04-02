@@ -135,9 +135,9 @@ b3_entity *b3_set_entity_image(
     b3_entity *restrict entity,
     b3_image *restrict image
 );
-b3_entity *b3_set_entity_rect(
+b3_entity *b3_set_entity_image_rect(
     b3_entity *restrict entity,
-    const b3_rect *restrict rect
+    const b3_rect *restrict image_rect
 );
 
 void b3_draw_entity(b3_entity *restrict entity);
