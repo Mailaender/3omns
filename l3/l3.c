@@ -205,7 +205,11 @@ static b3_entity *check_entity(lua_State *restrict l, int index) {
 }
 
 static int entity_new(lua_State *restrict l) {
-    lua_newtable(l);
+    lua_pushvalue(l, 1);
+    if(!lua_istable(l, -1)) {
+        lua_pop(l, 1);
+        lua_newtable(l);
+    }
 
     b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
     luaL_getmetatable(l, ENTITY_METATABLE);
