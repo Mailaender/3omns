@@ -22,6 +22,16 @@ int main(void) {
 
     b3_map *map = l3_generate_map();
 
+    /* TODO: more like:
+     * loop:
+     *     calculate elapsed time since last run
+     *     update entities at a fixed interval (40Hz?) in a loop to catch up
+     *     process events (or maybe do this first or last?)
+     *     do one render (only if there's enough time?)
+     *     maybe run the lua garbage collector a bit? (again, only if time)
+     *     if we've had to catch up every frame for a full second-ish, abort
+     *     pause for the remainder of the time till the next frame update
+     */
     while(!b3_process_events()) {
         b3_begin_scene();
         b3_draw_map(map, l3_tile_images, &(b3_rect){0, 0, 480, 480});
