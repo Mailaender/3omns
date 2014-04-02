@@ -17,7 +17,7 @@ static void draw_border(b3_map *restrict map) {
 int main(void) {
     b3_init("3omns", 640, 480);
     atexit(b3_quit);
-    l3_init("."); // TODO: installed path?
+    l3_init("res"); // TODO: installed path?
     atexit(l3_quit);
 
     b3_map *map = l3_generate_map();

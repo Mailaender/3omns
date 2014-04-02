@@ -6,6 +6,7 @@ AC_CONFIG_FILES([
 	Makefile
 	b3/Makefile
 	l3/Makefile
+	res/Makefile
 	src/Makefile
 ])
 
