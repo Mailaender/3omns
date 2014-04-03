@@ -8,13 +8,12 @@
 struct b3_image {
     int ref_count;
     SDL_Texture *texture;
-    SDL_Rect rect;
+    b3_rect rect;
     b3_image *parent;
 };
 
 
-int b3_width = 0;
-int b3_height = 0;
+b3_size b3_window_size = {0, 0};
 b3_ticks b3_tick_frequency = 0;
 
 static SDL_Window *window = NULL;
@@ -22,7 +21,10 @@ static SDL_Renderer *renderer = NULL;
 static _Bool quit = 0;
 
 
-void b3_init(const char *restrict title, int width, int height) {
+void b3_init(
+    const char *restrict window_title,
+    const b3_size *restrict window_size
+) {
     quit = 0;
 
     if(SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_TIMER | SDL_INIT_VIDEO) != 0)
@@ -36,19 +38,18 @@ void b3_init(const char *restrict title, int width, int height) {
     b3_tick_frequency = SDL_GetPerformanceFrequency();
 
     window = SDL_CreateWindow(
-        title,
+        window_title,
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        width,
-        height,
+        window_size->width,
+        window_size->height,
         SDL_WINDOW_OPENGL
     );
     if(!window) {
         b3_quit();
         b3_fatal("Error creating the main window: %s", SDL_GetError());
     }
-    b3_width = width;
-    b3_height = height;
+    b3_window_size = *window_size;
 
     SDL_DisableScreenSaver();
 
@@ -108,8 +109,7 @@ b3_image *b3_load_image(const char *restrict filename) {
     if(!surface)
         b3_fatal("Error loading image %s: %s", filename, IMG_GetError());
 
-    int width = surface->w;
-    int height = surface->h;
+    b3_size size = {surface->w, surface->h};
 
     SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_FreeSurface(surface);
@@ -118,7 +118,7 @@ b3_image *b3_load_image(const char *restrict filename) {
 
     b3_image *image = b3_malloc(sizeof(*image), 1);
     image->texture = texture;
-    image->rect = (SDL_Rect){0, 0, width, height};
+    image->rect = (b3_rect){.size = size};
     return b3_ref_image(image);
 }
 
@@ -128,7 +128,7 @@ b3_image *b3_new_sub_image(
 ) {
     b3_image *sub_image = b3_malloc(sizeof(*sub_image), 1);
     sub_image->texture = image->texture;
-    sub_image->rect = (SDL_Rect){rect->x, rect->y, rect->width, rect->height};
+    sub_image->rect = *rect;
     sub_image->parent = b3_ref_image(image);
     return b3_ref_image(sub_image);
 }
@@ -147,19 +147,16 @@ void b3_free_image(b3_image *restrict image) {
     }
 }
 
-int b3_get_image_width(b3_image *restrict image) {
-    return image->rect.w;
-}
-
-int b3_get_image_height(b3_image *restrict image) {
-    return image->rect.h;
+b3_size b3_get_image_size(b3_image *restrict image) {
+    return image->rect.size;
 }
 
 void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect) {
+    const b3_rect *restrict r = &image->rect;
     SDL_RenderCopy(
         renderer,
         image->texture,
-        &image->rect,
+        &(SDL_Rect){r->x, r->y, r->width, r->height},
         &(SDL_Rect){rect->x, rect->y, rect->width, rect->height}
     );
 }

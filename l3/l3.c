@@ -47,7 +47,7 @@ static b3_rect check_rect(lua_State *restrict l, int arg_index) {
     );
 
     lua_pop(l, 4);
-    return (b3_rect){x, y, width, height};
+    return B3_RECT(x, y, width, height);
 }
 
 static b3_image **push_new_image(lua_State *restrict l) {
@@ -122,7 +122,7 @@ static int map_new(lua_State *restrict l) {
     luaL_getmetatable(l, MAP_METATABLE);
     lua_setmetatable(l, -2);
 
-    *p_map = b3_new_map(width, height);
+    *p_map = b3_new_map(&(b3_size){width, height});
     return 1;
 }
 
@@ -132,18 +132,13 @@ static int map_gc(lua_State *restrict l) {
     return 0;
 }
 
-static int map_width(lua_State *restrict l) {
+static int map_size(lua_State *restrict l) {
     b3_map *map = check_map(l, 1);
 
-    lua_pushinteger(l, (lua_Integer)b3_get_map_width(map));
-    return 1;
-}
-
-static int map_height(lua_State *restrict l) {
-    b3_map *map = check_map(l, 1);
-
-    lua_pushinteger(l, (lua_Integer)b3_get_map_height(map));
-    return 1;
+    b3_size size = b3_get_map_size(map);
+    lua_pushinteger(l, (lua_Integer)size.width);
+    lua_pushinteger(l, (lua_Integer)size.height);
+    return 2;
 }
 
 static int map_get_tile(lua_State *restrict l) {
@@ -151,10 +146,11 @@ static int map_get_tile(lua_State *restrict l) {
     int x = (int)luaL_checkinteger(l, 2) - 1;
     int y = (int)luaL_checkinteger(l, 3) - 1;
 
-    luaL_argcheck(l, x >= 0 && x < b3_get_map_width(map), 2, "x must satisfy 1 <= x <= map:width()");
-    luaL_argcheck(l, y >= 0 && y < b3_get_map_height(map), 3, "y must satisfy 1 <= y <= map:height()");
+    b3_size size = b3_get_map_size(map);
+    luaL_argcheck(l, x >= 0 && x < size.width, 2, "x must satisfy 1 <= x <= map:size() width");
+    luaL_argcheck(l, y >= 0 && y < size.height, 3, "y must satisfy 1 <= y <= map:size() height");
 
-    lua_pushunsigned(l, (lua_Unsigned)b3_get_map_tile(map, x, y));
+    lua_pushunsigned(l, (lua_Unsigned)b3_get_map_tile(map, &(b3_pos){x, y}));
     return 1;
 }
 
@@ -164,10 +160,11 @@ static int map_set_tile(lua_State *restrict l) {
     int y = (int)luaL_checkinteger(l, 3) - 1;
     b3_tile tile = (b3_tile)luaL_checkunsigned(l, 4);
 
-    luaL_argcheck(l, x >= 0 && x < b3_get_map_width(map), 2, "x must satisfy 1 <= x <= map:width()");
-    luaL_argcheck(l, y >= 0 && y < b3_get_map_height(map), 3, "y must satisfy 1 <= y <= map:height()");
+    b3_size size = b3_get_map_size(map);
+    luaL_argcheck(l, x >= 0 && x < size.width, 2, "x must satisfy 1 <= x <= map:size() width");
+    luaL_argcheck(l, y >= 0 && y < size.height, 3, "y must satisfy 1 <= y <= map:size() height");
 
-    b3_set_map_tile(map, x, y, tile);
+    b3_set_map_tile(map, &(b3_pos){x, y}, tile);
 
     lua_pushvalue(l, 1);
     return 1;
@@ -179,8 +176,7 @@ static int open_map(lua_State *restrict l) {
         {NULL, NULL}
     };
     static const luaL_Reg methods[] = {
-        {"width", map_width},
-        {"height", map_height},
+        {"size", map_size},
         {"get_tile", map_get_tile},
         {"set_tile", map_set_tile},
         {NULL, NULL}

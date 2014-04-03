@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 
-#define b3_static_array_count(a) (sizeof(a)/sizeof(*(a)))
+#define b3_static_array_count(a) (sizeof(a)/sizeof((a)[0]))
 
 
 #define b3_fatal(...) \
@@ -26,11 +26,47 @@ void *b3_realloc(void *restrict ptr, size_t size);
 void b3_free(void *restrict ptr, size_t zero_size);
 
 
-void b3_init(const char *restrict title, int width, int height);
+typedef struct b3_pos b3_pos;
+struct b3_pos {
+    int x;
+    int y;
+};
+
+typedef struct b3_size b3_size;
+struct b3_size {
+    int width;
+    int height;
+};
+
+typedef struct b3_rect b3_rect;
+struct b3_rect {
+    union {
+        b3_pos pos;
+        struct {
+            int x;
+            int y;
+        };
+    };
+    union {
+        b3_size size;
+        struct {
+            int width;
+            int height;
+        };
+    };
+};
+
+#define B3_RECT_INIT(x_, y_, w, h) {.x=(x_), .y=(y_), .width=(w), .height=(h)}
+#define B3_RECT(x, y, w, h) ((b3_rect)B3_RECT_INIT((x), (y), (w), (h)))
+
+
+void b3_init(
+    const char *restrict window_title,
+    const b3_size *restrict window_size
+);
 void b3_quit(void);
 
-extern int b3_width;
-extern int b3_height;
+extern b3_size b3_window_size;
 
 _Bool b3_process_events(void);
 
@@ -58,14 +94,6 @@ static inline double b3_get_duration(
 void b3_sleep(int ms);
 
 
-typedef struct b3_rect b3_rect;
-struct b3_rect {
-    int x;
-    int y;
-    int width;
-    int height;
-};
-
 void b3_begin_scene(void);
 void b3_end_scene(void);
 
@@ -80,8 +108,7 @@ b3_image *b3_new_sub_image(
 b3_image *b3_ref_image(b3_image *restrict image);
 void b3_free_image(b3_image *restrict image);
 
-int b3_get_image_width(b3_image *restrict image);
-int b3_get_image_height(b3_image *restrict image);
+b3_size b3_get_image_size(b3_image *restrict image);
 
 void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect);
 
@@ -92,14 +119,17 @@ typedef uint8_t b3_tile;
 
 typedef struct b3_map b3_map;
 
-b3_map *b3_new_map(int width, int height);
+b3_map *b3_new_map(const b3_size *restrict size);
 b3_map *b3_ref_map(b3_map *restrict map);
 void b3_free_map(b3_map *restrict map);
 
-int b3_get_map_width(b3_map *restrict map);
-int b3_get_map_height(b3_map *restrict map);
-b3_tile b3_get_map_tile(b3_map *restrict map, int x, int y);
-b3_map *b3_set_map_tile(b3_map *restrict map, int x, int y, b3_tile tile);
+b3_size b3_get_map_size(b3_map *restrict map);
+b3_tile b3_get_map_tile(b3_map *restrict map, const b3_pos *restrict pos);
+b3_map *b3_set_map_tile(
+    b3_map *restrict map,
+    const b3_pos *restrict pos,
+    b3_tile tile
+);
 
 void b3_draw_map(
     b3_map *restrict map,
@@ -107,20 +137,13 @@ void b3_draw_map(
     const b3_rect *restrict rect
 );
 
-static inline b3_rect b3_get_absolute_tile_rect(
-    int map_width,
-    int map_height,
-    const b3_rect *restrict draw_map_rect,
-    int tile_x,
-    int tile_y
+static inline b3_size b3_get_map_tile_size(
+    const b3_size *restrict map_size,
+    const b3_size *restrict draw_size
 ) {
-    int tile_width = draw_map_rect->width / map_width;
-    int tile_height = draw_map_rect->height / map_height;
-    return (b3_rect){
-        draw_map_rect->x + tile_x * tile_width,
-        draw_map_rect->y + tile_y * tile_height,
-        tile_width,
-        tile_height,
+    return (b3_size){
+        draw_size->width / map_size->width,
+        draw_size->height / map_size->height
     };
 }
 
