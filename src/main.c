@@ -20,7 +20,7 @@ int main(void) {
     l3_init("res"); // TODO: installed path?
     atexit(l3_quit);
 
-    b3_map *map = l3_generate_map();
+    b3_map *map = l3_generate();
 
     /* TODO: more like:
      * loop:

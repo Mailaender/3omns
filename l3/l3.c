@@ -360,16 +360,16 @@ void l3_quit(void) {
     resource_path = NULL;
 }
 
-b3_map *l3_generate_map(void) {
-    lua_getglobal(lua, "generate_map");
+b3_map *l3_generate(void) {
+    lua_getglobal(lua, "generate");
     if(!lua_isfunction(lua, -1))
-        b3_fatal("Missing global function generate_map");
+        b3_fatal("Missing global function generate");
 
     lua_call(lua, 0, 1); // Rely on panic to handle errors.
 
     b3_map **p_map = luaL_testudata(lua, -1, MAP_METATABLE);
     if(!p_map)
-        b3_fatal("generate_map didn't return a map");
+        b3_fatal("generate didn't return a map");
     b3_map *map = b3_ref_map(*p_map);
     lua_pop(lua, 1);
 

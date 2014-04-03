@@ -20,10 +20,6 @@ IMAGES.BORDER = IMAGES.WALL
 TILES = {
   BLANK           = string.byte(" "),
   WALL            = string.byte("X"),
-  RED_SPAWN       = string.byte("r"),
-  BLUE_SPAWN      = string.byte("b"),
-  VIOLET_SPAWN    = string.byte("v"),
-  GREEN_SPAWN     = string.byte("g"),
 }
 
 TILE_IMAGES = {
@@ -31,9 +27,7 @@ TILE_IMAGES = {
   [TILES.WALL] = IMAGES.WALL,
 }
 
-ENTITIES = {}
-
 
 math.randomseed(os.time())
 
-dofile(l3.RESOURCE_PATH .. "/game/map.lua")
+dofile(l3.RESOURCE_PATH .. "/game/generate.lua")
