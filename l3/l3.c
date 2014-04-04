@@ -10,14 +10,10 @@
 
 #define L3_NAME "l3"
 #define IMAGE_NAME "image"
-#define MAP_NAME "map"
-#define ENTITY_NAME "entity"
+#define LEVEL_NAME "level"
 
 #define IMAGE_METATABLE L3_NAME "." IMAGE_NAME
-#define MAP_METATABLE L3_NAME "." MAP_NAME
-#define ENTITY_METATABLE L3_NAME "." ENTITY_NAME
-
-#define ENTITY_BACKING_FIELD "_b3_entity"
+#define LEVEL_METATABLE L3_NAME "." LEVEL_NAME
 
 
 b3_image *l3_border_image = NULL;
@@ -110,81 +106,86 @@ static int open_image(lua_State *restrict l) {
     return 1;
 }
 
-static b3_map *check_map(lua_State *restrict l, int index) {
-    return *(b3_map **)luaL_checkudata(l, index, MAP_METATABLE);
+static l3_level *check_level(lua_State *restrict l, int index) {
+    return luaL_checkudata(l, index, LEVEL_METATABLE);
 }
 
-static int map_new(lua_State *restrict l) {
+static int level_new(lua_State *restrict l) {
     int width = (int)luaL_checkinteger(l, 1);
     int height = (int)luaL_checkinteger(l, 2);
+    int max_entities = (int)luaL_checkinteger(l, 3);
 
-    b3_map **p_map = lua_newuserdata(l, sizeof(*p_map));
-    luaL_getmetatable(l, MAP_METATABLE);
+    l3_level *level = lua_newuserdata(l, sizeof(*level));
+    luaL_getmetatable(l, LEVEL_METATABLE);
     lua_setmetatable(l, -2);
 
-    *p_map = b3_new_map(&(b3_size){width, height});
+    level->map = b3_new_map(&(b3_size){width, height});
+    level->entities = b3_new_entity_pool(max_entities, level->map);
     return 1;
 }
 
-static int map_gc(lua_State *restrict l) {
-    b3_map *map = check_map(l, 1);
-    b3_free_map(map);
+static int level_gc(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
+    l3_free_level(level);
     return 0;
 }
 
-static int map_size(lua_State *restrict l) {
-    b3_map *map = check_map(l, 1);
+static int level_size(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
 
-    b3_size size = b3_get_map_size(map);
+    b3_size size = b3_get_map_size(level->map);
     lua_pushinteger(l, (lua_Integer)size.width);
     lua_pushinteger(l, (lua_Integer)size.height);
     return 2;
 }
 
-static int map_get_tile(lua_State *restrict l) {
-    b3_map *map = check_map(l, 1);
+static int level_get_tile(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
     int x = (int)luaL_checkinteger(l, 2) - 1;
     int y = (int)luaL_checkinteger(l, 3) - 1;
 
-    b3_size size = b3_get_map_size(map);
-    luaL_argcheck(l, x >= 0 && x < size.width, 2, "x must satisfy 1 <= x <= map:size() width");
-    luaL_argcheck(l, y >= 0 && y < size.height, 3, "y must satisfy 1 <= y <= map:size() height");
+    b3_size size = b3_get_map_size(level->map);
+    luaL_argcheck(l, x >= 0 && x < size.width, 2, "x must satisfy 1 <= x <= level:size() width");
+    luaL_argcheck(l, y >= 0 && y < size.height, 3, "y must satisfy 1 <= y <= level:size() height");
 
-    lua_pushunsigned(l, (lua_Unsigned)b3_get_map_tile(map, &(b3_pos){x, y}));
+    lua_pushunsigned(
+        l,
+        (lua_Unsigned)b3_get_map_tile(level->map, &(b3_pos){x, y})
+    );
     return 1;
 }
 
-static int map_set_tile(lua_State *restrict l) {
-    b3_map *map = check_map(l, 1);
+static int level_set_tile(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
     int x = (int)luaL_checkinteger(l, 2) - 1;
     int y = (int)luaL_checkinteger(l, 3) - 1;
     b3_tile tile = (b3_tile)luaL_checkunsigned(l, 4);
 
-    b3_size size = b3_get_map_size(map);
-    luaL_argcheck(l, x >= 0 && x < size.width, 2, "x must satisfy 1 <= x <= map:size() width");
-    luaL_argcheck(l, y >= 0 && y < size.height, 3, "y must satisfy 1 <= y <= map:size() height");
+    b3_size size = b3_get_map_size(level->map);
+    luaL_argcheck(l, x >= 0 && x < size.width, 2, "x must satisfy 1 <= x <= level:size() width");
+    luaL_argcheck(l, y >= 0 && y < size.height, 3, "y must satisfy 1 <= y <= level:size() height");
 
-    b3_set_map_tile(map, &(b3_pos){x, y}, tile);
+    b3_set_map_tile(level->map, &(b3_pos){x, y}, tile);
 
     lua_pushvalue(l, 1);
     return 1;
 }
 
-static int open_map(lua_State *restrict l) {
+static int open_level(lua_State *restrict l) {
     static const luaL_Reg functions[] = {
-        {"new", map_new},
+        {"new", level_new},
         {NULL, NULL}
     };
     static const luaL_Reg methods[] = {
-        {"size", map_size},
-        {"get_tile", map_get_tile},
-        {"set_tile", map_set_tile},
+        {"size",level_size},
+        {"get_tile", level_get_tile},
+        {"set_tile", level_set_tile},
         {NULL, NULL}
     };
 
-    luaL_newmetatable(l, MAP_METATABLE);
+    luaL_newmetatable(l, LEVEL_METATABLE);
 
-    lua_pushcfunction(l, map_gc);
+    lua_pushcfunction(l, level_gc);
     lua_setfield(l, -2, "__gc");
     lua_pushvalue(l, -1);
     lua_setfield(l, -2, "__index");
@@ -196,54 +197,10 @@ static int open_map(lua_State *restrict l) {
     return 1;
 }
 
-static b3_entity *check_entity(lua_State *restrict l, int index) {
-    return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
-}
-
-static int entity_new(lua_State *restrict l) {
-    lua_pushvalue(l, 1);
-    if(!lua_istable(l, -1)) {
-        lua_pop(l, 1);
-        lua_newtable(l);
-    }
-
-    b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
-    luaL_getmetatable(l, ENTITY_METATABLE);
-    lua_setmetatable(l, -2);
-
-    *p_entity = b3_new_entity();
-    lua_setfield(l, -2, ENTITY_BACKING_FIELD);
-    return 1;
-}
-
-static int entity_gc(lua_State *restrict l) {
-    b3_entity *entity = check_entity(l, 1);
-    b3_free_entity(entity);
-    return 0;
-}
-
-static int open_entity(lua_State *restrict l) {
-    static const luaL_Reg functions[] = {
-        {"new", entity_new},
-        {NULL, NULL}
-    };
-
-    luaL_newmetatable(l, ENTITY_METATABLE);
-
-    lua_pushcfunction(l, entity_gc);
-    lua_setfield(l, -2, "__gc");
-
-    lua_pop(l, 1);
-
-    luaL_newlib(l, functions);
-    return 1;
-}
-
 static int open_all(lua_State *restrict l) {
     static const luaL_Reg submodules[] = {
         {IMAGE_NAME, open_image},
-        {MAP_NAME, open_map},
-        {ENTITY_NAME, open_entity},
+        {LEVEL_NAME, open_level},
         {NULL, NULL}
     };
 
@@ -356,44 +313,18 @@ void l3_quit(void) {
     resource_path = NULL;
 }
 
-b3_map *l3_generate(void) {
+l3_level l3_generate(void) {
     lua_getglobal(lua, "generate");
     if(!lua_isfunction(lua, -1))
         b3_fatal("Missing global function generate");
 
     lua_call(lua, 0, 1); // Rely on panic to handle errors.
 
-    b3_map **p_map = luaL_testudata(lua, -1, MAP_METATABLE);
-    if(!p_map)
-        b3_fatal("generate didn't return a map");
-    b3_map *map = b3_ref_map(*p_map);
+    l3_level *level = luaL_testudata(lua, -1, LEVEL_METATABLE);
+    if(!level)
+        b3_fatal("generate didn't return a level");
+    l3_level copy = l3_copy_level(level);
     lua_pop(lua, 1);
 
-    return map;
-}
-
-// TODO: separate generate_entities function (make sure b3_entity params are
-// set for everything when it finishes).
-
-static void update_entity(lua_State *restrict l) {
-    lua_getfield(l, -1, "run");
-    lua_State *thread = lua_tothread(l, -1);
-    if(thread) { // TODO: and thread hasn't exited yet?
-        lua_resume(thread, l, 0);
-        // TODO: then set b3_entity params from new values.
-    }
-    lua_pop(l, 1);
-}
-
-void l3_update_entities(b3_ticks elapsed) {
-    lua_getglobal(lua, "ENTITIES");
-    if(!lua_istable(lua, -1))
-        b3_fatal("Missing global table ENTITIES");
-
-    lua_pushnil(lua);
-    while(lua_next(lua, -2)) {
-        update_entity(lua);
-        lua_pop(lua, 1);
-    }
-    lua_pop(lua, 1);
+    return copy;
 }

@@ -4,10 +4,7 @@
 #include <stdlib.h>
 
 
-static void draw_border(
-    b3_map *restrict map,
-    const b3_size *restrict map_size
-) {
+static void draw_border(const b3_size *restrict map_size) {
     b3_size tile_size = b3_get_map_tile_size(map_size, &(b3_size){480, 480});
     b3_rect rect = B3_RECT_INIT(480, 0, tile_size.width, tile_size.height);
     for(int i = 0; i < map_size->height; i++) {
@@ -22,8 +19,8 @@ int main(void) {
     l3_init("res"); // TODO: installed path?
     atexit(l3_quit);
 
-    b3_map *map = l3_generate();
-    b3_size map_size = b3_get_map_size(map);
+    l3_level level = l3_generate();
+    b3_size map_size = b3_get_map_size(level.map);
 
     /* TODO: more like:
      * loop:
@@ -37,12 +34,12 @@ int main(void) {
      */
     while(!b3_process_events()) {
         b3_begin_scene();
-        b3_draw_map(map, l3_tile_images, &B3_RECT(0, 0, 480, 480));
-        draw_border(map, &map_size);
+        b3_draw_map(level.map, l3_tile_images, &B3_RECT(0, 0, 480, 480));
+        draw_border(&map_size);
         b3_end_scene();
         b3_sleep(10);
     }
 
-    b3_free_map(map);
+    l3_free_level(&level);
     return 0;
 }

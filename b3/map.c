@@ -11,9 +11,8 @@ struct b3_map {
     sizeof(*(map)) + (size)->width * (size)->height * sizeof((map)->tiles[0]) \
 )
 
-#define MAP_TILE(map, pos) ( \
-    (map)->tiles[(pos)->x + (pos)->y * (map)->size.width] \
-)
+#define MAP_TILE(map, pos) \
+        ((map)->tiles[(pos)->x + (pos)->y * (map)->size.width])
 
 
 b3_map *b3_new_map(const b3_size *restrict size) {

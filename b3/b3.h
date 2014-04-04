@@ -148,22 +148,51 @@ static inline b3_size b3_get_map_tile_size(
 }
 
 
+typedef struct b3_entity_pool b3_entity_pool;
+
 typedef struct b3_entity b3_entity;
 
-b3_entity *b3_new_entity(void);
-b3_entity *b3_ref_entity(b3_entity *restrict entity);
-void b3_free_entity(b3_entity *restrict entity);
+typedef void (*b3_free_entity_data_callback)(
+    b3_entity *entity,
+    void *entity_data
+);
 
+typedef void (*b3_entity_callback)(b3_entity *entity, void *callback_data);
+
+b3_entity_pool *b3_new_entity_pool(int size, b3_map *restrict map);
+b3_entity_pool *b3_ref_entity_pool(b3_entity_pool *restrict pool);
+void b3_free_entity_pool(b3_entity_pool *restrict pool);
+
+b3_entity *b3_claim_entity(
+    b3_entity_pool *restrict pool,
+    b3_free_entity_data_callback free_data_callback
+);
+void b3_release_entity(
+    b3_entity_pool *restrict pool,
+    b3_entity *restrict entity
+);
+
+b3_entity *b3_set_entity_pos(
+    b3_entity *restrict entity,
+    const b3_pos *restrict pos
+);
+b3_entity *b3_set_entity_life(b3_entity *restrict entity, int life);
 b3_entity *b3_set_entity_image(
     b3_entity *restrict entity,
     b3_image *restrict image
 );
-b3_entity *b3_set_entity_image_rect(
-    b3_entity *restrict entity,
-    const b3_rect *restrict image_rect
+b3_entity *b3_set_entity_data(b3_entity *restrict entity, void *entity_data);
+
+void b3_for_each_entity(
+    b3_entity_pool *restrict pool,
+    b3_entity_callback callback,
+    void *callback_data
 );
 
-void b3_draw_entity(b3_entity *restrict entity);
+void b3_draw_entities(
+    b3_entity_pool *restrict pool,
+    const b3_rect *restrict rect
+);
 
 
 #endif

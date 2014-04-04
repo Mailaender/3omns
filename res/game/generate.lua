@@ -1,5 +1,6 @@
 local MAP_WIDTH = 30
 local MAP_HEIGHT = 30
+local MAX_ENTITIES = MAP_WIDTH * MAP_HEIGHT * 2
 
 local function generate_spawns(ctx)
   local x_mins = {MAP_WIDTH / 2, 0, MAP_WIDTH / 2, 0}
@@ -16,7 +17,7 @@ local function wall_grid(ctx, center_x, center_y)
   local walls = {}
   for x = center_x - 3, center_x + 3, 3 do
     for y = center_y - 3, center_y + 3, 3 do
-      if ctx.map:get_tile(x, y) == 0 then
+      if ctx.level:get_tile(x, y) == 0 then
         walls[#walls + 1] = {x=x, y=y}
       end
     end
@@ -27,7 +28,7 @@ local function wall_grid(ctx, center_x, center_y)
   end
 
   for _, w in pairs(walls) do
-    ctx.map:set_tile(w.x, w.y, TILES.WALL)
+    ctx.level:set_tile(w.x, w.y, TILES.WALL)
   end
 end
 
@@ -46,8 +47,8 @@ end
 local function fill_space(ctx)
   for x = 1, MAP_WIDTH do
     for y = 1, MAP_HEIGHT do
-      if ctx.map:get_tile(x, y) == 0 then
-        ctx.map:set_tile(x, y, TILES.BLANK)
+      if ctx.level:get_tile(x, y) == 0 then
+        ctx.level:set_tile(x, y, TILES.BLANK)
       end
     end
   end
@@ -59,7 +60,7 @@ end
 
 function generate()
   local ctx = {
-    map = l3.map.new(MAP_WIDTH, MAP_HEIGHT),
+    level = l3.level.new(MAP_WIDTH, MAP_HEIGHT, MAX_ENTITIES),
     spawns = {},
   }
 
@@ -68,5 +69,5 @@ function generate()
   fill_space(ctx)
   spawn_entities(ctx)
 
-  return ctx.map
+  return ctx.level
 end
