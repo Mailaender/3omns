@@ -60,14 +60,16 @@ static void free_entity_data(b3_entity *restrict entity) {
     entity->data = NULL;
 }
 
-static _Bool deactivate_entity(b3_entity *restrict entity) {
+static b3_entity_pool *deactivate_entity(b3_entity *restrict entity) {
     if(!entity || !entity->active)
-        return 0;
+        return NULL;
 
     free_entity_data(entity);
     b3_free_image(entity->image);
+
+    b3_entity_pool *pool = entity->pool;
     memset(entity, 0, sizeof(*entity));
-    return 1;
+    return pool;
 }
 
 void b3_free_entity_pool(b3_entity_pool *restrict pool) {
@@ -94,11 +96,9 @@ b3_entity *b3_claim_entity(
     return entity;
 }
 
-void b3_release_entity(
-    b3_entity_pool *restrict pool,
-    b3_entity *restrict entity
-) {
-    if(deactivate_entity(entity))
+void b3_release_entity(b3_entity *restrict entity) {
+    b3_entity_pool *pool = deactivate_entity(entity);
+    if(pool)
         pool->inactive[pool->inactive_count++] = entity;
 }
 

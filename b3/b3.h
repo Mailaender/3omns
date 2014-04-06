@@ -167,10 +167,7 @@ b3_entity *b3_claim_entity(
     b3_entity_pool *restrict pool,
     b3_free_entity_data_callback free_data_callback
 );
-void b3_release_entity(
-    b3_entity_pool *restrict pool,
-    b3_entity *restrict entity
-);
+void b3_release_entity(b3_entity *restrict entity);
 
 b3_entity *b3_set_entity_pos(
     b3_entity *restrict entity,

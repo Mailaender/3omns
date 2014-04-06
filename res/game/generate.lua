@@ -55,13 +55,18 @@ local function fill_space(ctx)
 end
 
 local function spawn_entities(ctx)
-  -- TODO
+  for i = 1, 4 do
+    ctx.dudes[i] = ctx.level:new_entity(ctx.spawns[i].x, ctx.spawns[i].y, {
+      player = i,
+    })
+  end
 end
 
 function generate()
   local ctx = {
     level = l3.level.new(MAP_WIDTH, MAP_HEIGHT, MAX_ENTITIES),
     spawns = {},
+    dudes = {},
   }
 
   generate_spawns(ctx)

@@ -14,6 +14,7 @@
 
 #define IMAGE_METATABLE L3_NAME "." IMAGE_NAME
 #define LEVEL_METATABLE L3_NAME "." LEVEL_NAME
+#define ENTITY_METATABLE L3_NAME ".entity"
 
 
 b3_image *l3_border_image = NULL;
@@ -130,7 +131,7 @@ static int level_gc(lua_State *restrict l) {
     return 0;
 }
 
-static int level_size(lua_State *restrict l) {
+static int level_get_size(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
 
     b3_size size = b3_get_map_size(level->map);
@@ -139,36 +140,79 @@ static int level_size(lua_State *restrict l) {
     return 2;
 }
 
-static int level_get_tile(lua_State *restrict l) {
-    l3_level *level = check_level(l, 1);
-    int x = (int)luaL_checkinteger(l, 2) - 1;
-    int y = (int)luaL_checkinteger(l, 3) - 1;
+static l3_level *check_level_pos(
+    lua_State *restrict l,
+    l3_level *restrict level,
+    int x_index,
+    int y_index,
+    b3_pos *restrict pos_out
+) {
+    int x = (int)luaL_checkinteger(l, x_index) - 1;
+    int y = (int)luaL_checkinteger(l, y_index) - 1;
 
     b3_size size = b3_get_map_size(level->map);
-    luaL_argcheck(l, x >= 0 && x < size.width, 2, "x must satisfy 1 <= x <= level:size() width");
-    luaL_argcheck(l, y >= 0 && y < size.height, 3, "y must satisfy 1 <= y <= level:size() height");
-
-    lua_pushunsigned(
+    luaL_argcheck(
         l,
-        (lua_Unsigned)b3_get_map_tile(level->map, &(b3_pos){x, y})
+        x >= 0 && x < size.width,
+        x_index,
+        "x must satisfy 1 <= x <= level:get_size() width"
     );
+    luaL_argcheck(
+        l,
+        y >= 0 && y < size.height,
+        y_index,
+        "y must satisfy 1 <= y <= level:get_size() height"
+    );
+
+    *pos_out = (b3_pos){x, y};
+    return level;
+}
+
+static int level_get_tile(lua_State *restrict l) {
+    b3_pos pos;
+    l3_level *level = check_level_pos(l, check_level(l, 1), 2, 3, &pos);
+
+    lua_pushunsigned(l, (lua_Unsigned)b3_get_map_tile(level->map, &pos));
     return 1;
 }
 
 static int level_set_tile(lua_State *restrict l) {
-    l3_level *level = check_level(l, 1);
-    int x = (int)luaL_checkinteger(l, 2) - 1;
-    int y = (int)luaL_checkinteger(l, 3) - 1;
+    b3_pos pos;
+    l3_level *level = check_level_pos(l, check_level(l, 1), 2, 3, &pos);
     b3_tile tile = (b3_tile)luaL_checkunsigned(l, 4);
 
-    b3_size size = b3_get_map_size(level->map);
-    luaL_argcheck(l, x >= 0 && x < size.width, 2, "x must satisfy 1 <= x <= level:size() width");
-    luaL_argcheck(l, y >= 0 && y < size.height, 3, "y must satisfy 1 <= y <= level:size() height");
-
-    b3_set_map_tile(level->map, &(b3_pos){x, y}, tile);
+    b3_set_map_tile(level->map, &pos, tile);
 
     lua_pushvalue(l, 1);
     return 1;
+}
+
+static b3_entity *check_entity(lua_State *restrict l, int index) {
+    return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
+}
+
+static void free_entity_data(b3_entity *restrict entity, void *entity_data) {
+    // TODO
+}
+
+static int level_new_entity(lua_State *restrict l) {
+    b3_pos pos;
+    l3_level *level = check_level_pos(l, check_level(l, 1), 2, 3, &pos);
+
+    b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
+    luaL_getmetatable(l, ENTITY_METATABLE);
+    lua_setmetatable(l, -2);
+
+    *p_entity = b3_claim_entity(level->entities, free_entity_data);
+    b3_set_entity_pos(*p_entity, &pos);
+    b3_set_entity_data(*p_entity, NULL); // TODO
+    return 1;
+}
+
+static int entity_gc(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+    b3_release_entity(entity);
+    return 0;
 }
 
 static int open_level(lua_State *restrict l) {
@@ -176,10 +220,14 @@ static int open_level(lua_State *restrict l) {
         {"new", level_new},
         {NULL, NULL}
     };
-    static const luaL_Reg methods[] = {
-        {"size",level_size},
+    static const luaL_Reg level_methods[] = {
+        {"get_size", level_get_size},
         {"get_tile", level_get_tile},
         {"set_tile", level_set_tile},
+        {"new_entity", level_new_entity},
+        {NULL, NULL}
+    };
+    static const luaL_Reg entity_methods[] = {
         {NULL, NULL}
     };
 
@@ -190,7 +238,17 @@ static int open_level(lua_State *restrict l) {
     lua_pushvalue(l, -1);
     lua_setfield(l, -2, "__index");
 
-    luaL_setfuncs(l, methods, 0);
+    luaL_setfuncs(l, level_methods, 0);
+    lua_pop(l, 1);
+
+    luaL_newmetatable(l, ENTITY_METATABLE);
+
+    lua_pushcfunction(l, entity_gc);
+    lua_setfield(l, -2, "__gc");
+    lua_pushvalue(l, -1);
+    lua_setfield(l, -2, "__index");
+
+    luaL_setfuncs(l, entity_methods, 0);
     lua_pop(l, 1);
 
     luaL_newlib(l, functions);
