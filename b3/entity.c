@@ -36,6 +36,11 @@ struct b3_entity_pool {
 #define SIZEOF_ENTITY_POOL(pool, size) \
         (sizeof(*(pool)) + (size) * sizeof((pool)->entities[0]))
 
+struct draw_entity_data {
+    b3_size tile_size;
+    b3_pos origin;
+};
+
 
 b3_entity_pool *b3_new_entity_pool(int size, b3_map *restrict map) {
     b3_entity_pool *pool = b3_malloc(SIZEOF_ENTITY_POOL(pool, size), 1);
@@ -102,11 +107,16 @@ void b3_release_entity(b3_entity *restrict entity) {
         pool->inactive[pool->inactive_count++] = entity;
 }
 
-b3_entity *b3_set_entity_data(b3_entity *restrict entity, void *entity_data) {
-    if(entity_data != entity->data) {
-        free_entity_data(entity);
-        entity->data = entity_data;
-    }
+b3_entity *b3_set_entity_pos(
+    b3_entity *restrict entity,
+    const b3_pos *restrict pos
+) {
+    entity->pos = *pos;
+    return entity;
+}
+
+b3_entity *b3_set_entity_life(b3_entity *restrict entity, int life) {
+    entity->life = life;
     return entity;
 }
 
@@ -121,16 +131,15 @@ b3_entity *b3_set_entity_image(
     return entity;
 }
 
-b3_entity *b3_set_entity_pos(
-    b3_entity *restrict entity,
-    const b3_pos *restrict pos
-) {
-    entity->pos = *pos;
-    return entity;
+void *b3_get_entity_data(b3_entity *restrict entity) {
+    return entity->data;
 }
 
-b3_entity *b3_set_entity_life(b3_entity *restrict entity, int life) {
-    entity->life = life;
+b3_entity *b3_set_entity_data(b3_entity *restrict entity, void *entity_data) {
+    if(entity_data != entity->data) {
+        free_entity_data(entity);
+        entity->data = entity_data;
+    }
     return entity;
 }
 
@@ -144,11 +153,6 @@ void b3_for_each_entity(
             callback(&pool->entities[i], callback_data);
     }
 }
-
-struct draw_entity_data {
-    b3_size tile_size;
-    b3_pos origin;
-};
 
 static void draw_entity_callback(
     b3_entity *restrict entity,

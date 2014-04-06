@@ -11,15 +11,21 @@ do
   end
 
   IMAGES = {
-    BLANK = sprites:sub(sprite_rect(0, 0)),
-    WALL = sprites:sub(sprite_rect(16, 0)),
+    BLANK = sprites:sub(sprite_rect( 0, 0)),
+    WALL  = sprites:sub(sprite_rect(16, 0)),
+    DUDES = {
+      sprites:sub(sprite_rect( 0, 16)),
+      sprites:sub(sprite_rect(16, 16)),
+      sprites:sub(sprite_rect(32, 16)),
+      sprites:sub(sprite_rect(48, 16)),
+    },
   }
 end
 IMAGES.BORDER = IMAGES.WALL
 
 TILES = {
-  BLANK           = string.byte(" "),
-  WALL            = string.byte("X"),
+  BLANK = string.byte(" "),
+  WALL  = string.byte("X"),
 }
 
 TILE_IMAGES = {

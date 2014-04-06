@@ -178,6 +178,7 @@ b3_entity *b3_set_entity_image(
     b3_entity *restrict entity,
     b3_image *restrict image
 );
+void *b3_get_entity_data(b3_entity *restrict entity);
 b3_entity *b3_set_entity_data(b3_entity *restrict entity, void *entity_data);
 
 void b3_for_each_entity(

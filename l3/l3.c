@@ -16,6 +16,12 @@
 #define LEVEL_METATABLE L3_NAME "." LEVEL_NAME
 #define ENTITY_METATABLE L3_NAME ".entity"
 
+struct entity_data {
+    lua_State *l;
+    b3_map *map;
+    int context_ref;
+};
+
 
 b3_image *l3_border_image = NULL;
 b3_image *l3_tile_images[B3_TILE_COUNT] = {NULL};
@@ -140,9 +146,9 @@ static int level_get_size(lua_State *restrict l) {
     return 2;
 }
 
-static l3_level *check_level_pos(
+static void check_map_pos(
     lua_State *restrict l,
-    l3_level *restrict level,
+    b3_map *restrict map,
     int x_index,
     int y_index,
     b3_pos *restrict pos_out
@@ -150,7 +156,7 @@ static l3_level *check_level_pos(
     int x = (int)luaL_checkinteger(l, x_index) - 1;
     int y = (int)luaL_checkinteger(l, y_index) - 1;
 
-    b3_size size = b3_get_map_size(level->map);
+    b3_size size = b3_get_map_size(map);
     luaL_argcheck(
         l,
         x >= 0 && x < size.width,
@@ -165,20 +171,21 @@ static l3_level *check_level_pos(
     );
 
     *pos_out = (b3_pos){x, y};
-    return level;
 }
 
 static int level_get_tile(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
     b3_pos pos;
-    l3_level *level = check_level_pos(l, check_level(l, 1), 2, 3, &pos);
+    check_map_pos(l, level->map, 2, 3, &pos);
 
     lua_pushunsigned(l, (lua_Unsigned)b3_get_map_tile(level->map, &pos));
     return 1;
 }
 
 static int level_set_tile(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
     b3_pos pos;
-    l3_level *level = check_level_pos(l, check_level(l, 1), 2, 3, &pos);
+    check_map_pos(l, level->map, 2, 3, &pos);
     b3_tile tile = (b3_tile)luaL_checkunsigned(l, 4);
 
     b3_set_map_tile(level->map, &pos, tile);
@@ -191,21 +198,37 @@ static b3_entity *check_entity(lua_State *restrict l, int index) {
     return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
 }
 
+static struct entity_data *new_entity_data(
+    lua_State *restrict l,
+    l3_level *restrict level,
+    int context_index
+) {
+    struct entity_data *entity_data = b3_malloc(sizeof(*entity_data), 1);
+    entity_data->l = l;
+    entity_data->map = b3_ref_map(level->map);
+    lua_pushvalue(l, context_index);
+    entity_data->context_ref = luaL_ref(l, LUA_REGISTRYINDEX);
+    return entity_data;
+}
+
 static void free_entity_data(b3_entity *restrict entity, void *entity_data) {
-    // TODO
+    struct entity_data *restrict d = entity_data;
+    if(d) {
+        b3_free_map(d->map);
+        luaL_unref(d->l, LUA_REGISTRYINDEX, d->context_ref);
+        b3_free(d, sizeof(*d));
+    }
 }
 
 static int level_new_entity(lua_State *restrict l) {
-    b3_pos pos;
-    l3_level *level = check_level_pos(l, check_level(l, 1), 2, 3, &pos);
+    l3_level *level = check_level(l, 1);
 
     b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
     luaL_getmetatable(l, ENTITY_METATABLE);
     lua_setmetatable(l, -2);
 
     *p_entity = b3_claim_entity(level->entities, free_entity_data);
-    b3_set_entity_pos(*p_entity, &pos);
-    b3_set_entity_data(*p_entity, NULL); // TODO
+    b3_set_entity_data(*p_entity, new_entity_data(l, level, 2));
     return 1;
 }
 
@@ -213,6 +236,38 @@ static int entity_gc(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
     b3_release_entity(entity);
     return 0;
+}
+
+static int entity_set_pos(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+    struct entity_data *entity_data = b3_get_entity_data(entity);
+    b3_pos pos;
+    check_map_pos(l, entity_data->map, 2, 3, &pos);
+
+    b3_set_entity_pos(entity, &pos);
+
+    lua_pushvalue(l, 1);
+    return 1;
+}
+
+static int entity_set_life(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+    int life = (int)luaL_checkinteger(l, 2);
+
+    b3_set_entity_life(entity, life);
+
+    lua_pushvalue(l, 1);
+    return 1;
+}
+
+static int entity_set_image(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+    b3_image *image = check_image(l, 2);
+
+    b3_set_entity_image(entity, image);
+
+    lua_pushvalue(l, 1);
+    return 1;
 }
 
 static int open_level(lua_State *restrict l) {
@@ -228,6 +283,9 @@ static int open_level(lua_State *restrict l) {
         {NULL, NULL}
     };
     static const luaL_Reg entity_methods[] = {
+        {"set_pos", entity_set_pos},
+        {"set_life", entity_set_life},
+        {"set_image", entity_set_image},
         {NULL, NULL}
     };
 
