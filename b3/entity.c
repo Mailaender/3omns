@@ -148,14 +148,16 @@ void b3_for_each_entity(
     b3_entity_callback callback,
     void *callback_data
 ) {
-    for(int i = 0; i < pool->size; i++) {
-        if(pool->entities[i].active)
-            callback(&pool->entities[i], callback_data);
+    const b3_entity *end = pool->entities + pool->size;
+    for(b3_entity *e = pool->entities; e < end; e++) {
+        if(e->active)
+            callback(e, e->data, callback_data);
     }
 }
 
 static void draw_entity_callback(
     b3_entity *restrict entity,
+    void *entity_data,
     void *callback_data
 ) {
     const struct draw_entity_data *restrict draw_data = callback_data;

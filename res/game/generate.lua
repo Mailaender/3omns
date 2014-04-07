@@ -56,18 +56,20 @@ end
 
 local function spawn_entities(ctx)
   for i = 1, 4 do
-    local e = {
-      entity = nil,
+    local state = {
       player = i,
       pos = ctx.spawns[i],
       life = 10,
+      update = function(entity, state, elapsed)
+        -- TODO
+      end,
     }
-    e.entity = ctx.level:new_entity(e)
-    e.entity:set_pos(e.pos.x, e.pos.y)
-    e.entity:set_life(e.life)
-    e.entity:set_image(IMAGES.DUDES[i])
+    local e = ctx.level:new_entity(state)
+    e:set_pos(state.pos.x, state.pos.y)
+    e:set_life(state.life)
+    e:set_image(IMAGES.DUDES[i])
 
-    ctx.dudes[i] = e
+    ctx.dudes[i] = state
   end
 end
 

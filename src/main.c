@@ -33,10 +33,14 @@ int main(void) {
      *     pause for the remainder of the time till the next frame update
      */
     while(!b3_process_events()) {
+        l3_update(&level, 0 /* TODO */);
+
         b3_begin_scene();
         b3_draw_map(level.map, l3_tile_images, &B3_RECT(0, 0, 480, 480));
         draw_border(&map_size);
+        b3_draw_entities(level.entities, &B3_RECT(0, 0, 480, 480));
         b3_end_scene();
+
         b3_sleep(10);
     }
 

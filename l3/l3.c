@@ -18,8 +18,13 @@
 
 struct entity_data {
     lua_State *l;
+    int entity_ref; // Lua reference to the entity userdata.
+    int update_ref; // Lua reference to the context object or update function.
     b3_map *map;
-    int context_ref;
+};
+
+struct update_entity_data {
+    lua_Number elapsed;
 };
 
 
@@ -55,8 +60,7 @@ static b3_rect check_rect(lua_State *restrict l, int arg_index) {
 
 static b3_image **push_new_image(lua_State *restrict l) {
     b3_image **p_image = lua_newuserdata(l, sizeof(*p_image));
-    luaL_getmetatable(l, IMAGE_METATABLE);
-    lua_setmetatable(l, -2);
+    luaL_setmetatable(l, IMAGE_METATABLE);
 
     return p_image;
 }
@@ -123,8 +127,7 @@ static int level_new(lua_State *restrict l) {
     int max_entities = (int)luaL_checkinteger(l, 3);
 
     l3_level *level = lua_newuserdata(l, sizeof(*level));
-    luaL_getmetatable(l, LEVEL_METATABLE);
-    lua_setmetatable(l, -2);
+    luaL_setmetatable(l, LEVEL_METATABLE);
 
     level->map = b3_new_map(&(b3_size){width, height});
     level->entities = b3_new_entity_pool(max_entities, level->map);
@@ -200,22 +203,40 @@ static b3_entity *check_entity(lua_State *restrict l, int index) {
 
 static struct entity_data *new_entity_data(
     lua_State *restrict l,
-    l3_level *restrict level,
-    int context_index
+    int entity_index,
+    int update_index,
+    b3_map *restrict map
 ) {
     struct entity_data *entity_data = b3_malloc(sizeof(*entity_data), 1);
     entity_data->l = l;
-    entity_data->map = b3_ref_map(level->map);
-    lua_pushvalue(l, context_index);
-    entity_data->context_ref = luaL_ref(l, LUA_REGISTRYINDEX);
+
+    // We're using the Lua state-global registry to keep references to the
+    // entity userdata and its context (the Lua object passed to
+    // l3.level.new_entity).  There may be a more elegant way to go about this,
+    // but this seemed pretty simple and I couldn't see any major problems, so
+    // I went with it.
+    entity_data->entity_ref = LUA_NOREF;
+    entity_data->update_ref = LUA_NOREF;
+    lua_pushvalue(l, update_index);
+    if(lua_isfunction(l, -1) || lua_istable(l, -1)) {
+        entity_data->update_ref = luaL_ref(l, LUA_REGISTRYINDEX);
+
+        lua_pushvalue(l, entity_index);
+        entity_data->entity_ref = luaL_ref(l, LUA_REGISTRYINDEX);
+    }
+    else
+        lua_pop(l, 1);
+
+    entity_data->map = b3_ref_map(map);
     return entity_data;
 }
 
 static void free_entity_data(b3_entity *restrict entity, void *entity_data) {
     struct entity_data *restrict d = entity_data;
     if(d) {
+        luaL_unref(d->l, LUA_REGISTRYINDEX, d->entity_ref);
+        luaL_unref(d->l, LUA_REGISTRYINDEX, d->update_ref);
         b3_free_map(d->map);
-        luaL_unref(d->l, LUA_REGISTRYINDEX, d->context_ref);
         b3_free(d, sizeof(*d));
     }
 }
@@ -224,11 +245,10 @@ static int level_new_entity(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
 
     b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
-    luaL_getmetatable(l, ENTITY_METATABLE);
-    lua_setmetatable(l, -2);
+    luaL_setmetatable(l, ENTITY_METATABLE);
 
     *p_entity = b3_claim_entity(level->entities, free_entity_data);
-    b3_set_entity_data(*p_entity, new_entity_data(l, level, 2));
+    b3_set_entity_data(*p_entity, new_entity_data(l, -1, 2, level->map));
     return 1;
 }
 
@@ -443,4 +463,56 @@ l3_level l3_generate(void) {
     lua_pop(lua, 1);
 
     return copy;
+}
+
+// TODO: separate sprite object that gets updated (and only locally), but can't
+// act or be acted on.
+
+// TODO: separate AI/Agent object that has a thread/run coroutine that gets
+// resumed 10 or so times per second, that controls a particular entity.
+
+static void update_entity(
+    b3_entity *restrict entity,
+    void *entity_data,
+    void *callback_data
+) {
+    const struct entity_data *restrict data = entity_data;
+    const struct update_entity_data *restrict update_data = callback_data;
+
+    if(data->update_ref < 0) // read: == LUA_NOREF || == LUA_REFNIL
+        return;
+
+    lua_State *l = data->l;
+
+    lua_rawgeti(l, LUA_REGISTRYINDEX, data->update_ref);
+    if(lua_isfunction(l, -1)) {
+        lua_rawgeti(l, LUA_REGISTRYINDEX, data->entity_ref);
+        lua_pushnumber(l, update_data->elapsed);
+
+        lua_call(l, 2, 0);
+        return;
+    }
+
+    lua_getfield(l, -1, "update");
+    if(!lua_isfunction(l, -1)) {
+        lua_pop(l, 2);
+        return;
+    }
+
+    lua_rawgeti(l, LUA_REGISTRYINDEX, data->entity_ref);
+    lua_pushvalue(l, -3); // data->update_ref again.
+    lua_pushnumber(l, update_data->elapsed);
+
+    lua_call(l, 3, 0);
+    lua_pop(l, 1);
+}
+
+void l3_update(l3_level *restrict level, b3_ticks elapsed) {
+    b3_for_each_entity(
+        level->entities,
+        update_entity,
+        &(struct update_entity_data){
+            (lua_Number)b3_ticks_to_secs(elapsed)
+        }
+    );
 }
