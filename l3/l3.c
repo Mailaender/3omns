@@ -16,6 +16,12 @@
 #define LEVEL_METATABLE L3_NAME "." LEVEL_NAME
 #define ENTITY_METATABLE L3_NAME ".entity"
 
+#define L3_GENERATE_NAME "l3_generate"
+#define L3_TILE_IMAGES_NAME "L3_TILE_IMAGES"
+#define L3_BORDER_IMAGE_NAME "L3_BORDER_IMAGE"
+
+#define L3_ENTITY_UPDATE_NAME "l3_update"
+
 struct entity_data {
     lua_State *l;
     int entity_ref; // Lua reference to the entity userdata.
@@ -392,24 +398,10 @@ static void run_game_file(lua_State *restrict l, const char *restrict base) {
         b3_fatal("Error running game file %s: %s", base, lua_tostring(l, -1));
 }
 
-static void set_border_image(lua_State *restrict l) {
-    lua_getglobal(l, "IMAGES");
-    if(!lua_istable(l, -1))
-        b3_fatal("Missing global table IMAGES");
-
-    lua_getfield(l, -1, "BORDER");
-    b3_image **p_image = luaL_testudata(l, -1, IMAGE_METATABLE);
-    if(!p_image)
-        b3_fatal("Missing IMAGES.BORDER image");
-    l3_border_image = b3_ref_image(*p_image);
-
-    lua_pop(l, 2);
-}
-
 static void set_tile_images(lua_State *restrict l) {
-    lua_getglobal(l, "TILE_IMAGES");
+    lua_getglobal(l, L3_TILE_IMAGES_NAME);
     if(!lua_istable(l, -1))
-        b3_fatal("Missing global table TILE_IMAGES");
+        b3_fatal("Missing global table %s", L3_TILE_IMAGES_NAME);
 
     for(int i = 0; i < B3_TILE_COUNT; i++) {
         lua_pushunsigned(l, (lua_Unsigned)i);
@@ -424,14 +416,23 @@ static void set_tile_images(lua_State *restrict l) {
     lua_pop(l, 1);
 }
 
+static void set_border_image(lua_State *restrict l) {
+    lua_getglobal(l, L3_BORDER_IMAGE_NAME);
+    b3_image **p_image = luaL_testudata(l, -1, IMAGE_METATABLE);
+    if(p_image)
+        l3_border_image = b3_ref_image(*p_image);
+
+    lua_pop(l, 1);
+}
+
 void l3_init(const char *restrict resource_path_) {
     resource_path = b3_copy_string(resource_path_);
 
     lua = new_lua();
     run_game_file(lua, "init");
 
-    set_border_image(lua);
     set_tile_images(lua);
+    set_border_image(lua);
 }
 
 void l3_quit(void) {
@@ -450,15 +451,15 @@ void l3_quit(void) {
 }
 
 l3_level l3_generate(void) {
-    lua_getglobal(lua, "generate");
+    lua_getglobal(lua, L3_GENERATE_NAME);
     if(!lua_isfunction(lua, -1))
-        b3_fatal("Missing global function generate");
+        b3_fatal("Missing global function %s", L3_GENERATE_NAME);
 
     lua_call(lua, 0, 1); // Rely on panic to handle errors.
 
     l3_level *level = luaL_testudata(lua, -1, LEVEL_METATABLE);
     if(!level)
-        b3_fatal("generate didn't return a level");
+        b3_fatal("%s didn't return a level", L3_GENERATE_NAME);
     l3_level copy = l3_copy_level(level);
     lua_pop(lua, 1);
 
@@ -493,7 +494,7 @@ static void update_entity(
         return;
     }
 
-    lua_getfield(l, -1, "update");
+    lua_getfield(l, -1, L3_ENTITY_UPDATE_NAME);
     if(!lua_isfunction(l, -1)) {
         lua_pop(l, 2);
         return;

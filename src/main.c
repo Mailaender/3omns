@@ -5,6 +5,9 @@
 
 
 static void draw_border(const b3_size *restrict map_size) {
+    if(!l3_border_image)
+        return;
+
     b3_size tile_size = b3_get_map_tile_size(map_size, &(b3_size){480, 480});
     b3_rect rect = B3_RECT_INIT(480, 0, tile_size.width, tile_size.height);
     for(int i = 0; i < map_size->height; i++) {

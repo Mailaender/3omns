@@ -60,7 +60,7 @@ local function spawn_entities(ctx)
       player = i,
       pos = ctx.spawns[i],
       life = 10,
-      update = function(entity, state, elapsed)
+      l3_update = function(entity, state, elapsed)
         -- TODO
       end,
     }
@@ -73,7 +73,7 @@ local function spawn_entities(ctx)
   end
 end
 
-function generate()
+function l3_generate()
   local ctx = {
     level = l3.level.new(MAP_WIDTH, MAP_HEIGHT, MAX_ENTITIES),
     spawns = {},

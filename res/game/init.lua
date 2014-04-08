@@ -1,13 +1,14 @@
-function rect(x, y, width, height)
-  return {x=x, y=y, width=width, height=height}
-end
+math.randomseed(os.time())
+
+dofile(l3.RESOURCE_PATH .. "/game/generate.lua")
+
 
 do
   local sprites = l3.image.load(l3.RESOURCE_PATH .. "/gfx/sprites.png")
+  local TILE_SIZE = 16
 
   local function sprite_rect(x, y)
-    local tile_size = 16
-    return rect(x, y, tile_size, tile_size)
+    return {x=x, y=y, width=TILE_SIZE, height=TILE_SIZE}
   end
 
   IMAGES = {
@@ -21,19 +22,15 @@ do
     },
   }
 end
-IMAGES.BORDER = IMAGES.WALL
 
 TILES = {
   BLANK = string.byte(" "),
   WALL  = string.byte("X"),
 }
 
-TILE_IMAGES = {
+L3_TILE_IMAGES = {
   [TILES.BLANK] = IMAGES.BLANK,
   [TILES.WALL] = IMAGES.WALL,
 }
 
-
-math.randomseed(os.time())
-
-dofile(l3.RESOURCE_PATH .. "/game/generate.lua")
+L3_BORDER_IMAGE = IMAGES.WALL
