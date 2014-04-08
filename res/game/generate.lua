@@ -60,7 +60,7 @@ local function spawn_entities(ctx)
       player = i,
       pos = ctx.spawns[i],
       life = 10,
-      l3_update = function(entity, state, elapsed)
+      l3_update = function(self, entity, elapsed)
         -- TODO
       end,
     }
