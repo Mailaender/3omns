@@ -42,6 +42,60 @@ static char *resource_path = NULL;
 static lua_State *lua = NULL;
 
 
+static void push_pos(lua_State *restrict l, const b3_pos *restrict pos) {
+    lua_createtable(l, 0, 2);
+    lua_pushinteger(l, (lua_Integer)(pos->x + 1));
+    lua_setfield(l, -2, "x");
+    lua_pushinteger(l, (lua_Integer)(pos->y + 1));
+    lua_setfield(l, -2, "y");
+}
+
+static b3_pos check_pos(lua_State *restrict l, int arg_index) {
+    luaL_checktype(l, arg_index, LUA_TTABLE);
+    lua_getfield(l, arg_index, "x");
+    lua_getfield(l, arg_index, "y");
+
+    int x_is_num, y_is_num;
+    int x = (int)lua_tointegerx(l, -2, &x_is_num) - 1;
+    int y = (int)lua_tointegerx(l, -1, &y_is_num) - 1;
+    luaL_argcheck(
+        l,
+        x_is_num && y_is_num,
+        arg_index,
+        "pos requires integer x and y fields"
+    );
+
+    lua_pop(l, 2);
+    return (b3_pos){x, y};
+}
+
+static void push_size(lua_State *restrict l, const b3_size *restrict size) {
+    lua_createtable(l, 0, 2);
+    lua_pushinteger(l, (lua_Integer)size->width);
+    lua_setfield(l, -2, "width");
+    lua_pushinteger(l, (lua_Integer)size->height);
+    lua_setfield(l, -2, "height");
+}
+
+static b3_size check_size(lua_State *restrict l, int arg_index) {
+    luaL_checktype(l, arg_index, LUA_TTABLE);
+    lua_getfield(l, arg_index, "width");
+    lua_getfield(l, arg_index, "height");
+
+    int width_is_num, height_is_num;
+    int width = (int)lua_tointegerx(l, -2, &width_is_num);
+    int height = (int)lua_tointegerx(l, -1, &height_is_num);
+    luaL_argcheck(
+        l,
+        width_is_num && height_is_num,
+        arg_index,
+        "size requires integer width and height fields"
+    );
+
+    lua_pop(l, 2);
+    return (b3_size){width, height};
+}
+
 static b3_rect check_rect(lua_State *restrict l, int arg_index) {
     luaL_checktype(l, arg_index, LUA_TTABLE);
     lua_getfield(l, arg_index, "x");
@@ -56,7 +110,7 @@ static b3_rect check_rect(lua_State *restrict l, int arg_index) {
     int height = (int)lua_tointegerx(l, -1, &height_is_num);
     luaL_argcheck(
         l,
-        (x_is_num && y_is_num && width_is_num && height_is_num),
+        x_is_num && y_is_num && width_is_num && height_is_num,
         arg_index,
         "rect requires integer x, y, width, and height fields"
     );
@@ -129,14 +183,13 @@ static l3_level *check_level(lua_State *restrict l, int index) {
 }
 
 static int level_new(lua_State *restrict l) {
-    int width = (int)luaL_checkinteger(l, 1);
-    int height = (int)luaL_checkinteger(l, 2);
-    int max_entities = (int)luaL_checkinteger(l, 3);
+    b3_size size = check_size(l, 1);
+    int max_entities = (int)luaL_checkinteger(l, 2);
 
     l3_level *level = lua_newuserdata(l, sizeof(*level));
     luaL_setmetatable(l, LEVEL_METATABLE);
 
-    level->map = b3_new_map(&(b3_size){width, height});
+    level->map = b3_new_map(&size);
     level->entities = b3_new_entity_pool(max_entities, level->map);
     return 1;
 }
@@ -151,42 +204,31 @@ static int level_get_size(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
 
     b3_size size = b3_get_map_size(level->map);
-    lua_pushinteger(l, (lua_Integer)size.width);
-    lua_pushinteger(l, (lua_Integer)size.height);
-    return 2;
+    push_size(l, &size);
+    return 1;
 }
 
-static void check_map_pos(
+static b3_pos check_map_pos(
     lua_State *restrict l,
-    b3_map *restrict map,
-    int x_index,
-    int y_index,
-    b3_pos *restrict pos_out
+    int arg_index,
+    b3_map *restrict map
 ) {
-    int x = (int)luaL_checkinteger(l, x_index) - 1;
-    int y = (int)luaL_checkinteger(l, y_index) - 1;
+    b3_pos pos = check_pos(l, arg_index);
 
     b3_size size = b3_get_map_size(map);
     luaL_argcheck(
         l,
-        x >= 0 && x < size.width,
-        x_index,
-        "x must satisfy 1 <= x <= level:get_size() width"
-    );
-    luaL_argcheck(
-        l,
-        y >= 0 && y < size.height,
-        y_index,
-        "y must satisfy 1 <= y <= level:get_size() height"
+        pos.x >= 0 && pos.x < size.width && pos.y >= 0 && pos.y < size.height,
+        arg_index,
+        "pos fields must satisfy 1 <= pos <= level:get_size()"
     );
 
-    *pos_out = (b3_pos){x, y};
+    return pos;
 }
 
 static int level_get_tile(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
-    b3_pos pos;
-    check_map_pos(l, level->map, 2, 3, &pos);
+    b3_pos pos = check_map_pos(l, 2, level->map);
 
     lua_pushunsigned(l, (lua_Unsigned)b3_get_map_tile(level->map, &pos));
     return 1;
@@ -194,9 +236,8 @@ static int level_get_tile(lua_State *restrict l) {
 
 static int level_set_tile(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
-    b3_pos pos;
-    check_map_pos(l, level->map, 2, 3, &pos);
-    b3_tile tile = (b3_tile)luaL_checkunsigned(l, 4);
+    b3_pos pos = check_map_pos(l, 2, level->map);
+    b3_tile tile = (b3_tile)luaL_checkunsigned(l, 3);
 
     b3_set_map_tile(level->map, &pos, tile);
 
@@ -266,15 +307,30 @@ static int entity_gc(lua_State *restrict l) {
     return 0;
 }
 
+static int entity_get_pos(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+
+    b3_pos pos = b3_get_entity_pos(entity);
+    push_pos(l, &pos);
+    return 1;
+}
+
 static int entity_set_pos(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
     struct entity_data *entity_data = b3_get_entity_data(entity);
-    b3_pos pos;
-    check_map_pos(l, entity_data->map, 2, 3, &pos);
+    b3_pos pos = check_map_pos(l, 2, entity_data->map);
 
     b3_set_entity_pos(entity, &pos);
 
     lua_pushvalue(l, 1);
+    return 1;
+}
+
+static int entity_get_life(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+
+    int life = b3_get_entity_life(entity);
+    lua_pushinteger(l, (lua_Integer)life);
     return 1;
 }
 
@@ -311,7 +367,9 @@ static int open_level(lua_State *restrict l) {
         {NULL, NULL}
     };
     static const luaL_Reg entity_methods[] = {
+        {"get_pos", entity_get_pos},
         {"set_pos", entity_set_pos},
+        {"get_life", entity_get_life},
         {"set_life", entity_set_life},
         {"set_image", entity_set_image},
         {NULL, NULL}

@@ -36,17 +36,20 @@ end
 
 function Entity:set_pos(pos)
   self.pos = pos
-  self.backing:set_pos(pos.x, pos.y)
+  self.backing:set_pos(pos)
+  return self
 end
 
 function Entity:set_life(life)
   self.life = life
   self.backing:set_life(life)
+  return self
 end
 
 function Entity:set_image(image)
   self.image = image
   self.backing:set_image(image)
+  return self
 end
 
 function Entity:kill()

@@ -107,6 +107,10 @@ void b3_release_entity(b3_entity *restrict entity) {
         pool->inactive[pool->inactive_count++] = entity;
 }
 
+b3_pos b3_get_entity_pos(b3_entity *restrict entity) {
+    return entity->pos;
+}
+
 b3_entity *b3_set_entity_pos(
     b3_entity *restrict entity,
     const b3_pos *restrict pos

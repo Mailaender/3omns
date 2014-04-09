@@ -1,24 +1,28 @@
-local MAP_WIDTH = 30
-local MAP_HEIGHT = 30
-local MAX_ENTITIES = MAP_WIDTH * MAP_HEIGHT * 2
+local MAP_SIZE = Size(30, 30)
+local MAX_ENTITIES = MAP_SIZE.width * MAP_SIZE.height * 2
 
 local function generate_spawns(ctx)
-  local x_mins = {MAP_WIDTH / 2, 0, MAP_WIDTH / 2, 0}
-  local y_mins = {MAP_HEIGHT / 2, 0, 0, MAP_HEIGHT / 2}
+  local quads = {
+    Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2),
+    Pos(0,                  0),
+    Pos(MAP_SIZE.width / 2, 0),
+    Pos(0,                  MAP_SIZE.height / 2),
+  }
 
-  for i = 1, 4 do
-    local spawn_x = math.random(x_mins[i] + 2, x_mins[i] + MAP_WIDTH / 2 - 2)
-    local spawn_y = math.random(y_mins[i] + 2, y_mins[i] + MAP_HEIGHT / 2 - 2)
-    ctx.spawns[i] = {x=spawn_x, y=spawn_y}
+  for i, q in ipairs(quads) do
+    ctx.spawns[i] = Pos(
+      math.random(q.x + 2, q.x + MAP_SIZE.width  / 2 - 2),
+      math.random(q.y + 2, q.y + MAP_SIZE.height / 2 - 2)
+    )
   end
 end
 
-local function wall_grid(ctx, center_x, center_y)
+local function wall_grid(ctx, center)
   local walls = {}
-  for x = center_x - 3, center_x + 3, 3 do
-    for y = center_y - 3, center_y + 3, 3 do
-      if ctx.level:get_tile(x, y) == 0 then
-        walls[#walls + 1] = {x=x, y=y}
+  for x = center.x - 3, center.x + 3, 3 do
+    for y = center.y - 3, center.y + 3, 3 do
+      if ctx.level:get_tile(Pos(x, y)) == 0 then
+        walls[#walls + 1] = Pos(x, y)
       end
     end
   end
@@ -27,28 +31,34 @@ local function wall_grid(ctx, center_x, center_y)
     table.remove(walls, math.random(#walls))
   end
 
-  for _, w in pairs(walls) do
-    ctx.level:set_tile(w.x, w.y, TILES.WALL)
+  for _, w in ipairs(walls) do
+    ctx.level:set_tile(w, TILES.WALL)
   end
 end
 
 local function generate_walls(ctx)
-  local quarter_width = math.floor(MAP_WIDTH / 4)
-  local quarter_height = math.floor(MAP_HEIGHT / 4)
+  local fourth = Size(
+    math.floor(MAP_SIZE.width  / 4),
+    math.floor(MAP_SIZE.height / 4)
+  )
+  local pos = {
+    Pos(fourth.width,                  fourth.height),
+    Pos(fourth.width,                  MAP_SIZE.height - fourth.height),
+    Pos(MAP_SIZE.width - fourth.width, fourth.height),
+    Pos(MAP_SIZE.width - fourth.width, MAP_SIZE.height - fourth.height),
+  }
 
-  for _, x in pairs({quarter_width, MAP_WIDTH - quarter_width}) do
-    for _, y in pairs({quarter_height, MAP_HEIGHT - quarter_height}) do
-      wall_grid(ctx, x, y)
-    end
+  for _, p in ipairs(pos) do
+    wall_grid(ctx, p)
   end
-  wall_grid(ctx, MAP_WIDTH / 2, MAP_HEIGHT / 2)
+  wall_grid(ctx, Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2))
 end
 
 local function fill_space(ctx)
-  for x = 1, MAP_WIDTH do
-    for y = 1, MAP_HEIGHT do
-      if ctx.level:get_tile(x, y) == 0 then
-        ctx.level:set_tile(x, y, TILES.BLANK)
+  for x = 1, MAP_SIZE.width do
+    for y = 1, MAP_SIZE.height do
+      if ctx.level:get_tile(Pos(x, y)) == 0 then
+        ctx.level:set_tile(Pos(x, y), TILES.BLANK)
       end
     end
   end
@@ -62,7 +72,7 @@ end
 
 function l3_generate()
   local ctx = {
-    level = l3.level.new(MAP_WIDTH, MAP_HEIGHT, MAX_ENTITIES),
+    level = l3.level.new(MAP_SIZE, MAX_ENTITIES),
     spawns = {},
     dudes = {},
   }
