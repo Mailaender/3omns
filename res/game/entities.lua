@@ -20,27 +20,37 @@ local function class(parent)
   return c
 end
 
-local function new_l3_entity(self, level, pos, life, image)
-  local e = level:new_entity(self)
-  e:set_pos(pos.x, pos.y)
-  e:set_life(life)
-  e:set_image(image)
-  return e
-end
-
 
 Entity = class()
 
-function Entity:init(level, pos, life, image)
-  self.pos = pos
-  self.life = life
-  self.image = image
-
-  new_l3_entity(self, level, pos, life, image)
-end
-
 function Entity:is_a(class)
   return is_a(self, class)
+end
+
+function Entity:init(level, pos, life, image)
+  self.backing = level:new_entity(self)
+  self:set_pos(pos)
+  self:set_life(life)
+  self:set_image(image)
+end
+
+function Entity:set_pos(pos)
+  self.pos = pos
+  self.backing:set_pos(pos.x, pos.y)
+end
+
+function Entity:set_life(life)
+  self.life = life
+  self.backing:set_life(life)
+end
+
+function Entity:set_image(image)
+  self.image = image
+  self.backing:set_image(image)
+end
+
+function Entity:kill()
+  self:set_life(0)
 end
 
 

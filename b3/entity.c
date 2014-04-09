@@ -115,6 +115,10 @@ b3_entity *b3_set_entity_pos(
     return entity;
 }
 
+int b3_get_entity_life(b3_entity *restrict entity) {
+    return entity->life;
+}
+
 b3_entity *b3_set_entity_life(b3_entity *restrict entity, int life) {
     entity->life = life;
     return entity;
@@ -151,15 +155,11 @@ void b3_for_each_entity(
     const b3_entity *end = pool->entities + pool->size;
     for(b3_entity *e = pool->entities; e < end; e++) {
         if(e->active)
-            callback(e, e->data, callback_data);
+            callback(e, callback_data);
     }
 }
 
-static void draw_entity_callback(
-    b3_entity *restrict entity,
-    void *entity_data,
-    void *callback_data
-) {
+static void draw_entity(b3_entity *restrict entity, void *callback_data) {
     const struct draw_entity_data *restrict draw_data = callback_data;
 
     if(entity->image) {
@@ -176,7 +176,7 @@ void b3_draw_entities(
     b3_entity_pool *restrict pool,
     const b3_rect *restrict rect
 ) {
-    b3_for_each_entity(pool, draw_entity_callback, &(struct draw_entity_data){
+    b3_for_each_entity(pool, draw_entity, &(struct draw_entity_data){
         b3_get_map_tile_size(&pool->map_size, &rect->size),
         rect->pos
     });

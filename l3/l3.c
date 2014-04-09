@@ -506,20 +506,22 @@ static void call_entity_update_table(
     lua_call(l, 3, 0);
 }
 
-static void update_entity(
-    b3_entity *restrict entity,
-    void *entity_data,
-    void *callback_data
-) {
-    const struct entity_data *restrict data = entity_data;
+static void update_entity(b3_entity *restrict entity, void *callback_data) {
     const struct update_entity_data *restrict update_data = callback_data;
 
-    if(data->update_ref >= 0) {
-        if(data->update_is_table)
-            call_entity_update_table(data->l, data, update_data);
+    const struct entity_data *restrict e = b3_get_entity_data(entity);
+
+    if(e->update_ref >= 0 && b3_get_entity_life(entity) > 0) {
+        if(e->update_is_table)
+            call_entity_update_table(e->l, e, update_data);
         else
-            call_entity_update_function(data->l, data, update_data);
+            call_entity_update_function(e->l, e, update_data);
     }
+}
+
+static void cull_entity(b3_entity *restrict entity, void *callback_data) {
+    if(!b3_get_entity_life(entity))
+        b3_release_entity(entity);
 }
 
 void l3_update(l3_level *restrict level, b3_ticks elapsed) {
@@ -530,4 +532,6 @@ void l3_update(l3_level *restrict level, b3_ticks elapsed) {
             (lua_Number)b3_ticks_to_secs(elapsed)
         }
     );
+
+    b3_for_each_entity(level->entities, cull_entity, NULL);
 }
