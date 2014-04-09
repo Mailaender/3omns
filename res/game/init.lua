@@ -1,5 +1,6 @@
 math.randomseed(os.time())
 
+dofile(l3.RESOURCE_PATH .. "/game/entities.lua")
 dofile(l3.RESOURCE_PATH .. "/game/generate.lua")
 
 
@@ -14,6 +15,7 @@ do
   IMAGES = {
     BLANK = sprites:sub(sprite_rect( 0, 0)),
     WALL  = sprites:sub(sprite_rect(16, 0)),
+    CRATE = sprites:sub(sprite_rect(32, 0)),
     DUDES = {
       sprites:sub(sprite_rect( 0, 16)),
       sprites:sub(sprite_rect(16, 16)),
