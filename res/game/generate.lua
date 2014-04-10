@@ -98,8 +98,7 @@ local function spawn_crates(ctx)
 
     for i = 1, 4 do
       -- TODO: make sure there aren't any other entities there.
-      Crate(
-        ctx.level,
+      ctx.entities:Crate(
         Pos(start.x + direction.x * i, start.y + direction.y * i)
       )
     end
@@ -139,13 +138,15 @@ end
 
 local function spawn_dudes(ctx)
   for i, s in ipairs(ctx.spawns) do
-    ctx.dudes[i] = Dude(ctx.level, s, i)
+    ctx.dudes[i] = ctx.entities:Dude(s, i)
   end
 end
 
 function l3_generate()
+  local level = l3.level.new(MAP_SIZE, MAX_ENTITIES)
   local ctx = {
-    level = l3.level.new(MAP_SIZE, MAX_ENTITIES),
+    level = level,
+    entities = Entities(level),
     spawns = {},
     dudes = {},
   }
