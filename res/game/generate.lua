@@ -64,6 +64,12 @@ local function fill_space(ctx)
   end
 end
 
+local function spawn_dudes(ctx)
+  for i, s in ipairs(ctx.spawns) do
+    ctx.dudes[i] = ctx.entities:Dude(s, i)
+  end
+end
+
 -- Stolen from the !w Bresenham's line algorithm page.
 local function line_to_edge(a, b, callback)
   local dx = math.abs(b.x - a.x)
@@ -88,6 +94,16 @@ local function line_to_edge(a, b, callback)
   end
 end
 
+local function valid(pos)
+  return pos.x > 0 and pos.x <= MAP_SIZE.width
+      and pos.y > 0 and pos.y <= MAP_SIZE.height
+end
+
+local function empty(ctx, pos)
+  return ctx.level:get_tile(pos) == TILES.BLANK
+      and not ctx.entities:get_entity(pos)
+end
+
 local function spawn_crates(ctx)
   local direction
   local function crates(pos)
@@ -97,10 +113,10 @@ local function spawn_crates(ctx)
     )
 
     for i = 1, 4 do
-      -- TODO: make sure there aren't any other entities there.
-      ctx.entities:Crate(
-        Pos(start.x + direction.x * i, start.y + direction.y * i)
-      )
+      local p = Pos(start.x + direction.x * i, start.y + direction.y * i)
+      if valid(p) and empty(ctx, p) then
+        ctx.entities:Crate(p)
+      end
     end
   end
 
@@ -136,12 +152,6 @@ local function spawn_crates(ctx)
   line_to_edge(center, bisect, crates)
 end
 
-local function spawn_dudes(ctx)
-  for i, s in ipairs(ctx.spawns) do
-    ctx.dudes[i] = ctx.entities:Dude(s, i)
-  end
-end
-
 function l3_generate()
   local level = l3.level.new(MAP_SIZE, MAX_ENTITIES)
   local ctx = {
@@ -154,8 +164,8 @@ function l3_generate()
   generate_spawns(ctx)
   generate_walls(ctx)
   fill_space(ctx)
-  spawn_crates(ctx)
   spawn_dudes(ctx)
+  spawn_crates(ctx)
 
   return ctx.level
 end
