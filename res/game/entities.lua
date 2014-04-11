@@ -122,7 +122,7 @@ function Dude:init(entities, pos, player)
   self.player = player
 end
 
-function Dude:l3_update(entity, elapsed)
+function Dude:l3_update(backing, elapsed)
   -- TODO
 end
 

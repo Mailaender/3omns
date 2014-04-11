@@ -25,8 +25,7 @@
 struct entity_data {
     lua_State *l;
     int entity_ref; // Lua reference to the entity userdata.
-    int update_ref; // Lua reference to the context object or update function.
-    _Bool update_is_table; // Whether update_ref is a table (vs. function).
+    int context_ref; // Lua reference to the context object.
     b3_map *map;
 };
 
@@ -252,7 +251,7 @@ static b3_entity *check_entity(lua_State *restrict l, int index) {
 static struct entity_data *new_entity_data(
     lua_State *restrict l,
     int entity_index,
-    int update_index,
+    int context_index,
     b3_map *restrict map
 ) {
     struct entity_data *entity_data = b3_malloc(sizeof(*entity_data), 1);
@@ -264,11 +263,10 @@ static struct entity_data *new_entity_data(
     // but this seemed pretty simple and I couldn't see any major problems, so
     // I went with it.
     entity_data->entity_ref = LUA_NOREF;
-    entity_data->update_ref = LUA_NOREF;
-    lua_pushvalue(l, update_index);
-    entity_data->update_is_table = lua_istable(l, -1);
-    if(lua_isfunction(l, -1) || entity_data->update_is_table) {
-        entity_data->update_ref = luaL_ref(l, LUA_REGISTRYINDEX);
+    entity_data->context_ref = LUA_NOREF;
+    lua_pushvalue(l, context_index);
+    if(lua_istable(l, -1)) {
+        entity_data->context_ref = luaL_ref(l, LUA_REGISTRYINDEX);
 
         lua_pushvalue(l, entity_index);
         entity_data->entity_ref = luaL_ref(l, LUA_REGISTRYINDEX);
@@ -284,7 +282,7 @@ static void free_entity_data(b3_entity *restrict entity, void *entity_data) {
     struct entity_data *restrict d = entity_data;
     if(d) {
         luaL_unref(d->l, LUA_REGISTRYINDEX, d->entity_ref);
-        luaL_unref(d->l, LUA_REGISTRYINDEX, d->update_ref);
+        luaL_unref(d->l, LUA_REGISTRYINDEX, d->context_ref);
         b3_free_map(d->map);
         b3_free(d, sizeof(*d));
     }
@@ -532,25 +530,17 @@ l3_level l3_generate(void) {
 // TODO: separate AI/Agent object that has a thread/run coroutine that gets
 // resumed 10 or so times per second, that controls a particular entity.
 
-static void call_entity_update_function(
-    lua_State *restrict l,
-    const struct entity_data *restrict entity_data,
-    const struct update_entity_data *restrict update_data
-){
-    lua_rawgeti(l, LUA_REGISTRYINDEX, entity_data->update_ref);
+static void update_entity(b3_entity *restrict entity, void *callback_data) {
+    const struct update_entity_data *restrict update_data = callback_data;
 
-    lua_rawgeti(l, LUA_REGISTRYINDEX, entity_data->entity_ref);
-    lua_pushnumber(l, update_data->elapsed);
+    const struct entity_data *restrict entity_data
+            = b3_get_entity_data(entity);
+    lua_State *restrict l = entity_data->l;
 
-    lua_call(l, 2, 0);
-}
+    if(entity_data->context_ref < 0 || !b3_get_entity_life(entity))
+        return;
 
-static void call_entity_update_table(
-    lua_State *restrict l,
-    const struct entity_data *restrict entity_data,
-    const struct update_entity_data *restrict update_data
-) {
-    lua_rawgeti(l, LUA_REGISTRYINDEX, entity_data->update_ref);
+    lua_rawgeti(l, LUA_REGISTRYINDEX, entity_data->context_ref);
     lua_getfield(l, -1, L3_ENTITY_UPDATE_NAME);
     if(!lua_isfunction(l, -1)) {
         lua_pop(l, 2);
@@ -562,19 +552,6 @@ static void call_entity_update_table(
     lua_pushnumber(l, update_data->elapsed);
 
     lua_call(l, 3, 0);
-}
-
-static void update_entity(b3_entity *restrict entity, void *callback_data) {
-    const struct update_entity_data *restrict update_data = callback_data;
-
-    const struct entity_data *restrict e = b3_get_entity_data(entity);
-
-    if(e->update_ref >= 0 && b3_get_entity_life(entity) > 0) {
-        if(e->update_is_table)
-            call_entity_update_table(e->l, e, update_data);
-        else
-            call_entity_update_function(e->l, e, update_data);
-    }
 }
 
 static void cull_entity(b3_entity *restrict entity, void *callback_data) {
