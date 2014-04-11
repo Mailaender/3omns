@@ -4,6 +4,10 @@
 #include <stdlib.h>
 
 
+static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
+    return input == B3_INPUT_BACK && pressed;
+}
+
 static void draw_border(const b3_size *restrict map_size) {
     if(!l3_border_image)
         return;
@@ -19,6 +23,7 @@ static void draw_border(const b3_size *restrict map_size) {
 int main(void) {
     b3_init("3omns", &(b3_size){640, 480});
     atexit(b3_quit);
+    b3_set_input_callback(handle_input, NULL);
     l3_init("res"); // TODO: installed path?
     atexit(l3_quit);
 

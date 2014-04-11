@@ -113,6 +113,43 @@ b3_size b3_get_image_size(b3_image *restrict image);
 void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect);
 
 
+typedef enum b3_input b3_input;
+enum b3_input {
+    B3_INPUT_BACK,
+    B3_INPUT_PAUSE,
+    B3_INPUT_UP_0,
+    B3_INPUT_UP_1,
+    B3_INPUT_UP_2,
+    B3_INPUT_UP_3,
+    B3_INPUT_DOWN_0,
+    B3_INPUT_DOWN_1,
+    B3_INPUT_DOWN_2,
+    B3_INPUT_DOWN_3,
+    B3_INPUT_LEFT_0,
+    B3_INPUT_LEFT_1,
+    B3_INPUT_LEFT_2,
+    B3_INPUT_LEFT_3,
+    B3_INPUT_RIGHT_0,
+    B3_INPUT_RIGHT_1,
+    B3_INPUT_RIGHT_2,
+    B3_INPUT_RIGHT_3,
+    B3_INPUT_FIRE_0,
+    B3_INPUT_FIRE_1,
+    B3_INPUT_FIRE_2,
+    B3_INPUT_FIRE_3,
+};
+
+#define B3_INPUT_UP(x) (B3_INPUT_UP_0 + (x))
+#define B3_INPUT_DOWN(x) (B3_INPUT_DOWN_0 + (x))
+#define B3_INPUT_LEFT(x) (B3_INPUT_LEFT_0 + (x))
+#define B3_INPUT_RIGHT(x) (B3_INPUT_RIGHT_0 + (x))
+#define B3_INPUT_FIRE(x) (B3_INPUT_FIRE_0 + (x))
+
+typedef _Bool (*b3_input_callback)(b3_input input, _Bool pressed, void *data);
+
+void b3_set_input_callback(b3_input_callback callback, void *data);
+
+
 typedef uint8_t b3_tile;
 
 #define B3_TILE_COUNT 256
