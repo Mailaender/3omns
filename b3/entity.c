@@ -5,18 +5,16 @@
 
 
 struct b3_entity {
-    // TODO: some sort of id?
-
     b3_entity_pool *pool;
 
-    _Bool active; // Sync'd with server.
+    b3_entity_id id; // Sync'd with server?
     b3_pos pos; // Sync'd with server.
     int life; // Sync'd with server.
 
     b3_image *image;
 
-    b3_free_entity_data_callback free_data_callback;
     void *data;
+    b3_free_entity_data_callback free_data_callback;
 };
 
 struct b3_entity_pool {
@@ -26,6 +24,8 @@ struct b3_entity_pool {
     b3_size map_size;
 
     int size;
+
+    b3_entity_id id_generator;
 
     int inactive_count;
     b3_entity **inactive;
@@ -66,7 +66,7 @@ static void free_entity_data(b3_entity *restrict entity) {
 }
 
 static b3_entity_pool *deactivate_entity(b3_entity *restrict entity) {
-    if(!entity || !entity->active)
+    if(!entity || !entity->id)
         return NULL;
 
     free_entity_data(entity);
@@ -96,7 +96,7 @@ b3_entity *b3_claim_entity(
 
     b3_entity *entity = pool->inactive[--(pool->inactive_count)];
     entity->pool = pool;
-    entity->active = 1;
+    entity->id = ++(pool->id_generator);
     entity->free_data_callback = free_data_callback;
     return entity;
 }
@@ -105,6 +105,10 @@ void b3_release_entity(b3_entity *restrict entity) {
     b3_entity_pool *pool = deactivate_entity(entity);
     if(pool)
         pool->inactive[pool->inactive_count++] = entity;
+}
+
+b3_entity_id b3_get_entity_id(b3_entity *restrict entity) {
+    return entity->id;
 }
 
 b3_pos b3_get_entity_pos(b3_entity *restrict entity) {
@@ -158,7 +162,7 @@ void b3_for_each_entity(
 ) {
     const b3_entity *end = pool->entities + pool->size;
     for(b3_entity *e = pool->entities; e < end; e++) {
-        if(e->active)
+        if(e->id)
             callback(e, callback_data);
     }
 }

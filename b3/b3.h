@@ -187,6 +187,7 @@ static inline b3_size b3_get_map_tile_size(
 
 typedef struct b3_entity_pool b3_entity_pool;
 
+typedef unsigned int b3_entity_id;
 typedef struct b3_entity b3_entity;
 
 typedef void (*b3_free_entity_data_callback)(
@@ -206,6 +207,7 @@ b3_entity *b3_claim_entity(
 );
 void b3_release_entity(b3_entity *restrict entity);
 
+b3_entity_id b3_get_entity_id(b3_entity *restrict entity);
 b3_pos b3_get_entity_pos(b3_entity *restrict entity);
 b3_entity *b3_set_entity_pos(
     b3_entity *restrict entity,
