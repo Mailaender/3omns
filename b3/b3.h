@@ -206,6 +206,7 @@ b3_entity *b3_claim_entity(
     b3_free_entity_data_callback free_data_callback
 );
 void b3_release_entity(b3_entity *restrict entity);
+b3_entity *b3_get_entity(b3_entity_pool *restrict pool, b3_entity_id id);
 
 b3_entity_id b3_get_entity_id(b3_entity *restrict entity);
 b3_pos b3_get_entity_pos(b3_entity *restrict entity);

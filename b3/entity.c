@@ -1,8 +1,14 @@
 #include "b3.h"
 
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
+
+struct index_entry {
+    b3_entity_id id;
+    b3_entity *entity;
+};
 
 struct b3_entity {
     b3_entity_pool *pool;
@@ -24,8 +30,11 @@ struct b3_entity_pool {
     b3_size map_size;
 
     int size;
+    int count;
 
     b3_entity_id id_generator;
+
+    struct index_entry *index;
 
     int inactive_count;
     b3_entity **inactive;
@@ -47,6 +56,7 @@ b3_entity_pool *b3_new_entity_pool(int size, b3_map *restrict map) {
     pool->map = b3_ref_map(map);
     pool->map_size = b3_get_map_size(map);
     pool->size = size;
+    pool->index = b3_malloc(size * sizeof(*pool->index), 1);
     pool->inactive_count = size;
     pool->inactive = b3_malloc(size * sizeof(*pool->inactive), 1);
     for(int i = 0; i < size; i++)
@@ -81,6 +91,7 @@ void b3_free_entity_pool(b3_entity_pool *restrict pool) {
     if(pool && !--(pool->ref_count)) {
         for(int i = 0; i < pool->size; i++)
             deactivate_entity(&pool->entities[i]);
+        b3_free(pool->index, 0);
         b3_free(pool->inactive, 0);
         b3_free_map(pool->map);
         b3_free(pool, SIZEOF_ENTITY_POOL(pool, pool->size));
@@ -98,13 +109,50 @@ b3_entity *b3_claim_entity(
     entity->pool = pool;
     entity->id = ++(pool->id_generator);
     entity->free_data_callback = free_data_callback;
+    pool->index[pool->count++] = (struct index_entry){entity->id, entity};
     return entity;
+}
+
+static int compare_index_entries(const void *a_, const void *b_) {
+    const struct index_entry *restrict a = a_;
+    const struct index_entry *restrict b = b_;
+    return (a->id == b->id ? 0 : (a->id < b->id ? -1 : 1));
+}
+
+static struct index_entry *search_index(
+    b3_entity_pool *restrict pool,
+    b3_entity_id id
+) {
+    return bsearch(
+        &(struct index_entry){id},
+        pool->index,
+        pool->count,
+        sizeof(pool->index[0]),
+        compare_index_entries
+    );
 }
 
 void b3_release_entity(b3_entity *restrict entity) {
     b3_entity_pool *pool = deactivate_entity(entity);
-    if(pool)
-        pool->inactive[pool->inactive_count++] = entity;
+    if(!pool)
+        return;
+
+    pool->inactive[pool->inactive_count++] = entity;
+    if(--(pool->count)) {
+        // TODO: wait for a bunch of indices to be removed, then only reshuffle
+        // the index at the end.
+        struct index_entry *entry = search_index(pool, entity->id);
+        memmove(
+            entry,
+            entry + 1,
+            (size_t)(pool->count - (entry - pool->index))
+        );
+    }
+}
+
+b3_entity *b3_get_entity(b3_entity_pool *restrict pool, b3_entity_id id) {
+    struct index_entry *entry = search_index(pool, id);
+    return (entry ? entry->entity : NULL);
 }
 
 b3_entity_id b3_get_entity_id(b3_entity *restrict entity) {
