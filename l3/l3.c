@@ -299,10 +299,28 @@ static int level_new_entity(lua_State *restrict l) {
     return 1;
 }
 
-static int entity_gc(lua_State *restrict l) {
+static int level_get_entity(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
+    b3_entity_id id = (b3_entity_id)luaL_checkunsigned(l, 2);
+
+    b3_entity *entity = b3_get_entity(level->entities, id);
+    if(entity) {
+        b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
+        luaL_setmetatable(l, ENTITY_METATABLE);
+        *p_entity = entity;
+    }
+    else
+        lua_pushnil(l);
+
+    return 1;
+}
+
+static int entity_get_id(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
-    b3_release_entity(entity);
-    return 0;
+
+    b3_entity_id id = b3_get_entity_id(entity);
+    lua_pushunsigned(l, (lua_Unsigned)id);
+    return 1;
 }
 
 static int entity_get_pos(lua_State *restrict l) {
@@ -362,9 +380,11 @@ static int open_level(lua_State *restrict l) {
         {"get_tile", level_get_tile},
         {"set_tile", level_set_tile},
         {"new_entity", level_new_entity},
+        {"get_entity", level_get_entity},
         {NULL, NULL}
     };
     static const luaL_Reg entity_methods[] = {
+        {"get_id", entity_get_id},
         {"get_pos", entity_get_pos},
         {"set_pos", entity_set_pos},
         {"get_life", entity_get_life},
@@ -385,8 +405,7 @@ static int open_level(lua_State *restrict l) {
 
     luaL_newmetatable(l, ENTITY_METATABLE);
 
-    lua_pushcfunction(l, entity_gc);
-    lua_setfield(l, -2, "__gc");
+    // No __gc; rely on entities going to 0 life to actually release them.
     lua_pushvalue(l, -1);
     lua_setfield(l, -2, "__index");
 
