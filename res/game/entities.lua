@@ -38,6 +38,10 @@ function Entities:get_backing(id)
   return self.level:get_entity(id)
 end
 
+function Entities:set_dude(dude)
+  self.level:set_dude(dude.player, dude.id)
+end
+
 local function entities_index_key(pos)
   return string.format("%x,%x", pos.x, pos.y)
 end
@@ -137,6 +141,8 @@ local Dude = class(Entity)
 function Dude:init(entities, pos, player)
   Entity.init(self, entities, pos, 10, IMAGES.DUDES[player])
   self.player = player
+
+  entities:set_dude(self)
 end
 
 function Dude:l3_update(backing, elapsed)

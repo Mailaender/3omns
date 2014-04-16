@@ -183,11 +183,12 @@ static l3_level *check_level(lua_State *restrict l, int index) {
 
 static int level_new(lua_State *restrict l) {
     b3_size size = check_size(l, 1);
-    int max_entities = (int)luaL_checkinteger(l, 2);
+    int max_entities = luaL_checkint(l, 2);
 
     l3_level *level = lua_newuserdata(l, sizeof(*level));
     luaL_setmetatable(l, LEVEL_METATABLE);
 
+    *level = (l3_level)L3_LEVEL_INIT;
     level->map = b3_new_map(&size);
     level->entities = b3_new_entity_pool(max_entities, level->map);
     return 1;
@@ -315,6 +316,18 @@ static int level_get_entity(lua_State *restrict l) {
     return 1;
 }
 
+static int level_set_dude(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
+    int i = luaL_checkint(l, 2) - 1;
+    luaL_argcheck(l, i >= 0 && i < 4, 2, "index must satisfy 1 <= index <= 4");
+    b3_entity_id id = (b3_entity_id)luaL_checkunsigned(l, 3);
+
+    level->dude_ids[i] = id;
+
+    lua_pushvalue(l, 1);
+    return 1;
+}
+
 static int entity_get_id(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
 
@@ -352,7 +365,7 @@ static int entity_get_life(lua_State *restrict l) {
 
 static int entity_set_life(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
-    int life = (int)luaL_checkinteger(l, 2);
+    int life = luaL_checkint(l, 2);
 
     b3_set_entity_life(entity, life);
 
@@ -381,6 +394,7 @@ static int open_level(lua_State *restrict l) {
         {"set_tile", level_set_tile},
         {"new_entity", level_new_entity},
         {"get_entity", level_get_entity},
+        {"set_dude", level_set_dude},
         {NULL, NULL}
     };
     static const luaL_Reg entity_methods[] = {
@@ -537,6 +551,8 @@ l3_level l3_generate(void) {
     l3_level *level = luaL_testudata(lua, -1, LEVEL_METATABLE);
     if(!level)
         b3_fatal("%s didn't return a level", L3_GENERATE_NAME);
+    if(!level->dude_ids[0])
+        b3_fatal("%s didn't fill in at least one dude id", L3_GENERATE_NAME);
     l3_level copy = l3_copy_level(level);
     lua_pop(lua, 1);
 
@@ -583,7 +599,7 @@ void l3_update(l3_level *restrict level, b3_ticks elapsed) {
         level->entities,
         update_entity,
         &(struct update_entity_data){
-            (lua_Number)b3_ticks_to_secs(elapsed)
+            (lua_Number)b3_ticks_to_secs(elapsed),
         }
     );
 

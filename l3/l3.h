@@ -3,6 +3,8 @@
 
 #include "b3/b3.h"
 
+#include <stddef.h>
+
 
 void l3_init(const char *restrict resource_path);
 void l3_quit(void);
@@ -16,19 +18,24 @@ typedef struct l3_level l3_level;
 struct l3_level {
     b3_map *map;
     b3_entity_pool *entities;
+    b3_entity_id dude_ids[4];
 };
 
-static inline l3_level l3_copy_level(l3_level *restrict level) {
+#define L3_LEVEL_INIT {NULL, NULL, {0,0,0,0}}
+
+static inline l3_level l3_copy_level(l3_level *restrict l) {
     return (l3_level){
-        b3_ref_map(level->map),
-        b3_ref_entity_pool(level->entities)
+        b3_ref_map(l->map),
+        b3_ref_entity_pool(l->entities),
+        {l->dude_ids[0], l->dude_ids[1], l->dude_ids[2], l->dude_ids[3]},
     };
 }
 
-static inline void l3_free_level(l3_level *restrict level) {
-    if(level) {
-        b3_free_map(level->map);
-        b3_free_entity_pool(level->entities);
+static inline void l3_free_level(l3_level *restrict l) {
+    if(l) {
+        b3_free_map(l->map);
+        b3_free_entity_pool(l->entities);
+        *l = (l3_level)L3_LEVEL_INIT;
     }
 }
 
