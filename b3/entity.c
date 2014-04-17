@@ -133,21 +133,21 @@ static struct index_entry *search_index(
 }
 
 void b3_release_entity(b3_entity *restrict entity) {
+    b3_entity_id id = entity->id;
     b3_entity_pool *pool = deactivate_entity(entity);
     if(!pool)
         return;
 
     pool->inactive[pool->inactive_count++] = entity;
-    if(--(pool->count)) {
-        // TODO: wait for a bunch of indices to be removed, then only reshuffle
-        // the index at the end.
-        struct index_entry *entry = search_index(pool, entity->id);
-        memmove(
-            entry,
-            entry + 1,
-            (size_t)(pool->count - (entry - pool->index))
-        );
-    }
+    // TODO: wait for a bunch of indices to be removed, then only reshuffle
+    // the index at the end.
+    struct index_entry *entry = search_index(pool, id);
+    ptrdiff_t index = entry - pool->index;
+    memmove(
+        entry,
+        entry + 1,
+        (--(pool->count) - index) * sizeof(struct index_entry)
+    );
 }
 
 b3_entity *b3_get_entity(b3_entity_pool *restrict pool, b3_entity_id id) {
@@ -234,6 +234,6 @@ void b3_draw_entities(
 ) {
     b3_for_each_entity(pool, draw_entity, &(struct draw_entity_data){
         b3_get_map_tile_size(&pool->map_size, &rect->size),
-        rect->pos
+        rect->pos,
     });
 }
