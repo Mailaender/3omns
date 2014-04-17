@@ -25,6 +25,7 @@ Entities = class()
 
 function Entities:init(level)
   self.level = level
+  self.level_size = level:get_size()
   self.index = {}
 end
 
@@ -63,6 +64,15 @@ end
 
 function Entities:remove(entity)
   self.index[entities_index_key(entity.pos)] = nil
+end
+
+function Entities:valid_pos(pos)
+  return pos.x >= 1 and pos.x <= self.level_size.width
+      and pos.y >= 1 and pos.y <= self.level_size.height
+end
+
+function Entities:walkable(pos)
+  return self:valid_pos(pos) and self.level:get_tile(pos) ~= TILES.WALL
 end
 
 
@@ -145,12 +155,40 @@ function Dude:init(entities, pos, player)
   entities:set_dude(self)
 end
 
+function Dude:bump(other)
+  -- TODO
+end
+
+function Dude:move(direction, backing)
+  local dir
+  if     direction == "u" then dir = Pos( 0, -1)
+  elseif direction == "d" then dir = Pos( 0,  1)
+  elseif direction == "l" then dir = Pos(-1,  0)
+  else                         dir = Pos( 1,  0) end
+
+  local new_pos = Pos(self.pos.x + dir.x, self.pos.y + dir.y)
+  if not self.entities:walkable(new_pos) then return end
+
+  local other = self.entities:get_entity(new_pos)
+  if not other or self:bump(other) then
+    self:set_pos(new_pos)
+  end
+end
+
+function Dude:fire()
+  -- TODO
+end
+
 function Dude:l3_update(backing, elapsed)
   -- TODO
 end
 
 function Dude:l3_action(backing, action)
-  -- TODO
+  if action == "f" then
+    self:fire()
+  else
+    self:move(action, backing)
+  end
 end
 
 

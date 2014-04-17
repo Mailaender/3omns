@@ -70,6 +70,11 @@ local function spawn_dudes(ctx)
   end
 end
 
+local function valid(pos)
+  return pos.x >= 1 and pos.x <= MAP_SIZE.width
+      and pos.y >= 1 and pos.y <= MAP_SIZE.height
+end
+
 -- Stolen from the !w Bresenham's line algorithm page.
 local function line_to_edge(a, b, callback)
   local dx = math.abs(b.x - a.x)
@@ -80,8 +85,9 @@ local function line_to_edge(a, b, callback)
 
   local x = a.x
   local y = a.y
-  while x > 0 and x <= MAP_SIZE.width and y > 0 and y <= MAP_SIZE.height do
+  while valid(Pos(x, y)) do
     callback(Pos(x, y))
+
     local e2 = err * 2
     if e2 > -dy then
       err = err - dy
@@ -94,13 +100,8 @@ local function line_to_edge(a, b, callback)
   end
 end
 
-local function valid(pos)
-  return pos.x > 0 and pos.x <= MAP_SIZE.width
-      and pos.y > 0 and pos.y <= MAP_SIZE.height
-end
-
 local function empty(ctx, pos)
-  return ctx.level:get_tile(pos) == TILES.BLANK
+  return ctx.level:get_tile(pos) ~= TILES.WALL
       and not ctx.entities:get_entity(pos)
 end
 
