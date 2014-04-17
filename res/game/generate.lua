@@ -116,7 +116,7 @@ local function spawn_crates(ctx)
     for i = 1, 4 do
       local p = Pos(start.x + direction.x * i, start.y + direction.y * i)
       if valid(p) and empty(ctx, p) then
-        ctx.entities:Crate(p)
+        ctx.crates[#ctx.crates + 1] = ctx.entities:Crate(p)
       end
     end
   end
@@ -153,6 +153,21 @@ local function spawn_crates(ctx)
   line_to_edge(center, bisect, crates)
 end
 
+local function fill_crates(ctx)
+  local function spawn_super(crate)
+    crate.entities:Super(crate.pos)
+  end
+
+  for i = 1, #ctx.spawns do
+    local c
+    repeat
+      c = ctx.crates[math.random(#ctx.crates)]
+    until not c:carries()
+
+    c:carry(spawn_super)
+  end
+end
+
 function l3_generate()
   local level = l3.level.new(MAP_SIZE, MAX_ENTITIES)
   local ctx = {
@@ -160,6 +175,7 @@ function l3_generate()
     entities = Entities(level),
     spawns = {},
     dudes = {},
+    crates = {},
   }
 
   generate_spawns(ctx)
@@ -167,6 +183,7 @@ function l3_generate()
   fill_space(ctx)
   spawn_dudes(ctx)
   spawn_crates(ctx)
+  fill_crates(ctx)
 
-  return ctx.level
+  return level
 end

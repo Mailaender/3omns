@@ -129,6 +129,9 @@ function Entity:set_life(life, backing)
 
     if life == 0 then
       self.entities:remove(self)
+      if self.killed then
+        self:killed()
+      end
     end
   end
   return self
@@ -153,7 +156,22 @@ local Crate = class(Entity)
 
 function Crate:init(entities, pos)
   Entity.init(self, entities, pos, 1, IMAGES.CRATE)
-  -- TODO
+  self.killed = nil
+end
+
+function Crate:carry(f)
+  self.killed = f
+end
+
+function Crate:carries()
+  return self.killed
+end
+
+
+local Super = class(Entity)
+
+function Super:init(entities, pos)
+  Entity.init(self, entities, pos, 1, IMAGES.SUPER)
 end
 
 
@@ -167,6 +185,10 @@ function Dude:init(entities, pos, player)
 end
 
 function Dude:bump(other)
+  if other:is_a(Crate) then
+    other:kill()
+    return false
+  end
   -- TODO
 end
 
@@ -205,6 +227,7 @@ end
 
 local public = {
   Crate = Crate,
+  Super = Super,
   Dude  = Dude,
 }
 

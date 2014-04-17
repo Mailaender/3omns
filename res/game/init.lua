@@ -17,6 +17,7 @@ do
     BLANK = sprites:sub(SpriteRect( 0, 0)),
     WALL  = sprites:sub(SpriteRect(16, 0)),
     CRATE = sprites:sub(SpriteRect(32, 0)),
+    SUPER = sprites:sub(SpriteRect(48, 0)),
     DUDES = {
       sprites:sub(SpriteRect( 0, 16)),
       sprites:sub(SpriteRect(16, 16)),
