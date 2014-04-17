@@ -27,6 +27,7 @@ function Entities:init(level)
   self.level = level
   self.level_size = level:get_size()
   self.index = {}
+  self.dudes = {}
 end
 
 -- The C entities are referred to as the "backing" for Lua entities.  Deal.
@@ -41,6 +42,7 @@ end
 
 function Entities:set_dude(dude)
   self.level:set_dude(dude.player, dude.id)
+  self.dudes[dude.id] = dude
 end
 
 local function entities_index_key(pos)
@@ -48,22 +50,31 @@ local function entities_index_key(pos)
 end
 
 function Entities:get_entity(pos)
+  for _, d in pairs(self.dudes) do
+    if pos_equal(pos, d.pos) then return d end
+  end
+
   return self.index[entities_index_key(pos)]
 end
 
 function Entities:move(entity, old_pos)
+  if entity:is_a(Dude) then return end
+
   if old_pos then
     self.index[entities_index_key(old_pos)] = nil
   end
 
   local key = entities_index_key(entity.pos)
-  -- FIXME: this won't work once we allow players to stand on their own bomns.
   assert(not self.index[key], "Two entities can't occupy the same space")
   self.index[key] = entity
 end
 
 function Entities:remove(entity)
-  self.index[entities_index_key(entity.pos)] = nil
+  if entity:is_a(Dude) then
+    self.dudes[entity.id] = nil
+  else
+    self.index[entities_index_key(entity.pos)] = nil
+  end
 end
 
 function Entities:valid_pos(pos)
