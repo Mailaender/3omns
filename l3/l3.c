@@ -21,6 +21,7 @@
 #define L3_BORDER_IMAGE_NAME "L3_BORDER_IMAGE"
 
 #define L3_ENTITY_UPDATE_NAME "l3_update"
+#define L3_ENTITY_ACTION_NAME "l3_action"
 
 struct entity_data {
     lua_State *l;
@@ -31,6 +32,14 @@ struct entity_data {
 
 struct update_entity_data {
     lua_Number elapsed;
+};
+
+enum action {
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
+    FIRE,
 };
 
 
@@ -604,4 +613,57 @@ void l3_update(l3_level *restrict level, b3_ticks elapsed) {
     );
 
     b3_for_each_entity(level->entities, cull_entity, NULL);
+}
+
+static enum action input_to_action(b3_input input, int player) {
+    if(input == B3_INPUT_UP(player)) return UP;
+    if(input == B3_INPUT_DOWN(player)) return DOWN;
+    if(input == B3_INPUT_LEFT(player)) return LEFT;
+    if(input == B3_INPUT_RIGHT(player)) return RIGHT;
+    return FIRE;
+}
+
+static const char *action_to_string(enum action action) {
+    switch(action) {
+    case UP: return "u";
+    case DOWN: return "d";
+    case LEFT: return "l";
+    case RIGHT: return "r";
+    default: return "f";
+    }
+}
+
+static void entity_action(
+    lua_State *restrict l,
+    b3_entity *restrict entity,
+    enum action action
+) {
+    const struct entity_data *restrict entity_data
+            = b3_get_entity_data(entity);
+
+    if(entity_data->context_ref < 0 || !b3_get_entity_life(entity))
+        return;
+
+    lua_rawgeti(l, LUA_REGISTRYINDEX, entity_data->context_ref);
+    lua_getfield(l, -1, L3_ENTITY_ACTION_NAME);
+    if(!lua_isfunction(l, -1)) {
+        lua_pop(l, 2);
+        return;
+    }
+
+    lua_insert(l, -2);
+    lua_rawgeti(l, LUA_REGISTRYINDEX, entity_data->entity_ref);
+    lua_pushlstring(l, action_to_string(action), 1);
+
+    lua_call(l, 3, 0);
+}
+
+void l3_input(l3_level *restrict level, b3_input input) {
+    if(!B3_INPUT_IS_PLAYER(input))
+        return;
+
+    int i = B3_INPUT_PLAYER(input);
+    b3_entity *entity = b3_get_entity(level->entities, level->dude_ids[i]);
+    if(entity)
+        entity_action(lua, entity, input_to_action(input, i));
 }

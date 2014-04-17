@@ -144,6 +144,8 @@ enum b3_input {
 #define B3_INPUT_LEFT(x) (B3_INPUT_LEFT_0 + (x))
 #define B3_INPUT_RIGHT(x) (B3_INPUT_RIGHT_0 + (x))
 #define B3_INPUT_FIRE(x) (B3_INPUT_FIRE_0 + (x))
+#define B3_INPUT_IS_PLAYER(i) ((i) >= B3_INPUT_UP_0)
+#define B3_INPUT_PLAYER(i) (((i) - B3_INPUT_UP_0) % 4)
 
 typedef _Bool (*b3_input_callback)(b3_input input, _Bool pressed, void *data);
 

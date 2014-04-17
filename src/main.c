@@ -5,7 +5,16 @@
 
 
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
-    return input == B3_INPUT_BACK && pressed;
+    l3_level *restrict level = data;
+
+    if(input == B3_INPUT_BACK && pressed)
+        return 1;
+    // TODO: handle B3_INPUT_PAUSE.
+
+    if(pressed)
+        l3_input(level, input);
+
+    return 0;
 }
 
 static void draw_border(const b3_size *restrict map_size) {
@@ -23,12 +32,13 @@ static void draw_border(const b3_size *restrict map_size) {
 int main(void) {
     b3_init("3omns", &(b3_size){640, 480});
     atexit(b3_quit);
-    b3_set_input_callback(handle_input, NULL);
     l3_init("res"); // TODO: installed path?
     atexit(l3_quit);
 
     l3_level level = l3_generate();
     b3_size map_size = b3_get_map_size(level.map);
+
+    b3_set_input_callback(handle_input, &level);
 
     /* TODO: more like:
      * loop:

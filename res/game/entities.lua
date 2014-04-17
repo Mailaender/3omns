@@ -149,6 +149,10 @@ function Dude:l3_update(backing, elapsed)
   -- TODO
 end
 
+function Dude:l3_action(backing, action)
+  -- TODO
+end
+
 
 local public = {
   Crate = Crate,
