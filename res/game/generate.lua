@@ -17,11 +17,18 @@ local function generate_spawns(ctx)
   end
 end
 
+local function spawn_at(ctx, pos)
+  for _, s in ipairs(ctx.spawns) do
+    if pos_equal(pos, s) then return true end
+  end
+  return false
+end
+
 local function wall_grid(ctx, center)
   local walls = {}
   for x = center.x - 3, center.x + 3, 3 do
     for y = center.y - 3, center.y + 3, 3 do
-      if ctx.level:get_tile(Pos(x, y)) == 0 then
+      if not spawn_at(ctx, Pos(x, y)) then
         walls[#walls + 1] = Pos(x, y)
       end
     end
