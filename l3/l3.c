@@ -328,7 +328,7 @@ static int level_get_entity(lua_State *restrict l) {
 static int level_set_dude(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
     int i = luaL_checkint(l, 2) - 1;
-    luaL_argcheck(l, i >= 0 && i < 4, 2, "index must satisfy 1 <= index <= 4");
+    luaL_argcheck(l, i >= 0 && i < L3_DUDE_COUNT, 2, "dude index out of bounds");
     b3_entity_id id = (b3_entity_id)luaL_checkunsigned(l, 3);
 
     level->dude_ids[i] = id;

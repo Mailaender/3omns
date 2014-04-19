@@ -14,14 +14,16 @@ extern b3_image *l3_border_image;
 extern b3_image *l3_tile_images[B3_TILE_COUNT];
 
 
+#define L3_DUDE_COUNT 4
+
 typedef struct l3_level l3_level;
 struct l3_level {
     b3_map *map;
     b3_entity_pool *entities;
-    b3_entity_id dude_ids[4];
+    b3_entity_id dude_ids[L3_DUDE_COUNT];
 };
 
-#define L3_LEVEL_INIT {NULL, NULL, {0,0,0,0}}
+#define L3_LEVEL_INIT {NULL, NULL, {0}}
 
 static inline l3_level l3_copy_level(l3_level *restrict l) {
     return (l3_level){
