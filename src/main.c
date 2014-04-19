@@ -4,6 +4,17 @@
 #include <stdlib.h>
 
 
+#define WINDOW_WIDTH 640
+#define WINDOW_HEIGHT 480
+
+#define GAME_WIDTH WINDOW_HEIGHT
+#define GAME_HEIGHT WINDOW_HEIGHT
+
+
+static const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
+static const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
+static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     l3_level *restrict level = data;
 
@@ -21,8 +32,13 @@ static void draw_border(const b3_size *restrict map_size) {
     if(!l3_border_image)
         return;
 
-    b3_size tile_size = b3_get_map_tile_size(map_size, &(b3_size){480, 480});
-    b3_rect rect = B3_RECT_INIT(480, 0, tile_size.width, tile_size.height);
+    b3_size tile_size = b3_get_map_tile_size(map_size, &game_size);
+    b3_rect rect = B3_RECT_INIT(
+        game_size.width,
+        0,
+        tile_size.width,
+        tile_size.height
+    );
     for(int i = 0; i < map_size->height; i++) {
         b3_draw_image(l3_border_image, &rect);
         rect.y += tile_size.height;
@@ -30,7 +46,7 @@ static void draw_border(const b3_size *restrict map_size) {
 }
 
 int main(void) {
-    b3_init("3omns", &(b3_size){640, 480});
+    b3_init("3omns", &window_size);
     atexit(b3_quit);
     l3_init("res"); // TODO: installed path?
     atexit(l3_quit);
@@ -54,9 +70,10 @@ int main(void) {
         l3_update(&level, 0 /* TODO */);
 
         b3_begin_scene();
-        b3_draw_map(level.map, l3_tile_images, &B3_RECT(0, 0, 480, 480));
+        b3_draw_map(level.map, l3_tile_images, &game_rect);
         draw_border(&map_size);
-        b3_draw_entities(level.entities, &B3_RECT(0, 0, 480, 480));
+        b3_draw_entities(level.entities, &game_rect);
+        draw_hearts();
         b3_end_scene();
 
         b3_sleep(10);
