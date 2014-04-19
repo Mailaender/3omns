@@ -5,6 +5,7 @@ local function new(class, ...)
 end
 
 local function is_a(object, class)
+  -- FIXME: handle inheritance (this doesn't work when checking superclasses).
   return getmetatable(object) == class
 end
 
