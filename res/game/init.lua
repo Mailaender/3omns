@@ -24,6 +24,12 @@ do
       sprites:sub(SpriteRect(32, 16)),
       sprites:sub(SpriteRect(48, 16)),
     },
+    HEARTS = {
+      sprites:sub(SpriteRect( 0, 48)),
+      sprites:sub(SpriteRect(16, 48)),
+      sprites:sub(SpriteRect(32, 48)),
+      sprites:sub(SpriteRect(48, 48)),
+    },
   }
 end
 
@@ -36,5 +42,5 @@ L3_TILE_IMAGES = {
   [TILES.BLANK] = IMAGES.BLANK,
   [TILES.WALL]  = IMAGES.WALL,
 }
-
 L3_BORDER_IMAGE = IMAGES.WALL
+L3_HEART_IMAGES = IMAGES.HEARTS

@@ -10,6 +10,8 @@
 #define GAME_WIDTH WINDOW_HEIGHT
 #define GAME_HEIGHT WINDOW_HEIGHT
 
+#define HEART_SIZE 16
+
 
 static const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
 static const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
@@ -28,20 +30,59 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     return 0;
 }
 
-static void draw_border(const b3_size *restrict map_size) {
+static void draw_border(
+    const b3_size *restrict map_size,
+    const b3_size *restrict tile_size
+) {
     if(!l3_border_image)
         return;
 
-    b3_size tile_size = b3_get_map_tile_size(map_size, &game_size);
     b3_rect rect = B3_RECT_INIT(
         game_size.width,
         0,
-        tile_size.width,
-        tile_size.height
+        tile_size->width,
+        tile_size->height
     );
     for(int i = 0; i < map_size->height; i++) {
         b3_draw_image(l3_border_image, &rect);
-        rect.y += tile_size.height;
+        rect.y += tile_size->height;
+    }
+}
+
+static void draw_hearts(
+    l3_level *restrict level,
+    const b3_size *restrict tile_size
+) {
+    int columns = L3_DUDE_COUNT * 2 - 1;
+    int padding = (
+        window_size.width
+                - game_size.width
+                - tile_size->width // For border.
+                - columns * HEART_SIZE
+    ) / 2;
+    b3_rect rect = B3_RECT_INIT(
+        game_size.width + tile_size->width + padding,
+        0,
+        HEART_SIZE,
+        HEART_SIZE
+    );
+
+    for(int i = 0; i < L3_DUDE_COUNT; i++) {
+        if(!l3_heart_images[i])
+            continue;
+
+        b3_entity *dude = b3_get_entity(level->entities, level->dude_ids[i]);
+        if(!dude)
+            continue;
+
+        rect.y = window_size.height - padding - HEART_SIZE;
+
+        int life = b3_get_entity_life(dude);
+        for(int l = 0; l < life; l++) {
+            b3_draw_image(l3_heart_images[i], &rect);
+            rect.y -= HEART_SIZE;
+        }
+        rect.x += HEART_SIZE * 2;
     }
 }
 
@@ -53,6 +94,7 @@ int main(void) {
 
     l3_level level = l3_generate();
     b3_size map_size = b3_get_map_size(level.map);
+    b3_size tile_size = b3_get_map_tile_size(&map_size, &game_size);
 
     b3_set_input_callback(handle_input, &level);
 
@@ -71,9 +113,9 @@ int main(void) {
 
         b3_begin_scene();
         b3_draw_map(level.map, l3_tile_images, &game_rect);
-        draw_border(&map_size);
+        draw_border(&map_size, &tile_size);
         b3_draw_entities(level.entities, &game_rect);
-        draw_hearts();
+        draw_hearts(&level, &tile_size);
         b3_end_scene();
 
         b3_sleep(10);

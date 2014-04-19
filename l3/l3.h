@@ -10,10 +10,6 @@ void l3_init(const char *restrict resource_path);
 void l3_quit(void);
 
 
-extern b3_image *l3_border_image;
-extern b3_image *l3_tile_images[B3_TILE_COUNT];
-
-
 #define L3_DUDE_COUNT 4
 
 typedef struct l3_level l3_level;
@@ -45,6 +41,11 @@ l3_level l3_generate(void);
 
 void l3_update(l3_level *restrict level, b3_ticks elapsed);
 void l3_input(l3_level *restrict level, b3_input input);
+
+
+extern b3_image *l3_tile_images[B3_TILE_COUNT];
+extern b3_image *l3_border_image;
+extern b3_image *l3_heart_images[L3_DUDE_COUNT];
 
 
 #endif

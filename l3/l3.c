@@ -19,6 +19,7 @@
 #define L3_GENERATE_NAME "l3_generate"
 #define L3_TILE_IMAGES_NAME "L3_TILE_IMAGES"
 #define L3_BORDER_IMAGE_NAME "L3_BORDER_IMAGE"
+#define L3_HEART_IMAGES_NAME "L3_HEART_IMAGES"
 
 #define L3_ENTITY_UPDATE_NAME "l3_update"
 #define L3_ENTITY_ACTION_NAME "l3_action"
@@ -43,8 +44,9 @@ enum action {
 };
 
 
-b3_image *l3_border_image = NULL;
 b3_image *l3_tile_images[B3_TILE_COUNT] = {NULL};
+b3_image *l3_border_image = NULL;
+b3_image *l3_heart_images[L3_DUDE_COUNT] = {NULL};
 
 static char *resource_path = NULL;
 static lua_State *lua = NULL;
@@ -525,6 +527,24 @@ static void set_border_image(lua_State *restrict l) {
     lua_pop(l, 1);
 }
 
+static void set_heart_images(lua_State *restrict l) {
+    lua_getglobal(l, L3_HEART_IMAGES_NAME);
+    if(!lua_istable(l, -1))
+        b3_fatal("Missing global table %s", L3_HEART_IMAGES_NAME);
+
+    for(int i = 0; i < L3_DUDE_COUNT; i++) {
+        lua_pushinteger(l, (lua_Integer)(i + 1));
+        lua_gettable(l, -2);
+
+        b3_image **p_image = luaL_testudata(l, -1, IMAGE_METATABLE);
+        if(p_image)
+            l3_heart_images[i] = b3_ref_image(*p_image);
+
+        lua_pop(l, 1);
+    }
+    lua_pop(l, 1);
+}
+
 void l3_init(const char *restrict resource_path_) {
     resource_path = b3_copy_string(resource_path_);
 
@@ -533,6 +553,7 @@ void l3_init(const char *restrict resource_path_) {
 
     set_tile_images(lua);
     set_border_image(lua);
+    set_heart_images(lua);
 }
 
 void l3_quit(void) {
@@ -541,6 +562,10 @@ void l3_quit(void) {
         l3_tile_images[i] = NULL;
     }
     b3_free_image(l3_border_image);
+    for(int i = 0; i < L3_DUDE_COUNT; i++) {
+        b3_free_image(l3_heart_images[i]);
+        l3_heart_images[i] = NULL;
+    }
     l3_border_image = NULL;
     if(lua) {
         lua_close(lua);
