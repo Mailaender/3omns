@@ -30,7 +30,7 @@ void b3_init(
 ) {
     quit = 0;
 
-    if(SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_TIMER | SDL_INIT_VIDEO) != 0)
+    if(SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO) != 0)
         b3_fatal("Error initializing SDL: %s", SDL_GetError());
 
     if((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
@@ -38,7 +38,7 @@ void b3_init(
         b3_fatal("Error initializing SDL_image: %s", IMG_GetError());
     }
 
-    b3_tick_frequency = SDL_GetPerformanceFrequency();
+    b3_tick_frequency = (b3_ticks)SDL_GetPerformanceFrequency();
 
     window = SDL_CreateWindow(
         window_title,
@@ -150,7 +150,7 @@ _Bool b3_process_events(void) {
 }
 
 b3_ticks b3_get_tick_count() {
-    return SDL_GetPerformanceCounter();
+    return (b3_ticks)SDL_GetPerformanceCounter();
 }
 
 void b3_sleep(int ms) {

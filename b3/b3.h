@@ -71,7 +71,7 @@ extern b3_size b3_window_size;
 _Bool b3_process_events(void);
 
 
-typedef uint64_t b3_ticks;
+typedef int64_t b3_ticks;
 
 b3_ticks b3_get_tick_count();
 extern b3_ticks b3_tick_frequency;
