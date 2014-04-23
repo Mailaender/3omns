@@ -205,7 +205,6 @@ end
 function Dude:bump(other, backing)
   if other:is_a(Crate) then
     other:kill()
-    -- TODO: if it contains a super, and we're super, we have a problem.
     return self:is_super()
   elseif other:is_a(Super) then
     other:kill()
@@ -225,10 +224,13 @@ function Dude:move(direction, backing)
   local new_pos = Pos(self.pos.x + dir.x, self.pos.y + dir.y)
   if not self.entities:walkable(new_pos) then return end
 
-  local other = self.entities:get_entity(new_pos)
-  if not other or self:bump(other, backing) then
-    self:set_pos(new_pos)
-  end
+  repeat
+    local other = self.entities:get_entity(new_pos)
+    if not other then
+      self:set_pos(new_pos)
+      break
+    end
+  until not self:bump(other, backing)
 end
 
 function Dude:fire()
