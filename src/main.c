@@ -17,17 +17,25 @@ static const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
 static const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
 static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
+static _Bool paused = 0;
+
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     l3_level *restrict level = data;
 
-    if(input == B3_INPUT_BACK && pressed)
+    if(!pressed)
+        return 0;
+
+    switch(input) {
+    case B3_INPUT_BACK:
         return 1;
-    // TODO: handle B3_INPUT_PAUSE.
-
-    if(pressed)
-        l3_input(level, input);
-
-    return 0;
+    case B3_INPUT_PAUSE:
+        paused = !paused;
+        return 0;
+    default:
+        if(!paused)
+            l3_input(level, input);
+        return 0;
+    }
 }
 
 static void draw_border(
@@ -102,9 +110,10 @@ static void loop(l3_level *restrict level) {
         ticks = b3_get_tick_count();
         b3_ticks elapsed = ticks - last_ticks;
 
-        // TODO: only if not paused.
-        for(time += elapsed; time >= frame_ticks; time -= frame_ticks)
-            l3_update(level, frame_ticks);
+        if(!paused) {
+            for(time += elapsed; time >= frame_ticks; time -= frame_ticks)
+                l3_update(level, frame_ticks);
+        }
 
         if(ticks >= next_draw_ticks) {
             next_draw_ticks = ticks + draw_ticks;
@@ -116,8 +125,6 @@ static void loop(l3_level *restrict level) {
             draw_hearts(level, &tile_size);
             b3_end_scene();
         }
-
-        // TODO: also sleep if necessary, after processing events.
     } while(!b3_process_events());
 }
 
