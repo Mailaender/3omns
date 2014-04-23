@@ -86,6 +86,41 @@ static void draw_hearts(
     }
 }
 
+static void loop(l3_level *restrict level) {
+    const b3_ticks frame_ticks = b3_secs_to_ticks(0.015625); // 64 FPS.
+    const b3_ticks draw_ticks = b3_secs_to_ticks(0.03125); // 32 FPS.
+
+    b3_size map_size = b3_get_map_size(level->map);
+    b3_size tile_size = b3_get_map_tile_size(&map_size, &game_size);
+
+    b3_ticks time = 0;
+    b3_ticks ticks = b3_get_tick_count();
+    b3_ticks last_ticks;
+    b3_ticks next_draw_ticks = 0;
+    do {
+        last_ticks = ticks;
+        ticks = b3_get_tick_count();
+        b3_ticks elapsed = ticks - last_ticks;
+
+        // TODO: only if not paused.
+        for(time += elapsed; time >= frame_ticks; time -= frame_ticks)
+            l3_update(level, frame_ticks);
+
+        if(ticks >= next_draw_ticks) {
+            next_draw_ticks = ticks + draw_ticks;
+
+            b3_begin_scene();
+            b3_draw_map(level->map, l3_tile_images, &game_rect);
+            draw_border(&map_size, &tile_size);
+            b3_draw_entities(level->entities, &game_rect);
+            draw_hearts(level, &tile_size);
+            b3_end_scene();
+        }
+
+        // TODO: also sleep if necessary, after processing events.
+    } while(!b3_process_events());
+}
+
 int main(void) {
     b3_init("3omns", &window_size);
     atexit(b3_quit);
@@ -93,33 +128,10 @@ int main(void) {
     atexit(l3_quit);
 
     l3_level level = l3_generate();
-    b3_size map_size = b3_get_map_size(level.map);
-    b3_size tile_size = b3_get_map_tile_size(&map_size, &game_size);
 
     b3_set_input_callback(handle_input, &level);
 
-    /* TODO: more like:
-     * loop:
-     *     calculate elapsed time since last run
-     *     update entities at a fixed interval (40Hz?) in a loop to catch up
-     *     process events (or maybe do this first or last?)
-     *     do one render (only if there's enough time?)
-     *     maybe run the lua garbage collector a bit? (again, only if time)
-     *     if we've had to catch up every frame for a full second-ish, abort
-     *     pause for the remainder of the time till the next frame update
-     */
-    while(!b3_process_events()) {
-        l3_update(&level, 0 /* TODO */);
-
-        b3_begin_scene();
-        b3_draw_map(level.map, l3_tile_images, &game_rect);
-        draw_border(&map_size, &tile_size);
-        b3_draw_entities(level.entities, &game_rect);
-        draw_hearts(&level, &tile_size);
-        b3_end_scene();
-
-        b3_sleep(10);
-    }
+    loop(&level);
 
     l3_free_level(&level);
     return 0;
