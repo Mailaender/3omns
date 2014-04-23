@@ -24,6 +24,12 @@ do
       sprites:sub(SpriteRect(32, 16)),
       sprites:sub(SpriteRect(48, 16)),
     },
+    SUPER_DUDES = {
+      sprites:sub(SpriteRect( 0, 32)),
+      sprites:sub(SpriteRect(16, 32)),
+      sprites:sub(SpriteRect(32, 32)),
+      sprites:sub(SpriteRect(48, 32)),
+    },
     HEARTS = {
       sprites:sub(SpriteRect( 0, 48)),
       sprites:sub(SpriteRect(16, 48)),

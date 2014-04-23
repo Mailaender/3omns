@@ -171,6 +171,8 @@ end
 
 local Super = class(Entity)
 
+Super.TIME = 10
+
 function Super:init(entities, pos)
   Entity.init(self, entities, pos, 1, IMAGES.SUPER)
 end
@@ -181,14 +183,34 @@ local Dude = class(Entity)
 function Dude:init(entities, pos, player)
   Entity.init(self, entities, pos, 10, IMAGES.DUDES[player])
   self.player = player
+  self.super_time = 0
 
   entities:set_dude(self)
 end
 
-function Dude:bump(other)
+function Dude:is_super()
+  return self.super_time > 0
+end
+
+function Dude:supered(backing)
+  self:set_image(IMAGES.SUPER_DUDES[self.player], backing)
+  self.super_time = Super.TIME
+end
+
+function Dude:unsupered(backing)
+  self:set_image(IMAGES.DUDES[self.player], backing)
+  self.super_time = 0
+end
+
+function Dude:bump(other, backing)
   if other:is_a(Crate) then
     other:kill()
-    return false
+    -- TODO: if it contains a super, and we're super, we have a problem.
+    return self:is_super()
+  elseif other:is_a(Super) then
+    other:kill()
+    self:supered(backing)
+    return true
   end
   -- TODO
 end
@@ -204,7 +226,7 @@ function Dude:move(direction, backing)
   if not self.entities:walkable(new_pos) then return end
 
   local other = self.entities:get_entity(new_pos)
-  if not other or self:bump(other) then
+  if not other or self:bump(other, backing) then
     self:set_pos(new_pos)
   end
 end
@@ -214,7 +236,12 @@ function Dude:fire()
 end
 
 function Dude:l3_update(backing, elapsed)
-  -- TODO
+  if self:is_super() then
+    self.super_time = self.super_time - elapsed
+    if self.super_time <= 0 then
+      self:unsupered(backing)
+    end
+  end
 end
 
 function Dude:l3_action(backing, action)
