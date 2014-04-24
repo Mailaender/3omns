@@ -9,9 +9,12 @@
 
 #define L3_NAME "l3"
 #define IMAGE_NAME "image"
+#define FONT_NAME "font"
 #define LEVEL_NAME "level"
 
 #define IMAGE_METATABLE L3_NAME "." IMAGE_NAME
+#define FONT_METATABLE L3_NAME "." FONT_NAME
+#define TEXT_METATABLE L3_NAME ".text"
 #define LEVEL_METATABLE L3_NAME "." LEVEL_NAME
 #define ENTITY_METATABLE L3_NAME ".entity"
 
@@ -181,6 +184,124 @@ static int open_image(lua_State *restrict l) {
     lua_setfield(l, -2, "__index");
 
     luaL_setfuncs(l, methods, 0);
+    lua_pop(l, 1);
+
+    luaL_newlib(l, functions);
+    return 1;
+}
+
+static b3_font *check_font(lua_State *restrict l, int index) {
+    return *(b3_font **)luaL_checkudata(l, index, FONT_METATABLE);
+}
+
+static int font_load(lua_State *restrict l) {
+    int size = luaL_checkint(l, 1);
+    const char *filename = luaL_checkstring(l, 2);
+    luaL_argcheck(l, filename && *filename, 2, "filename required");
+    int index = (int)lua_tointeger(l, 3);
+
+    b3_font **p_font = lua_newuserdata(l, sizeof(*p_font));
+    luaL_setmetatable(l, FONT_METATABLE);
+    *p_font = b3_load_font(size, filename, index);
+    return 1;
+}
+
+static int font_gc(lua_State *restrict l) {
+    b3_font *font = check_font(l, 1);
+    b3_free_font(font);
+    return 0;
+}
+
+static b3_text *check_text(lua_State *restrict l, int index) {
+    return *(b3_text **)luaL_checkudata(l, index, TEXT_METATABLE);
+}
+
+static int font_new_text(lua_State *restrict l) {
+    b3_font *font = check_font(l, 1);
+    const char *string = luaL_checkstring(l, 2);
+
+    b3_text **p_text = lua_newuserdata(l, sizeof(*p_text));
+    luaL_setmetatable(l, TEXT_METATABLE);
+
+    *p_text = b3_new_text(font, "%s", string);
+    return 1;
+}
+
+static int text_gc(lua_State *restrict l) {
+    b3_text *text = check_text(l, 1);
+    b3_free_text(text);
+    return 0;
+}
+
+static int text_get_string(lua_State *restrict l) {
+    b3_text *text = check_text(l, 1);
+
+    const char *string = b3_get_text_string(text);
+    lua_pushstring(l, string);
+    return 1;
+}
+
+static int text_get_size(lua_State *restrict l) {
+    b3_text *text = check_text(l, 1);
+
+    b3_size size = b3_get_text_size(text);
+    push_size(l, &size);
+    return 1;
+}
+
+static int text_get_color(lua_State *restrict l) {
+    b3_text *text = check_text(l, 1);
+
+    b3_color color = b3_get_text_color(text);
+    lua_pushunsigned(l, (lua_Unsigned)color);
+    return 1;
+}
+
+static int text_set_color(lua_State *restrict l) {
+    b3_text *text = check_text(l, 1);
+    b3_color color = (b3_color)luaL_checkunsigned(l, 2);
+
+    b3_set_text_color(text, color);
+
+    lua_pushvalue(l, 1);
+    return 1;
+}
+
+static int open_font(lua_State *restrict l) {
+    static const luaL_Reg functions[] = {
+        {"load", font_load},
+        {NULL, NULL}
+    };
+    static const luaL_Reg font_methods[] = {
+        {"new_text", font_new_text},
+        {NULL, NULL}
+    };
+    static const luaL_Reg text_methods[] = {
+        {"get_string", text_get_string},
+        {"get_size", text_get_size},
+        {"get_color", text_get_color},
+        {"set_color", text_set_color},
+        {NULL, NULL}
+    };
+
+    luaL_newmetatable(l, FONT_METATABLE);
+
+    lua_pushcfunction(l, font_gc);
+    lua_setfield(l, -2, "__gc");
+    lua_pushvalue(l, -1);
+    lua_setfield(l, -2, "__index");
+
+    luaL_setfuncs(l, font_methods, 0);
+    lua_pop(l, 1);
+
+    luaL_newmetatable(l, TEXT_METATABLE);
+
+    lua_pushcfunction(l, text_gc);
+    lua_setfield(l, -2, "__gc");
+    lua_pushvalue(l, -1);
+    lua_setfield(l, -2, "__index");
+
+    luaL_setfuncs(l, text_methods, 0);
     lua_pop(l, 1);
 
     luaL_newlib(l, functions);
@@ -443,6 +564,7 @@ static int open_level(lua_State *restrict l) {
 static int open_all(lua_State *restrict l) {
     static const luaL_Reg submodules[] = {
         {IMAGE_NAME, open_image},
+        {FONT_NAME, open_font},
         {LEVEL_NAME, open_level},
         {NULL, NULL}
     };

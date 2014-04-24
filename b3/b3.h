@@ -133,7 +133,7 @@ void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect);
 
 typedef struct b3_font b3_font;
 
-b3_font *b3_load_font(const char *restrict filename, int index, int size);
+b3_font *b3_load_font(int size, const char *restrict filename, int index);
 b3_font *b3_ref_font(b3_font *restrict font);
 void b3_free_font(b3_font *restrict font);
 
@@ -145,12 +145,10 @@ void b3_free_text(b3_text *restrict text);
 
 const char *b3_get_text_string(b3_text *restrict text);
 b3_size b3_get_text_size(b3_text *restrict text);
+b3_color b3_get_text_color(b3_text *restrict text);
+b3_text *b3_set_text_color(b3_text *restrict text, b3_color color);
 
-void b3_draw_text(
-    b3_text *restrict text,
-    const b3_rect *restrict rect,
-    b3_color color
-);
+void b3_draw_text(b3_text *restrict text, const b3_rect *restrict rect);
 
 
 typedef enum b3_input b3_input;

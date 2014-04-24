@@ -24,6 +24,7 @@ struct b3_text {
     char *string;
     SDL_Texture *texture;
     b3_size size;
+    b3_color color;
 };
 
 
@@ -240,7 +241,7 @@ void b3_set_input_callback(b3_input_callback callback, void *data) {
     input_callback_data = data;
 }
 
-b3_font *b3_load_font(const char *restrict filename, int index, int size) {
+b3_font *b3_load_font(int size, const char *restrict filename, int index) {
     TTF_Font *ttf = TTF_OpenFontIndex(filename, size, (int)index);
     if(!ttf)
         b3_fatal("Error loading font %s: %s", filename, TTF_GetError());
@@ -293,6 +294,7 @@ b3_text *b3_new_text(
     text->string = string;
     text->texture = texture;
     text->size = size;
+    text->color = 0xffffffff;
     return b3_ref_text(text);
 }
 
@@ -316,22 +318,25 @@ b3_size b3_get_text_size(b3_text *restrict text) {
     return text->size;
 }
 
-void b3_draw_text(
-    b3_text *restrict text,
-    const b3_rect *restrict rect,
-    b3_color color
-) {
+b3_color b3_get_text_color(b3_text *restrict text) {
+    return text->color;
+}
+
+b3_text *b3_set_text_color(b3_text *restrict text, b3_color color) {
+    text->color = color;
+
     SDL_SetTextureColorMod(
         text->texture,
         (Uint8)B3_RED(color),
         (Uint8)B3_GREEN(color),
         (Uint8)B3_BLUE(color)
     );
-    SDL_SetTextureAlphaMod(
-        text->texture,
-        (Uint8)B3_ALPHA(color)
-    );
+    SDL_SetTextureAlphaMod(text->texture, (Uint8)B3_ALPHA(color));
 
+    return text;
+}
+
+void b3_draw_text(b3_text *restrict text, const b3_rect *restrict rect) {
     SDL_RenderCopy(
         renderer,
         text->texture,
