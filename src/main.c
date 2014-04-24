@@ -19,6 +19,7 @@ static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
 static _Bool paused = 0;
 
+
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     l3_level *restrict level = data;
 
@@ -98,6 +99,11 @@ static void loop(l3_level *restrict level) {
     const b3_ticks frame_ticks = b3_secs_to_ticks(0.015625); // 64 FPS.
     const b3_ticks draw_ticks = b3_secs_to_ticks(0.03125); // 32 FPS.
 
+    b3_font *font = b3_load_font("res/ttf/Vera.ttf", 0, 16);
+    b3_text *paused_text = b3_new_text(font, "P A U S E D");
+    b3_size paused_text_size = b3_get_text_size(paused_text);
+    b3_free_font(font);
+
     b3_size map_size = b3_get_map_size(level->map);
     b3_size tile_size = b3_get_map_tile_size(&map_size, &game_size);
 
@@ -123,6 +129,13 @@ static void loop(l3_level *restrict level) {
             draw_border(&map_size, &tile_size);
             b3_draw_entities(level->entities, &game_rect);
             draw_hearts(level, &tile_size);
+            if(paused) {
+                b3_draw_text(
+                    paused_text,
+                    &(b3_rect){.size = paused_text_size},
+                    0xffff0000
+                );
+            }
             b3_end_scene();
         }
     } while(!b3_process_events());

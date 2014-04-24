@@ -13,6 +13,7 @@ AC_CONFIG_FILES([
 PKG_CHECK_MODULES([DEPS], [
 	sdl2 >= 2.0.0
 	SDL2_image >= 2.0.0
+	SDL2_ttf >= 2.0.12
 	lua5.2 >= 5.2.0
 ])
 

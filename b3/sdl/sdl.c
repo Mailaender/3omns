@@ -1,8 +1,10 @@
 #include "b3.h"
 
 #include <stddef.h>
+#include <stdarg.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 
 struct b3_image {
@@ -12,12 +14,25 @@ struct b3_image {
     b3_image *parent;
 };
 
+struct b3_font {
+    int ref_count;
+    TTF_Font *font;
+};
+
+struct b3_text {
+    int ref_count;
+    char *string;
+    SDL_Texture *texture;
+    b3_size size;
+};
+
 
 b3_size b3_window_size = {0, 0};
 b3_ticks b3_tick_frequency = 0;
 
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
+
 static _Bool quit = 0;
 
 static b3_input_callback input_callback = NULL;
@@ -33,10 +48,11 @@ void b3_init(
     if(SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO) != 0)
         b3_fatal("Error initializing SDL: %s", SDL_GetError());
 
-    if((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG) {
-        SDL_Quit();
+    if((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG)
         b3_fatal("Error initializing SDL_image: %s", IMG_GetError());
-    }
+
+    if(TTF_Init())
+        b3_fatal("Error initializing SDL_ttf: %s", TTF_GetError());
 
     b3_tick_frequency = (b3_ticks)SDL_GetPerformanceFrequency();
 
@@ -48,10 +64,8 @@ void b3_init(
         window_size->height,
         SDL_WINDOW_OPENGL
     );
-    if(!window) {
-        b3_quit();
+    if(!window)
         b3_fatal("Error creating the main window: %s", SDL_GetError());
-    }
     b3_window_size = *window_size;
 
     SDL_DisableScreenSaver();
@@ -61,10 +75,8 @@ void b3_init(
     // control, we may want to try creating different types of renderers in a
     // loop until one succeeds or something.
     renderer = SDL_CreateRenderer(window, -1, 0);
-    if(!renderer) {
-        b3_quit();
+    if(!renderer)
         b3_fatal("Error creating rendering context: %s", SDL_GetError());
-    }
 }
 
 void b3_quit(void) {
@@ -80,6 +92,7 @@ void b3_quit(void) {
         window = NULL;
     }
 
+    TTF_Quit();
     IMG_Quit();
     SDL_Quit();
 }
@@ -225,4 +238,104 @@ void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect) {
 void b3_set_input_callback(b3_input_callback callback, void *data) {
     input_callback = callback;
     input_callback_data = data;
+}
+
+b3_font *b3_load_font(const char *restrict filename, int index, int size) {
+    TTF_Font *ttf = TTF_OpenFontIndex(filename, size, (int)index);
+    if(!ttf)
+        b3_fatal("Error loading font %s: %s", filename, TTF_GetError());
+
+    b3_font *font = b3_malloc(sizeof(*font), 1);
+    font->font = ttf;
+    return b3_ref_font(font);
+}
+
+b3_font *b3_ref_font(b3_font *restrict font) {
+    font->ref_count++;
+    return font;
+}
+
+void b3_free_font(b3_font *restrict font) {
+    if(font && !--(font->ref_count)) {
+        TTF_CloseFont(font->font);
+        b3_free(font, sizeof(*font));
+    }
+}
+
+b3_text *b3_new_text(
+    b3_font *restrict font,
+    const char *restrict format,
+    ...
+) {
+    va_list args;
+    va_start(args, format);
+
+    char *string = b3_copy_vformat(format, args);
+
+    va_end(args);
+
+    SDL_Surface *surface = TTF_RenderUTF8_Blended(
+        font->font,
+        string,
+        (SDL_Color){255, 255, 255, 255}
+    );
+    if(!surface)
+        b3_fatal("Error rendering text '%s': %s", string, TTF_GetError());
+
+    b3_size size = {surface->w, surface->h};
+
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+    if(!texture)
+        b3_fatal("Error creating texture from string: %s", SDL_GetError());
+
+    b3_text *text = b3_malloc(sizeof(*text), 1);
+    text->string = string;
+    text->texture = texture;
+    text->size = size;
+    return b3_ref_text(text);
+}
+
+b3_text *b3_ref_text(b3_text *restrict text) {
+    text->ref_count++;
+    return text;
+}
+
+void b3_free_text(b3_text *restrict text) {
+    if(text && !--(text->ref_count)) {
+        SDL_DestroyTexture(text->texture);
+        b3_free(text, sizeof(*text));
+    }
+}
+
+const char *b3_get_text_string(b3_text *restrict text) {
+    return text->string;
+}
+
+b3_size b3_get_text_size(b3_text *restrict text) {
+    return text->size;
+}
+
+void b3_draw_text(
+    b3_text *restrict text,
+    const b3_rect *restrict rect,
+    b3_color color
+) {
+    SDL_SetTextureColorMod(
+        text->texture,
+        (Uint8)B3_RED(color),
+        (Uint8)B3_GREEN(color),
+        (Uint8)B3_BLUE(color)
+    );
+    SDL_SetTextureAlphaMod(
+        text->texture,
+        (Uint8)B3_ALPHA(color)
+    );
+
+    SDL_RenderCopy(
+        renderer,
+        text->texture,
+        NULL,
+        &(SDL_Rect){rect->x, rect->y, rect->width, rect->height}
+    );
 }

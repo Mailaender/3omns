@@ -6,7 +6,7 @@
 #include <stdarg.h>
 
 
-#define b3_static_array_count(a) (sizeof(a)/sizeof((a)[0]))
+#define b3_static_array_count(a) (sizeof(a) / sizeof((a)[0]))
 
 
 #define b3_fatal(...) \
@@ -101,6 +101,21 @@ void b3_begin_scene(void);
 void b3_end_scene(void);
 
 
+typedef uint32_t b3_color; // In ARGB order.
+
+#define B3_COLOR(a, r, g, b) ( \
+    ((uint32_t)(a) << 24 & 0xff000000) \
+    | ((uint32_t)(r) << 16 & 0xff0000) \
+    | ((uint32_t)(g) << 8 & 0xff00) \
+    | ((uint32_t)(b) & 0xff) \
+)
+
+#define B3_ALPHA(c) ((int)((c) >> 24 & 0xff))
+#define B3_RED(c) ((int)((c) >> 16 & 0xff))
+#define B3_GREEN(c) ((int)((c) >> 8 & 0xff))
+#define B3_BLUE(c) ((int)((c) & 0xff))
+
+
 typedef struct b3_image b3_image;
 
 b3_image *b3_load_image(const char *restrict filename);
@@ -114,6 +129,28 @@ void b3_free_image(b3_image *restrict image);
 b3_size b3_get_image_size(b3_image *restrict image);
 
 void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect);
+
+
+typedef struct b3_font b3_font;
+
+b3_font *b3_load_font(const char *restrict filename, int index, int size);
+b3_font *b3_ref_font(b3_font *restrict font);
+void b3_free_font(b3_font *restrict font);
+
+typedef struct b3_text b3_text;
+
+b3_text *b3_new_text(b3_font *restrict font, const char *restrict format, ...);
+b3_text *b3_ref_text(b3_text *restrict text);
+void b3_free_text(b3_text *restrict text);
+
+const char *b3_get_text_string(b3_text *restrict text);
+b3_size b3_get_text_size(b3_text *restrict text);
+
+void b3_draw_text(
+    b3_text *restrict text,
+    const b3_rect *restrict rect,
+    b3_color color
+);
 
 
 typedef enum b3_input b3_input;
