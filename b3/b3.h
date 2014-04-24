@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 
 #define b3_static_array_count(a) (sizeof(a)/sizeof((a)[0]))
@@ -22,6 +23,8 @@ _Noreturn void b3_fatal_(
 void *b3_malloc(size_t size, _Bool zero);
 void *b3_alloc_copy(const void *restrict ptr, size_t size);
 char *b3_copy_string(const char *restrict string);
+char *b3_copy_vformat(const char *restrict format, va_list args);
+char *b3_copy_format(const char *restrict format, ...);
 void *b3_realloc(void *restrict ptr, size_t size);
 void b3_free(void *restrict ptr, size_t zero_size);
 

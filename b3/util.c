@@ -7,6 +7,9 @@
 #include <stdlib.h>
 
 
+#define COPY_FORMAT_INITIAL_SIZE 16
+
+
 _Noreturn void b3_fatal_(
     const char *restrict file,
     int line,
@@ -22,7 +25,6 @@ _Noreturn void b3_fatal_(
     fprintf(stderr, "\n");
 
     va_end(args);
-
     exit(1);
 }
 
@@ -52,6 +54,35 @@ void *b3_alloc_copy(const void *restrict ptr, size_t size) {
 
 char *b3_copy_string(const char *restrict string) {
     return b3_alloc_copy(string, strlen(string) + 1);
+}
+
+char *b3_copy_vformat(const char *restrict format, va_list args) {
+    va_list args_copy;
+    va_copy(args_copy, args);
+
+    char *string = b3_malloc(COPY_FORMAT_INITIAL_SIZE, 0);
+    int len = vsnprintf(string, COPY_FORMAT_INITIAL_SIZE, format, args);
+    if(len < 0)
+        b3_fatal("Error formatting string '%s': %s", format, strerror(errno));
+
+    if(len >= COPY_FORMAT_INITIAL_SIZE) {
+        b3_free(string, 0);
+        string = b3_malloc(len + 1, 0);
+        vsnprintf(string, len + 1, format, args_copy);
+    }
+
+    va_end(args_copy);
+    return string;
+}
+
+char *b3_copy_format(const char *restrict format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    char *string = b3_copy_vformat(format, args);
+
+    va_end(args);
+    return string;
 }
 
 void b3_free(void *restrict ptr, size_t zero_size) {

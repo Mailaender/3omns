@@ -2,7 +2,6 @@
 #include "b3/b3.h"
 
 #include <stddef.h>
-#include <stdio.h>
 #include <lua5.2/lua.h>
 #include <lua5.2/lauxlib.h>
 #include <lua5.2/lualib.h>
@@ -492,12 +491,10 @@ static lua_State *new_lua(void) {
 }
 
 static void run_game_file(lua_State *restrict l, const char *restrict base) {
-    char f[1024];
-    snprintf(f, sizeof(f), "%s/game/%s.lua", resource_path, base);
-    f[sizeof(f) - 1] = '\0';
-
-    if(luaL_dofile(l, f))
+    char *filename = b3_copy_format("%s/game/%s.lua", resource_path, base);
+    if(luaL_dofile(l, filename))
         b3_fatal("Error running game file %s: %s", base, lua_tostring(l, -1));
+    b3_free(filename, 0);
 }
 
 static void set_tile_images(lua_State *restrict l) {
