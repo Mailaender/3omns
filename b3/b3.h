@@ -105,9 +105,9 @@ typedef uint32_t b3_color; // In ARGB order.
 
 #define B3_COLOR(a, r, g, b) ( \
     ((uint32_t)(a) << 24 & 0xff000000) \
-    | ((uint32_t)(r) << 16 & 0xff0000) \
-    | ((uint32_t)(g) << 8 & 0xff00) \
-    | ((uint32_t)(b) & 0xff) \
+            | ((uint32_t)(r) << 16 & 0xff0000) \
+            | ((uint32_t)(g) << 8 & 0xff00) \
+            | ((uint32_t)(b) & 0xff) \
 )
 
 #define B3_ALPHA(c) ((int)((c) >> 24 & 0xff))

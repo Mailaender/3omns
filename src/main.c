@@ -4,6 +4,12 @@
 #include <stdlib.h>
 
 
+#define _ // TODO: gettext i18n.
+
+#define RESOURCES "res" // TODO: installed path?
+
+#define FONT_FILENAME RESOURCES "/ttf/Vera.ttf"
+
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 480
 
@@ -19,6 +25,30 @@ static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
 static _Bool paused = 0;
 
+static b3_text *paused_text = NULL;
+static b3_rect paused_text_rect = B3_RECT_INIT(0, 0, 0, 0);
+
+
+static void load_resources(void) {
+    b3_font *paused_font = b3_load_font(64, FONT_FILENAME, 0);
+
+    paused_text = b3_new_text(paused_font, "%s", _("P A U S E D"));
+    b3_set_text_color(paused_text, 0xbbddcc66);
+
+    b3_size paused_text_size = b3_get_text_size(paused_text);
+    paused_text_rect = B3_RECT(
+        (window_size.width - paused_text_size.width) / 2,
+        (window_size.height - paused_text_size.height) / 2,
+        paused_text_size.width,
+        paused_text_size.height
+    );
+    b3_free_font(paused_font);
+}
+
+static void free_resources(void) {
+    b3_free_text(paused_text);
+    paused_text = NULL;
+}
 
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     l3_level *restrict level = data;
@@ -99,12 +129,6 @@ static void loop(l3_level *restrict level) {
     const b3_ticks frame_ticks = b3_secs_to_ticks(0.015625); // 64 FPS.
     const b3_ticks draw_ticks = b3_secs_to_ticks(0.03125); // 32 FPS.
 
-    b3_font *font = b3_load_font(16, "res/ttf/Vera.ttf", 0);
-    b3_text *paused_text = b3_new_text(font, "P A U S E D");
-    b3_set_text_color(paused_text, 0xffff0000);
-    b3_size paused_text_size = b3_get_text_size(paused_text);
-    b3_free_font(font);
-
     b3_size map_size = b3_get_map_size(level->map);
     b3_size tile_size = b3_get_map_tile_size(&map_size, &game_size);
 
@@ -126,25 +150,30 @@ static void loop(l3_level *restrict level) {
             next_draw_ticks = ticks + draw_ticks;
 
             b3_begin_scene();
+
             b3_draw_map(level->map, l3_tile_images, &game_rect);
             draw_border(&map_size, &tile_size);
             b3_draw_entities(level->entities, &game_rect);
             draw_hearts(level, &tile_size);
+
             if(paused)
-                b3_draw_text(paused_text, &(b3_rect){.size = paused_text_size});
+                b3_draw_text(paused_text, &paused_text_rect);
+
             b3_end_scene();
         }
     } while(!b3_process_events());
 }
 
 int main(void) {
-    b3_init("3omns", &window_size);
     atexit(b3_quit);
-    l3_init("res"); // TODO: installed path?
     atexit(l3_quit);
+    atexit(free_resources);
+
+    b3_init("3omns", &window_size);
+    l3_init(RESOURCES);
+    load_resources();
 
     l3_level level = l3_generate();
-
     b3_set_input_callback(handle_input, &level);
 
     loop(&level);
