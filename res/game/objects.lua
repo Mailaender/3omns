@@ -27,29 +27,37 @@ local function valid_pos(pos, level_size)
 end
 
 
-Sprites = class()
-
-function Sprites:init(level)
-  self.level = level
-  self.level_size = level:get_size()
-end
-
--- The C sprites (actually entities) are referred to as the "backing" for Lua
--- sprites.  Deal.  They should never be stored except as a temporary local.
-function Sprites:new_backing(sprite)
-  return self.level:new_sprite(sprite)
-end
-
-
 local Sprite = class()
+local Blast  = class(Sprite)
+
+Entities = class()
+
+local Entity = class()
+local Super  = class(Entity)
+local Crate  = class(Entity)
+local Bomn   = class(Entity)
+local Dude   = class(Entity)
+
+local public = {
+  Super = Super,
+  Crate = Crate,
+  Bomn  = Bomn,
+  Dude  = Dude,
+}
+
+for name, constructor in pairs(public) do
+  Entities[name] = function(self, ...)
+    return constructor(self, ...)
+  end
+end
+
 
 function Sprite:is_a(class)
   return is_a(self, class)
 end
 
-function Sprite:init(sprites, pos, image)
-  self.sprites = sprites
-  local backing = sprites:new_backing(self)
+function Sprite:init(level, pos, image)
+  local backing = level:new_sprite(self)
   self:set_pos(pos, backing)
   self:set_image(image, backing)
 end
@@ -73,18 +81,23 @@ function Sprite:destroy(backing)
 end
 
 
-local Blast = class(Sprite)
+Blast.TIME = 1
 
-function Blast:init(sprites, pos)
-  Sprite.init(self, pos, IMAGES.BLASTS[1])
+function Blast:init(level, pos)
+  Sprite.init(self, level, pos, IMAGES.BLASTS[1])
+  self.time = Blast.TIME
 end
 
 function Blast:l3_update(backing, elapsed)
-  -- TODO
+  self.time = self.time - elapsed
+  if self.time <= 0 then
+    self:destroy(backing)
+    return
+  end
+
+  -- TODO: animate.
 end
 
-
-Entities = class()
 
 function Entities:init(level)
   self.level = level
@@ -93,7 +106,10 @@ function Entities:init(level)
   self.dudes = {}
 end
 
--- Samesies: backing refers to the C entity for Lua entities.  Don't store it.
+-- The C entities are referred to as the "backing" for Lua entities.  Deal.
+-- Backings should never be stored except as a temporary local.  If you store
+-- the Lua entity, use Entity:exists() to double check the backing hasn't been
+-- destroyed in C while your back was turned.
 function Entities:new_backing(entity)
   local backing = self.level:new_entity(entity)
   return backing:get_id(), backing
@@ -146,8 +162,6 @@ function Entities:walkable(pos)
 end
 
 
-local Entity = class()
-
 function Entity:is_a(class)
   return is_a(self, class)
 end
@@ -165,6 +179,10 @@ function Entity:get_backing()
   return self.entities:get_backing(self.id)
 end
 
+function Entity:exists()
+  return self:get_backing() ~= nil
+end
+
 function Entity:set_pos(pos, backing)
   backing = backing or self:get_backing()
 
@@ -176,6 +194,7 @@ function Entity:set_pos(pos, backing)
 
     self.entities:move(self, old)
   end
+
   return self
 end
 
@@ -193,6 +212,7 @@ function Entity:set_life(life, backing)
       end
     end
   end
+
   return self
 end
 
@@ -203,6 +223,7 @@ function Entity:set_image(image, backing)
     self.image = image
     backing:set_image(image)
   end
+
   return self
 end
 
@@ -211,7 +232,12 @@ function Entity:kill(backing)
 end
 
 
-local Crate = class(Entity)
+Super.TIME = 10
+
+function Super:init(entities, pos)
+  Entity.init(self, entities, pos, 1, IMAGES.SUPER)
+end
+
 
 function Crate:init(entities, pos)
   Entity.init(self, entities, pos, 1, IMAGES.CRATE)
@@ -227,21 +253,34 @@ function Crate:carries()
 end
 
 
-local Super = class(Entity)
+Bomn.TIME = 3
 
-Super.TIME = 10
-
-function Super:init(entities, pos)
-  Entity.init(self, entities, pos, 1, IMAGES.SUPER)
+function Bomn:init(entities, pos)
+  Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME])
+  self.time = Bomn.TIME
 end
 
+function Bomn:explode(backing)
+  self:kill(backing)
+  -- TODO: damage, spawn sprites.
+end
 
-local Dude = class(Entity)
+function Bomn:l3_update(backing, elapsed)
+  self.time = self.time - elapsed
+  if self.time <= 0 then
+    self:explode(backing)
+    return
+  end
+
+  -- TODO: animate.
+end
+
 
 function Dude:init(entities, pos, player)
   Entity.init(self, entities, pos, 10, IMAGES.DUDES[player])
   self.player = player
   self.super_time = 0
+  self.bomn = nil
 
   entities:set_dude(self)
 end
@@ -250,12 +289,12 @@ function Dude:is_super()
   return self.super_time > 0
 end
 
-function Dude:supered(backing)
+function Dude:superify(backing)
   self:set_image(IMAGES.SUPER_DUDES[self.player], backing)
   self.super_time = Super.TIME
 end
 
-function Dude:unsupered(backing)
+function Dude:unsuperify(backing)
   self:set_image(IMAGES.DUDES[self.player], backing)
   self.super_time = 0
 end
@@ -266,7 +305,7 @@ function Dude:bump(other, backing)
     return self:is_super()
   elseif other:is_a(Super) then
     other:kill()
-    self:supered(backing)
+    self:superify(backing)
     return true
   end
   -- TODO
@@ -292,14 +331,20 @@ function Dude:move(direction, backing)
 end
 
 function Dude:fire()
-  -- TODO
+  if not self.bomn then
+    self.bomn = self.entities:Bomn(self.pos)
+  end
 end
 
 function Dude:l3_update(backing, elapsed)
+  if self.bomn and not self.bomn:exists() then
+    self.bomn = nil
+  end
+
   if self:is_super() then
     self.super_time = self.super_time - elapsed
     if self.super_time <= 0 then
-      self:unsupered(backing)
+      self:unsuperify(backing)
     end
   end
 end
@@ -309,28 +354,5 @@ function Dude:l3_action(backing, action)
     self:fire()
   else
     self:move(action, backing)
-  end
-end
-
-
-local public_sprites = {
-  Blast = Blast,
-}
-
-local public_entities = {
-  Crate = Crate,
-  Super = Super,
-  Dude  = Dude,
-}
-
-for name, constructor in pairs(public_sprites) do
-  Sprites[name] = function(self, ...)
-    return constructor(self, ...)
-  end
-end
-
-for name, constructor in pairs(public_entities) do
-  Entities[name] = function(self, ...)
-    return constructor(self, ...)
   end
 end

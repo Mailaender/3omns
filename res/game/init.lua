@@ -46,6 +46,14 @@ do
       sprites:sub(SpriteRect(32, 80)),
       sprites:sub(SpriteRect(48, 80)),
     },
+    BOMNS = {
+      sprites:sub(SpriteRect(64, 16)),
+      sprites:sub(SpriteRect(64, 32)),
+      sprites:sub(SpriteRect(64, 48)),
+      sprites:sub(SpriteRect(64, 64)),
+      sprites:sub(SpriteRect(64, 80)),
+      sprites:sub(SpriteRect(64,  0)), -- Last one is generic, not labeled.
+    },
   }
 end
 
