@@ -1,5 +1,6 @@
 local MAP_SIZE = Size(30, 30)
-local MAX_ENTITIES = MAP_SIZE.width * MAP_SIZE.height * 2
+local MAX_SPRITES = MAP_SIZE.width * MAP_SIZE.height
+local MAX_ENTITIES = MAP_SIZE.width * MAP_SIZE.height + 4
 
 local function generate_spawns(ctx)
   local quads = {
@@ -176,7 +177,7 @@ local function fill_crates(ctx)
 end
 
 function l3_generate()
-  local level = l3.level.new(MAP_SIZE, MAX_ENTITIES)
+  local level = l3.level.new(MAP_SIZE, MAX_SPRITES, MAX_ENTITIES)
   local ctx = {
     level = level,
     entities = Entities(level),

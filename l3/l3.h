@@ -15,15 +15,17 @@ void l3_quit(void);
 typedef struct l3_level l3_level;
 struct l3_level {
     b3_map *map;
+    b3_entity_pool *sprites;
     b3_entity_pool *entities;
     b3_entity_id dude_ids[L3_DUDE_COUNT];
 };
 
-#define L3_LEVEL_INIT {NULL, NULL, {0}}
+#define L3_LEVEL_INIT {NULL, NULL, NULL, {0}}
 
 static inline l3_level l3_copy_level(l3_level *restrict l) {
     return (l3_level){
         b3_ref_map(l->map),
+        b3_ref_entity_pool(l->sprites),
         b3_ref_entity_pool(l->entities),
         {l->dude_ids[0], l->dude_ids[1], l->dude_ids[2], l->dude_ids[3]},
     };
@@ -32,6 +34,7 @@ static inline l3_level l3_copy_level(l3_level *restrict l) {
 static inline void l3_free_level(l3_level *restrict l) {
     if(l) {
         b3_free_map(l->map);
+        b3_free_entity_pool(l->sprites);
         b3_free_entity_pool(l->entities);
         *l = (l3_level)L3_LEVEL_INIT;
     }

@@ -13,6 +13,7 @@
 
 #define IMAGE_METATABLE L3_NAME "." IMAGE_NAME
 #define LEVEL_METATABLE L3_NAME "." LEVEL_NAME
+#define SPRITE_METATABLE L3_NAME ".sprite"
 #define ENTITY_METATABLE L3_NAME ".entity"
 
 #define L3_GENERATE_NAME "l3_generate"
@@ -193,13 +194,15 @@ static l3_level *check_level(lua_State *restrict l, int index) {
 
 static int level_new(lua_State *restrict l) {
     b3_size size = check_size(l, 1);
-    int max_entities = luaL_checkint(l, 2);
+    int max_sprites = luaL_checkint(l, 2);
+    int max_entities = luaL_checkint(l, 3);
 
     l3_level *level = lua_newuserdata(l, sizeof(*level));
     luaL_setmetatable(l, LEVEL_METATABLE);
 
     *level = (l3_level)L3_LEVEL_INIT;
     level->map = b3_new_map(&size);
+    level->sprites = b3_new_entity_pool(max_sprites, level->map);
     level->entities = b3_new_entity_pool(max_entities, level->map);
     return 1;
 }
@@ -255,10 +258,6 @@ static int level_set_tile(lua_State *restrict l) {
     return 1;
 }
 
-static b3_entity *check_entity(lua_State *restrict l, int index) {
-    return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
-}
-
 static struct entity_data *new_entity_data(
     lua_State *restrict l,
     int entity_index,
@@ -270,9 +269,9 @@ static struct entity_data *new_entity_data(
 
     // We're using the Lua state-global registry to keep references to the
     // entity userdata and its context (the Lua object passed to
-    // l3.level.new_entity).  There may be a more elegant way to go about this,
-    // but this seemed pretty simple and I couldn't see any major problems, so
-    // I went with it.
+    // l3.level.new_sprite/_entity).  There may be a more elegant way to go
+    // about this, but this seemed pretty simple and I couldn't see any major
+    // problems, so I went with it.
     entity_data->entity_ref = LUA_NOREF;
     entity_data->context_ref = LUA_NOREF;
     lua_pushvalue(l, context_index);
@@ -297,6 +296,36 @@ static void free_entity_data(b3_entity *restrict entity, void *entity_data) {
         b3_free_map(d->map);
         b3_free(d, sizeof(*d));
     }
+}
+
+static b3_entity *check_sprite(lua_State *restrict l, int index) {
+    return *(b3_entity **)luaL_checkudata(l, index, SPRITE_METATABLE);
+}
+
+static int level_new_sprite(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
+
+    // "Sprites" are actually entities, but that don't have life in Lua, nor
+    // are they sync'd to the server.
+    b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
+    luaL_setmetatable(l, SPRITE_METATABLE);
+
+    *p_entity = b3_claim_entity(level->sprites, free_entity_data);
+    b3_set_entity_life(*p_entity, 1);
+    b3_set_entity_data(*p_entity, new_entity_data(l, -1, 2, level->map));
+    return 1;
+}
+
+static int sprite_destroy(lua_State *restrict l) {
+    b3_entity *entity = check_sprite(l, 1);
+
+    b3_set_entity_life(entity, 0);
+
+    return 0;
+}
+
+static b3_entity *check_entity(lua_State *restrict l, int index) {
+    return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
 }
 
 static int level_new_entity(lua_State *restrict l) {
@@ -402,9 +431,17 @@ static int open_level(lua_State *restrict l) {
         {"get_size", level_get_size},
         {"get_tile", level_get_tile},
         {"set_tile", level_set_tile},
+        {"new_sprite", level_new_sprite},
         {"new_entity", level_new_entity},
         {"get_entity", level_get_entity},
         {"set_dude", level_set_dude},
+        {NULL, NULL}
+    };
+    static const luaL_Reg sprite_methods[] = {
+        {"destroy", sprite_destroy},
+        {"get_pos", entity_get_pos},
+        {"set_pos", entity_set_pos},
+        {"set_image", entity_set_image},
         {NULL, NULL}
     };
     static const luaL_Reg entity_methods[] = {
@@ -425,6 +462,15 @@ static int open_level(lua_State *restrict l) {
     lua_setfield(l, -2, "__index");
 
     luaL_setfuncs(l, level_methods, 0);
+    lua_pop(l, 1);
+
+    luaL_newmetatable(l, SPRITE_METATABLE);
+
+    // No __gc; rely on sprites going to 0 life to actually release them.
+    lua_pushvalue(l, -1);
+    lua_setfield(l, -2, "__index");
+
+    luaL_setfuncs(l, sprite_methods, 0);
     lua_pop(l, 1);
 
     luaL_newmetatable(l, ENTITY_METATABLE);
@@ -626,14 +672,14 @@ static void cull_entity(b3_entity *restrict entity, void *callback_data) {
 }
 
 void l3_update(l3_level *restrict level, b3_ticks elapsed) {
-    b3_for_each_entity(
-        level->entities,
-        update_entity,
-        &(struct update_entity_data){
-            (lua_Number)b3_ticks_to_secs(elapsed),
-        }
-    );
+    struct update_entity_data update_data = {
+        (lua_Number)b3_ticks_to_secs(elapsed),
+    };
 
+    b3_for_each_entity(level->sprites, update_entity, &update_data);
+    b3_for_each_entity(level->sprites, cull_entity, NULL);
+
+    b3_for_each_entity(level->entities, update_entity, &update_data);
     b3_for_each_entity(level->entities, cull_entity, NULL);
 }
 
