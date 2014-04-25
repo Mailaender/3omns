@@ -1,7 +1,7 @@
 math.randomseed(os.time())
 
 dofile(l3.RESOURCE_PATH .. "/game/defs.lua")
-dofile(l3.RESOURCE_PATH .. "/game/entities.lua")
+dofile(l3.RESOURCE_PATH .. "/game/objects.lua")
 dofile(l3.RESOURCE_PATH .. "/game/generate.lua")
 
 
@@ -35,6 +35,16 @@ do
       sprites:sub(SpriteRect(16, 48)),
       sprites:sub(SpriteRect(32, 48)),
       sprites:sub(SpriteRect(48, 48)),
+    },
+    BLASTS = {
+      sprites:sub(SpriteRect( 0, 64)),
+      sprites:sub(SpriteRect(16, 64)),
+      sprites:sub(SpriteRect(32, 64)),
+      sprites:sub(SpriteRect(48, 64)),
+      sprites:sub(SpriteRect( 0, 80)),
+      sprites:sub(SpriteRect(16, 80)),
+      sprites:sub(SpriteRect(32, 80)),
+      sprites:sub(SpriteRect(48, 80)),
     },
   }
 end

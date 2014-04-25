@@ -21,6 +21,68 @@ local function class(parent)
   return c
 end
 
+local function valid_pos(pos, level_size)
+  return pos.x >= 1 and pos.x <= level_size.width
+      and pos.y >= 1 and pos.y <= level_size.height
+end
+
+
+Sprites = class()
+
+function Sprites:init(level)
+  self.level = level
+  self.level_size = level:get_size()
+end
+
+-- The C sprites (actually entities) are referred to as the "backing" for Lua
+-- sprites.  Deal.  They should never be stored except as a temporary local.
+function Sprites:new_backing(sprite)
+  return self.level:new_sprite(sprite)
+end
+
+
+local Sprite = class()
+
+function Sprite:is_a(class)
+  return is_a(self, class)
+end
+
+function Sprite:init(sprites, pos, image)
+  self.sprites = sprites
+  local backing = sprites:new_backing(self)
+  self:set_pos(pos, backing)
+  self:set_image(image, backing)
+end
+
+function Sprite:set_pos(pos, backing)
+  self.pos = pos
+  backing:set_pos(pos)
+
+  return self
+end
+
+function Sprite:set_image(image, backing)
+  self.image = image
+  backing:set_image(image)
+
+  return self
+end
+
+function Sprite:destroy(backing)
+  backing:destroy()
+end
+
+
+local Blast = class(Sprite)
+
+function Blast:init(sprites, pos)
+  Sprite.init(self, pos, IMAGES.BLASTS[1])
+end
+
+function Blast:l3_update(backing, elapsed)
+  -- TODO
+end
+
 
 Entities = class()
 
@@ -31,7 +93,7 @@ function Entities:init(level)
   self.dudes = {}
 end
 
--- The C entities are referred to as the "backing" for Lua entities.  Deal.
+-- Samesies: backing refers to the C entity for Lua entities.  Don't store it.
 function Entities:new_backing(entity)
   local backing = self.level:new_entity(entity)
   return backing:get_id(), backing
@@ -78,13 +140,9 @@ function Entities:remove(entity)
   end
 end
 
-function Entities:valid_pos(pos)
-  return pos.x >= 1 and pos.x <= self.level_size.width
-      and pos.y >= 1 and pos.y <= self.level_size.height
-end
-
 function Entities:walkable(pos)
-  return self:valid_pos(pos) and self.level:get_tile(pos) ~= TILES.WALL
+  return valid_pos(pos, self.level_size)
+      and self.level:get_tile(pos) ~= TILES.WALL
 end
 
 
@@ -255,13 +313,23 @@ function Dude:l3_action(backing, action)
 end
 
 
-local public = {
+local public_sprites = {
+  Blast = Blast,
+}
+
+local public_entities = {
   Crate = Crate,
   Super = Super,
   Dude  = Dude,
 }
 
-for name, constructor in pairs(public) do
+for name, constructor in pairs(public_sprites) do
+  Sprites[name] = function(self, ...)
+    return constructor(self, ...)
+  end
+end
+
+for name, constructor in pairs(public_entities) do
   Entities[name] = function(self, ...)
     return constructor(self, ...)
   end
