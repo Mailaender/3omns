@@ -414,7 +414,10 @@ static int entity_set_life(lua_State *restrict l) {
 
 static int entity_set_image(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
-    b3_image *image = check_image(l, 2);
+    luaL_checkany(l, 2);
+    b3_image *image = NULL;
+    if(!lua_isnil(l, 2))
+        image = check_image(l, 2);
 
     b3_set_entity_image(entity, image);
 

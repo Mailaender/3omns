@@ -1,8 +1,6 @@
 math.randomseed(os.time())
 
 dofile(l3.RESOURCE_PATH .. "/game/defs.lua")
-dofile(l3.RESOURCE_PATH .. "/game/objects.lua")
-dofile(l3.RESOURCE_PATH .. "/game/generate.lua")
 
 
 do
@@ -68,3 +66,7 @@ L3_TILE_IMAGES = {
 }
 L3_BORDER_IMAGE = IMAGES.WALL
 L3_HEART_IMAGES = IMAGES.HEARTS
+
+
+dofile(l3.RESOURCE_PATH .. "/game/objects.lua")
+dofile(l3.RESOURCE_PATH .. "/game/generate.lua")

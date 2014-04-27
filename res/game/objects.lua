@@ -255,6 +255,32 @@ end
 
 Bomn.TIME = 3
 
+Bomn.ANIMATION = {
+  {time = 5.0,  image = IMAGES.BOMNS[5]},
+  {time = 4.75, image = nil},
+  {time = 4.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
+  {time = 4.25, image = nil},
+  {time = 4.0,  image = IMAGES.BOMNS[4]},
+  {time = 3.75, image = nil},
+  {time = 3.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
+  {time = 3.25, image = nil},
+  {time = 3.0,  image = IMAGES.BOMNS[3]},
+  {time = 2.75, image = nil},
+  {time = 2.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
+  {time = 2.25, image = nil},
+  {time = 2.0,  image = IMAGES.BOMNS[2]},
+  {time = 1.75, image = nil},
+  {time = 1.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
+  {time = 1.25, image = nil},
+  {time = 1.0,  image = IMAGES.BOMNS[1]},
+  {time = 0.75, image = nil},
+  {time = 0.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
+  {time = 0.4,  image = nil},
+  {time = 0.3,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
+  {time = 0.2,  image = nil},
+  {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
+}
+
 function Bomn:init(entities, pos)
   Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME])
   self.time = Bomn.TIME
@@ -266,13 +292,22 @@ function Bomn:explode(backing)
 end
 
 function Bomn:l3_update(backing, elapsed)
+  local old_time = self.time
+
   self.time = self.time - elapsed
   if self.time <= 0 then
     self:explode(backing)
     return
   end
 
-  -- TODO: animate.
+  for _, a in ipairs(Bomn.ANIMATION) do
+    if a.time < self.time then break end
+
+    if old_time > a.time and self.time <= a.time then
+      self:set_image(a.image, backing)
+      break
+    end
+  end
 end
 
 
@@ -300,15 +335,21 @@ function Dude:unsuperify(backing)
 end
 
 function Dude:bump(other, backing)
-  if other:is_a(Crate) then
-    other:kill()
-    return self:is_super()
-  elseif other:is_a(Super) then
+  if other:is_a(Super) then
     other:kill()
     self:superify(backing)
     return true
+  elseif other:is_a(Crate) then
+    other:kill()
+    return self:is_super()
+  elseif other:is_a(Bomn) then
+    if other ~= self.bomn then
+      other:kill()
+    end
+    return true
   end
   -- TODO
+  return false
 end
 
 function Dude:move(direction, backing)
@@ -321,9 +362,17 @@ function Dude:move(direction, backing)
   local new_pos = Pos(self.pos.x + dir.x, self.pos.y + dir.y)
   if not self.entities:walkable(new_pos) then return end
 
+  -- This is kind of weird, but because bump() can cause an arbitrary shift in
+  -- entities (e.g. crates being destroyed spawning supers), we need to keep
+  -- looping until it returns false (meaning we're blocked), or either there's
+  -- no entity there or we see the same entity twice in a row (meaning there
+  -- was no shift of entities, and we aren't blocked).
+  local last = nil
+  local other = nil
   repeat
-    local other = self.entities:get_entity(new_pos)
-    if not other then
+    last = other
+    other = self.entities:get_entity(new_pos)
+    if not other or last == other then
       self:set_pos(new_pos)
       break
     end
