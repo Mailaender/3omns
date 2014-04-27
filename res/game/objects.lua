@@ -26,6 +26,18 @@ local function valid_pos(pos, level_size)
       and pos.y >= 1 and pos.y <= level_size.height
 end
 
+-- Time counts down for these objects.  It's more of a "lifetime remaining".
+local function animate(self, backing, time, old_time, animation)
+  for _, a in ipairs(animation) do
+    if a.time < time then break end
+
+    if old_time > a.time and time <= a.time then
+      self:set_image(a.image, backing)
+      break
+    end
+  end
+end
+
 
 local Sprite = class()
 local Blast  = class(Sprite)
@@ -83,19 +95,34 @@ end
 
 Blast.TIME = 1
 
+Blast.ANIMATION = {}
+local blast_frame_duration = Blast.TIME / #IMAGES.BLASTS
+for i, v in ipairs(IMAGES.BLASTS) do
+  Blast.ANIMATION[i] = {
+    time = Blast.TIME - (i - 1) * blast_frame_duration,
+    image = v,
+  }
+end
+
 function Blast:init(level, pos)
   Sprite.init(self, level, pos, IMAGES.BLASTS[1])
   self.time = Blast.TIME
 end
 
+function Blast:animate(backing, old_time)
+  animate(self, backing, self.time, old_time, Blast.ANIMATION)
+end
+
 function Blast:l3_update(backing, elapsed)
+  local old_time = self.time
+
   self.time = self.time - elapsed
   if self.time <= 0 then
     self:destroy(backing)
     return
   end
 
-  -- TODO: animate.
+  self:animate(backing, old_time)
 end
 
 
@@ -286,6 +313,10 @@ function Bomn:init(entities, pos)
   self.time = Bomn.TIME
 end
 
+function Bomn:animate(backing, old_time)
+  animate(self, backing, self.time, old_time, Bomn.ANIMATION)
+end
+
 function Bomn:explode(backing)
   self:kill(backing)
   -- TODO: damage, spawn sprites.
@@ -300,14 +331,7 @@ function Bomn:l3_update(backing, elapsed)
     return
   end
 
-  for _, a in ipairs(Bomn.ANIMATION) do
-    if a.time < self.time then break end
-
-    if old_time > a.time and self.time <= a.time then
-      self:set_image(a.image, backing)
-      break
-    end
-  end
+  self:animate(backing, old_time)
 end
 
 
