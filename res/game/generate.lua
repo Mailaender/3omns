@@ -149,9 +149,9 @@ local function fill_crates(ctx)
     local c
     repeat
       c = ctx.crates[math.random(#ctx.crates)]
-    until not c:carries()
+    until not c:holds()
 
-    c:carry(spawn_super)
+    c:hold(spawn_super)
   end
 end
 

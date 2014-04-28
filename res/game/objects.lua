@@ -282,11 +282,13 @@ function Crate:init(entities, pos)
   self.killed = nil
 end
 
-function Crate:carry(f)
+-- "Hold" in the sense that when the crate is destroyed, the function gets
+-- called, presumably to spawn something else.
+function Crate:hold(f)
   self.killed = f
 end
 
-function Crate:carries()
+function Crate:holds()
   return self.killed
 end
 
