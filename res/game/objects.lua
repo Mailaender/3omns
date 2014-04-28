@@ -53,9 +53,7 @@ local public = {
 }
 
 for name, constructor in pairs(public) do
-  Entities[name] = function(self, ...)
-    return constructor(self, ...)
-  end
+  Entities[name] = constructor
 end
 
 
