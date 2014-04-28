@@ -429,6 +429,15 @@ function Dude:unsuperify(backing)
   self.super_time = 0
 end
 
+function Dude:bumped(other_dude, other_dude_backing)
+  self:set_life(self.life - 1)
+  return false
+end
+
+function Dude:blasted(bomn, bomn_backing)
+  self:set_life(math.max(0, self.life - 5))
+end
+
 function Dude:move(direction, backing)
   local dir
   if     direction == "u" then dir = Pos( 0, -1)
