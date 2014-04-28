@@ -1,5 +1,5 @@
 local MAP_SIZE = Size(30, 30)
-local MAX_SPRITES = MAP_SIZE.width * MAP_SIZE.height
+local MAX_SPRITES = MAP_SIZE.width * MAP_SIZE.height * 2
 local MAX_ENTITIES = MAP_SIZE.width * MAP_SIZE.height + 4
 
 local function generate_spawns(ctx)
