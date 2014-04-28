@@ -107,6 +107,9 @@ static void draw_hearts(
     );
 
     for(int i = 0; i < L3_DUDE_COUNT; i++) {
+        if(i > 0)
+            rect.x += HEART_SIZE * 2;
+
         if(!l3_heart_images[i])
             continue;
 
@@ -121,7 +124,6 @@ static void draw_hearts(
             b3_draw_image(l3_heart_images[i], &rect);
             rect.y -= HEART_SIZE;
         }
-        rect.x += HEART_SIZE * 2;
     }
 }
 
