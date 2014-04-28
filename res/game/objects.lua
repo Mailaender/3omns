@@ -430,12 +430,18 @@ function Dude:unsuperify(backing)
 end
 
 function Dude:bumped(other_dude, other_dude_backing)
-  self:set_life(self.life - 1)
+  if not self:is_super() then
+    self:set_life(self.life - 1)
+  elseif not other_dude:is_super() then
+    other_dude:set_life(other_dude.life - 1, other_dude_backing)
+  end
   return false
 end
 
 function Dude:blasted(bomn, bomn_backing)
-  self:set_life(math.max(0, self.life - 5))
+  if not self:is_super() then
+    self:set_life(math.max(0, self.life - 5))
+  end
 end
 
 function Dude:move(direction, backing)
