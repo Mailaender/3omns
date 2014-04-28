@@ -324,6 +324,59 @@ static int sprite_destroy(lua_State *restrict l) {
     return 0;
 }
 
+// Works on either "sprites" or entities.
+static b3_entity *check_sprentity(lua_State *restrict l, int index) {
+    b3_entity **p_entity = luaL_testudata(l, index, SPRITE_METATABLE);
+    if(p_entity)
+        return *p_entity;
+    p_entity = luaL_testudata(l, index, ENTITY_METATABLE);
+    if(p_entity)
+        return *p_entity;
+
+    const char *message = lua_pushfstring(
+        l,
+        "sprite or entity expected, got %s",
+        luaL_typename(l, index)
+    );
+    luaL_argerror(l, index, message);
+    return NULL;
+}
+
+// Works on either "sprites" or entities.
+static int sprentity_get_pos(lua_State *restrict l) {
+    b3_entity *entity = check_sprentity(l, 1);
+
+    b3_pos pos = b3_get_entity_pos(entity);
+    push_pos(l, &pos);
+    return 1;
+}
+
+// Works on either "sprites" or entities.
+static int sprentity_set_pos(lua_State *restrict l) {
+    b3_entity *entity = check_sprentity(l, 1);
+    struct entity_data *entity_data = b3_get_entity_data(entity);
+    b3_pos pos = check_map_pos(l, 2, entity_data->map);
+
+    b3_set_entity_pos(entity, &pos);
+
+    lua_pushvalue(l, 1);
+    return 1;
+}
+
+// Works on either "sprites" or entities.
+static int sprentity_set_image(lua_State *restrict l) {
+    b3_entity *entity = check_sprentity(l, 1);
+    luaL_checkany(l, 2);
+    b3_image *image = NULL;
+    if(!lua_isnil(l, 2))
+        image = check_image(l, 2);
+
+    b3_set_entity_image(entity, image);
+
+    lua_pushvalue(l, 1);
+    return 1;
+}
+
 static b3_entity *check_entity(lua_State *restrict l, int index) {
     return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
 }
@@ -375,25 +428,6 @@ static int entity_get_id(lua_State *restrict l) {
     return 1;
 }
 
-static int entity_get_pos(lua_State *restrict l) {
-    b3_entity *entity = check_entity(l, 1);
-
-    b3_pos pos = b3_get_entity_pos(entity);
-    push_pos(l, &pos);
-    return 1;
-}
-
-static int entity_set_pos(lua_State *restrict l) {
-    b3_entity *entity = check_entity(l, 1);
-    struct entity_data *entity_data = b3_get_entity_data(entity);
-    b3_pos pos = check_map_pos(l, 2, entity_data->map);
-
-    b3_set_entity_pos(entity, &pos);
-
-    lua_pushvalue(l, 1);
-    return 1;
-}
-
 static int entity_get_life(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
 
@@ -407,19 +441,6 @@ static int entity_set_life(lua_State *restrict l) {
     int life = luaL_checkint(l, 2);
 
     b3_set_entity_life(entity, life);
-
-    lua_pushvalue(l, 1);
-    return 1;
-}
-
-static int entity_set_image(lua_State *restrict l) {
-    b3_entity *entity = check_entity(l, 1);
-    luaL_checkany(l, 2);
-    b3_image *image = NULL;
-    if(!lua_isnil(l, 2))
-        image = check_image(l, 2);
-
-    b3_set_entity_image(entity, image);
 
     lua_pushvalue(l, 1);
     return 1;
@@ -442,18 +463,18 @@ static int open_level(lua_State *restrict l) {
     };
     static const luaL_Reg sprite_methods[] = {
         {"destroy", sprite_destroy},
-        {"get_pos", entity_get_pos},
-        {"set_pos", entity_set_pos},
-        {"set_image", entity_set_image},
+        {"get_pos", sprentity_get_pos},
+        {"set_pos", sprentity_set_pos},
+        {"set_image", sprentity_set_image},
         {NULL, NULL}
     };
     static const luaL_Reg entity_methods[] = {
         {"get_id", entity_get_id},
-        {"get_pos", entity_get_pos},
-        {"set_pos", entity_set_pos},
+        {"get_pos", sprentity_get_pos},
+        {"set_pos", sprentity_set_pos},
         {"get_life", entity_get_life},
         {"set_life", entity_set_life},
-        {"set_image", entity_set_image},
+        {"set_image", sprentity_set_image},
         {NULL, NULL}
     };
 

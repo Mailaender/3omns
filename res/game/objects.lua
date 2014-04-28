@@ -333,7 +333,7 @@ function Bomn:explode(backing)
       local entity = self.entities:get_entity(pos)
       -- TODO: this is obviously wrong, I just need a marker.
       if not entity then
-        self.entities:Super(pos)
+        Blast(self.entities.level, pos)
       elseif not entity:is_a(Super) then
         entity:kill()
         -- TODO: loop here until settled (like when moving), spawn a blast.
