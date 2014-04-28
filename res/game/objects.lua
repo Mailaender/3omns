@@ -21,6 +21,11 @@ local function class(parent)
   return c
 end
 
+-- Returns a value suitable for using a Pos as a key in a table.
+local function pos_key(pos)
+  return string.format("%x,%x", pos.x, pos.y)
+end
+
 -- Time counts down for these objects.  It's more of a "lifetime remaining".
 local function animate(self, backing, time, old_time, animation)
   for _, a in ipairs(animation) do
@@ -157,26 +162,22 @@ function Entities:walkable(pos)
   return self:valid_pos(pos) and self:get_tile(pos) ~= TILES.WALL
 end
 
-local function entities_index_key(pos)
-  return string.format("%x,%x", pos.x, pos.y)
-end
-
 function Entities:get_entity(pos)
   for _, d in pairs(self.dudes) do
     if pos_equal(pos, d.pos) then return d end
   end
 
-  return self.index[entities_index_key(pos)]
+  return self.index[pos_key(pos)]
 end
 
 function Entities:move(entity, old_pos)
   if entity:is_a(Dude) then return end
 
   if old_pos then
-    self.index[entities_index_key(old_pos)] = nil
+    self.index[pos_key(old_pos)] = nil
   end
 
-  local key = entities_index_key(entity.pos)
+  local key = pos_key(entity.pos)
   assert(not self.index[key], "Two entities can't occupy the same space")
   self.index[key] = entity
 end
@@ -185,7 +186,7 @@ function Entities:remove(entity)
   if entity:is_a(Dude) then
     self.dudes[entity.id] = nil
   else
-    self.index[entities_index_key(entity.pos)] = nil
+    self.index[pos_key(entity.pos)] = nil
   end
 end
 
@@ -201,6 +202,7 @@ function Entity:init(entities, pos, life, image)
   self:set_pos(pos, backing)
   self:set_life(life, backing)
   self:set_image(image, backing)
+  self.solid = true -- Whether blasts are stopped by the entity.
 end
 
 function Entity:get_backing()
@@ -263,11 +265,18 @@ function Entity:bumped(dude, dude_backing)
   return false
 end
 
+function Entity:blasted(bomn, bomn_backing)
+  if self.solid then
+    self:kill()
+  end
+end
+
 
 Super.TIME = 10
 
 function Super:init(entities, pos)
   Entity.init(self, entities, pos, 1, IMAGES.SUPER)
+  self.solid = false
 end
 
 function Super:bumped(dude, dude_backing)
@@ -327,9 +336,11 @@ Bomn.ANIMATION = {
   {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
 }
 
-function Bomn:init(entities, pos)
+function Bomn:init(entities, pos, dude)
   Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME])
+  self.solid = false
   self.time = Bomn.TIME
+  self.dude = dude
 end
 
 function Bomn:animate(backing, old_time)
@@ -338,6 +349,9 @@ end
 
 function Bomn:explode(backing)
   self:kill(backing)
+
+  local blasts = {}
+  local to_blast = {}
   circle_contig(self.pos, Bomn.RADIUS, function(edge_pos)
     line(self.pos, edge_pos, function(pos)
       if not self.entities:valid_pos(pos)
@@ -345,21 +359,31 @@ function Bomn:explode(backing)
         return false
       end
 
-      -- TODO: a blasted() function in each entity, returns whether it blocks
-      -- the blast, does damage, etc.
-      local entity = self.entities:get_entity(pos)
-      -- TODO: this is obviously wrong, I just need a marker.
-      if not entity then
-        Blast(self.entities.level, pos)
-      elseif not entity:is_a(Super) then
-        entity:kill()
-        -- TODO: loop here until settled (like when moving), spawn a blast.
+      local key = pos_key(pos)
+      if not blasts[key] then
+        blasts[key] = pos
+      end
+
+      local other = self.entities:get_entity(pos)
+      if other and other.solid then
+        if not to_blast[key] then
+          to_blast[key] = other
+        end
+
         return false
       end
 
       return not pos_equal(pos, edge_pos)
     end)
   end)
+
+  for _, e in pairs(to_blast) do
+    e:blasted(self, backing)
+  end
+
+  for _, p in pairs(blasts) do
+    Blast(self.entities.level, p)
+  end
 end
 
 function Bomn:bumped(dude, dude_backing)
@@ -434,7 +458,7 @@ end
 
 function Dude:fire()
   if not self.bomn then
-    self.bomn = self.entities:Bomn(self.pos)
+    self.bomn = self.entities:Bomn(self.pos, self)
   end
 end
 
