@@ -259,11 +259,21 @@ function Entity:kill(backing)
   self:set_life(0, backing)
 end
 
+function Entity:bumped(dude, dude_backing)
+  return false
+end
+
 
 Super.TIME = 10
 
 function Super:init(entities, pos)
   Entity.init(self, entities, pos, 1, IMAGES.SUPER)
+end
+
+function Super:bumped(dude, dude_backing)
+  self:kill()
+  dude:superify(dude_backing)
+  return true
 end
 
 
@@ -278,6 +288,11 @@ end
 
 function Crate:carries()
   return self.killed
+end
+
+function Crate:bumped(dude, dude_backing)
+  self:kill()
+  return dude:is_super()
 end
 
 
@@ -345,6 +360,13 @@ function Bomn:explode(backing)
   end)
 end
 
+function Bomn:bumped(dude, dude_backing)
+  if self ~= dude.bomn then
+    self:kill()
+  end
+  return true
+end
+
 function Bomn:l3_update(backing, elapsed)
   local old_time = self.time
 
@@ -381,26 +403,6 @@ function Dude:unsuperify(backing)
   self.super_time = 0
 end
 
-function Dude:bump(other, backing)
-  -- TODO: split this up into a bumped() function for each entity, return
-  -- whether to block the movement.
-  if other:is_a(Super) then
-    other:kill()
-    self:superify(backing)
-    return true
-  elseif other:is_a(Crate) then
-    other:kill()
-    return self:is_super()
-  elseif other:is_a(Bomn) then
-    if other ~= self.bomn then
-      other:kill()
-    end
-    return true
-  end
-  -- TODO
-  return false
-end
-
 function Dude:move(direction, backing)
   local dir
   if     direction == "u" then dir = Pos( 0, -1)
@@ -411,7 +413,7 @@ function Dude:move(direction, backing)
   local new_pos = Pos(self.pos.x + dir.x, self.pos.y + dir.y)
   if not self.entities:walkable(new_pos) then return end
 
-  -- This is kind of weird, but because bump() can cause an arbitrary shift in
+  -- This is kind of weird, but because bumping can cause an arbitrary shift in
   -- entities (e.g. crates being destroyed spawning supers), we need to keep
   -- looping until it returns false (meaning we're blocked), or either there's
   -- no entity there or we see the same entity twice in a row (meaning there
@@ -425,7 +427,7 @@ function Dude:move(direction, backing)
       self:set_pos(new_pos)
       break
     end
-  until not self:bump(other, backing)
+  until not other:bumped(self, backing)
 end
 
 function Dude:fire()
