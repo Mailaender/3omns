@@ -21,11 +21,6 @@ local function class(parent)
   return c
 end
 
-local function valid_pos(pos, level_size)
-  return pos.x >= 1 and pos.x <= level_size.width
-      and pos.y >= 1 and pos.y <= level_size.height
-end
-
 -- Time counts down for these objects.  It's more of a "lifetime remaining".
 local function animate(self, backing, time, old_time, animation)
   for _, a in ipairs(animation) do
@@ -151,6 +146,19 @@ function Entities:set_dude(dude)
   self.dudes[dude.id] = dude
 end
 
+function Entities:get_tile(pos)
+  return self.level:get_tile(pos)
+end
+
+function Entities:valid_pos(pos)
+  return pos.x >= 1 and pos.x <= self.level_size.width
+      and pos.y >= 1 and pos.y <= self.level_size.height
+end
+
+function Entities:walkable(pos)
+  return self:valid_pos(pos) and self:get_tile(pos) ~= TILES.WALL
+end
+
 local function entities_index_key(pos)
   return string.format("%x,%x", pos.x, pos.y)
 end
@@ -181,11 +189,6 @@ function Entities:remove(entity)
   else
     self.index[entities_index_key(entity.pos)] = nil
   end
-end
-
-function Entities:walkable(pos)
-  return valid_pos(pos, self.level_size)
-      and self.level:get_tile(pos) ~= TILES.WALL
 end
 
 
@@ -281,6 +284,7 @@ end
 
 
 Bomn.TIME = 3
+Bomn.RADIUS = 8
 
 Bomn.ANIMATION = {
   {time = 5.0,  image = IMAGES.BOMNS[5]},
@@ -319,7 +323,28 @@ end
 
 function Bomn:explode(backing)
   self:kill(backing)
-  -- TODO: damage, spawn sprites.
+  circle_contig(self.pos, Bomn.RADIUS, function(edge_pos)
+    line(self.pos, edge_pos, function(pos)
+      if not self.entities:valid_pos(pos)
+          or self.entities:get_tile(pos) == TILES.WALL then
+        return false
+      end
+
+      -- TODO: a blasted() function in each entity, returns whether it blocks
+      -- the blast, does damage, etc.
+      local entity = self.entities:get_entity(pos)
+      -- TODO: this is obviously wrong, I just need a marker.
+      if not entity then
+        self.entities:Super(pos)
+      elseif not entity:is_a(Super) then
+        entity:kill()
+        -- TODO: loop here until settled (like when moving), spawn a blast.
+        return false
+      end
+
+      return not pos_equal(pos, edge_pos)
+    end)
+  end)
 end
 
 function Bomn:l3_update(backing, elapsed)
@@ -359,6 +384,8 @@ function Dude:unsuperify(backing)
 end
 
 function Dude:bump(other, backing)
+  -- TODO: split this up into a bumped() function for each entity, return
+  -- whether to block the movement.
   if other:is_a(Super) then
     other:kill()
     self:superify(backing)

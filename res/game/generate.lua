@@ -83,31 +83,6 @@ local function valid(pos)
       and pos.y >= 1 and pos.y <= MAP_SIZE.height
 end
 
--- Stolen from the !w Bresenham's line algorithm page.
-local function line_to_edge(a, b, callback)
-  local dx = math.abs(b.x - a.x)
-  local dy = math.abs(b.y - a.y)
-  local sx = a.x < b.x and 1 or -1
-  local sy = a.y < b.y and 1 or -1
-  local err = dx - dy
-
-  local x = a.x
-  local y = a.y
-  while valid(Pos(x, y)) do
-    callback(Pos(x, y))
-
-    local e2 = err * 2
-    if e2 > -dy then
-      err = err - dy
-      x = x + sx
-    end
-    if e2 < dx then
-      err = err + dx
-      y = y + sy
-    end
-  end
-end
-
 local function empty(ctx, pos)
   return ctx.level:get_tile(pos) ~= TILES.WALL
       and not ctx.entities:get_entity(pos)
@@ -116,6 +91,8 @@ end
 local function spawn_crates(ctx)
   local direction
   local function crates(pos)
+    if not valid(pos) then return false end
+
     local start = Pos(
       pos.x + direction.x * math.random(-2, -1),
       pos.y + direction.y * math.random(-2, -1)
@@ -127,6 +104,8 @@ local function spawn_crates(ctx)
         ctx.crates[#ctx.crates + 1] = ctx.entities:Crate(p)
       end
     end
+
+    return true
   end
 
   local center = Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2)
@@ -137,28 +116,28 @@ local function spawn_crates(ctx)
     math.floor((ctx.spawns[1].y + ctx.spawns[3].y) / 2 + 0.5)
   )
   direction = Pos(0, 1)
-  line_to_edge(center, bisect, crates)
+  line(center, bisect, crates)
 
   bisect = Pos(
     math.floor((ctx.spawns[2].x + ctx.spawns[4].x) / 2 + 0.5),
     math.floor((ctx.spawns[2].y + ctx.spawns[4].y) / 2 + 0.5)
   )
   direction = Pos(0, 1)
-  line_to_edge(center, bisect, crates)
+  line(center, bisect, crates)
 
   bisect = Pos(
     math.floor((ctx.spawns[2].x + ctx.spawns[3].x) / 2 + 0.5),
     math.floor((ctx.spawns[2].y + ctx.spawns[3].y) / 2 + 0.5)
   )
   direction = Pos(1, 0)
-  line_to_edge(center, bisect, crates)
+  line(center, bisect, crates)
 
   bisect = Pos(
     math.floor((ctx.spawns[1].x + ctx.spawns[4].x) / 2 + 0.5),
     math.floor((ctx.spawns[1].y + ctx.spawns[4].y) / 2 + 0.5)
   )
   direction = Pos(1, 0)
-  line_to_edge(center, bisect, crates)
+  line(center, bisect, crates)
 end
 
 local function fill_crates(ctx)
