@@ -88,18 +88,26 @@ local function empty(ctx, pos)
       and not ctx.entities:get_entity(pos)
 end
 
+local function bisect(a, b)
+  -- Rounded up or down at random.
+  return Pos(
+    math.floor((a.x + b.x) / 2 + 0.5 * math.random(0, 1)),
+    math.floor((a.y + b.y) / 2 + 0.5 * math.random(0, 1))
+  )
+end
+
 local function spawn_crates(ctx)
-  local direction
+  local span_dir
   local function crates(pos)
     if not valid(pos) then return false end
 
     local start = Pos(
-      pos.x + direction.x * math.random(-2, -1),
-      pos.y + direction.y * math.random(-2, -1)
+      pos.x + span_dir.x * math.random(-2, -1),
+      pos.y + span_dir.y * math.random(-2, -1)
     )
 
-    for i = 1, 4 do
-      local p = Pos(start.x + direction.x * i, start.y + direction.y * i)
+    for i = 0, 3 do
+      local p = Pos(start.x + span_dir.x * i, start.y + span_dir.y * i)
       if valid(p) and empty(ctx, p) then
         ctx.crates[#ctx.crates + 1] = ctx.entities:Crate(p)
       end
@@ -109,35 +117,23 @@ local function spawn_crates(ctx)
   end
 
   local center = Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2)
-  local bisect
+  local bisection
 
-  bisect = Pos(
-    math.floor((ctx.spawns[1].x + ctx.spawns[3].x) / 2 + 0.5),
-    math.floor((ctx.spawns[1].y + ctx.spawns[3].y) / 2 + 0.5)
-  )
-  direction = Pos(0, 1)
-  line(center, bisect, crates)
+  bisection = bisect(ctx.spawns[1], ctx.spawns[3])
+  span_dir = Pos(0, 1)
+  line(center, bisection, crates)
 
-  bisect = Pos(
-    math.floor((ctx.spawns[2].x + ctx.spawns[4].x) / 2 + 0.5),
-    math.floor((ctx.spawns[2].y + ctx.spawns[4].y) / 2 + 0.5)
-  )
-  direction = Pos(0, 1)
-  line(center, bisect, crates)
+  bisection = bisect(ctx.spawns[2], ctx.spawns[4])
+  span_dir = Pos(0, 1)
+  line(center, bisection, crates)
 
-  bisect = Pos(
-    math.floor((ctx.spawns[2].x + ctx.spawns[3].x) / 2 + 0.5),
-    math.floor((ctx.spawns[2].y + ctx.spawns[3].y) / 2 + 0.5)
-  )
-  direction = Pos(1, 0)
-  line(center, bisect, crates)
+  bisection = bisect(ctx.spawns[2], ctx.spawns[3])
+  span_dir = Pos(1, 0)
+  line(center, bisection, crates)
 
-  bisect = Pos(
-    math.floor((ctx.spawns[1].x + ctx.spawns[4].x) / 2 + 0.5),
-    math.floor((ctx.spawns[1].y + ctx.spawns[4].y) / 2 + 0.5)
-  )
-  direction = Pos(1, 0)
-  line(center, bisect, crates)
+  bisection = bisect(ctx.spawns[1], ctx.spawns[4])
+  span_dir = Pos(1, 0)
+  line(center, bisection, crates)
 end
 
 local function fill_crates(ctx)
