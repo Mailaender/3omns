@@ -33,6 +33,7 @@ local function animate(self, backing, time, old_time, animation)
 
     if old_time > a.time and time <= a.time then
       self:set_image(a.image, backing)
+      self:set_z_order(a.z_order, backing)
       break
     end
   end
@@ -66,10 +67,11 @@ function Sprite:is_a(class)
   return is_a(self, class)
 end
 
-function Sprite:init(level, pos, image)
+function Sprite:init(level, pos, image, z_order)
   local backing = level:new_sprite(self)
   self:set_pos(pos, backing)
   self:set_image(image, backing)
+  self:set_z_order(z_order, backing)
 end
 
 function Sprite:set_pos(pos, backing)
@@ -82,6 +84,13 @@ end
 function Sprite:set_image(image, backing)
   self.image = image
   backing:set_image(image)
+
+  return self
+end
+
+function Sprite:set_z_order(z_order, backing)
+  self.z_order = z_order
+  backing:set_z_order(z_order)
 
   return self
 end
@@ -99,11 +108,12 @@ for i, v in ipairs(IMAGES.BLASTS) do
   Blast.ANIMATION[i] = {
     time = Blast.TIME - (i - 1) * blast_frame_duration,
     image = v,
+    z_order = #IMAGES.BLASTS - i,
   }
 end
 
 function Blast:init(level, pos)
-  Sprite.init(self, level, pos, IMAGES.BLASTS[1])
+  Sprite.init(self, level, pos, IMAGES.BLASTS[1], #IMAGES.BLASTS - 1)
   self.time = Blast.TIME
 end
 
@@ -195,13 +205,14 @@ function Entity:is_a(class)
   return is_a(self, class)
 end
 
-function Entity:init(entities, pos, life, image)
+function Entity:init(entities, pos, life, image, z_order)
   self.entities = entities
   local backing
   self.id, backing = entities:new_backing(self)
   self:set_pos(pos, backing)
   self:set_life(life, backing)
   self:set_image(image, backing)
+  self:set_z_order(z_order, backing)
   self.solid = true -- Whether blasts are stopped by the entity.
 end
 
@@ -257,6 +268,17 @@ function Entity:set_image(image, backing)
   return self
 end
 
+function Entity:set_z_order(z_order, backing)
+  backing = backing or self:get_backing()
+
+  if z_order ~= self.z_order then
+    self.z_order = z_order
+    backing:set_z_order(z_order)
+  end
+
+  return self
+end
+
 function Entity:kill(backing)
   self:set_life(0, backing)
 end
@@ -275,7 +297,7 @@ end
 Super.TIME = 10
 
 function Super:init(entities, pos)
-  Entity.init(self, entities, pos, 1, IMAGES.SUPER)
+  Entity.init(self, entities, pos, 1, IMAGES.SUPER, 0)
   self.solid = false
 end
 
@@ -287,7 +309,7 @@ end
 
 
 function Crate:init(entities, pos)
-  Entity.init(self, entities, pos, 1, IMAGES.CRATE)
+  Entity.init(self, entities, pos, 1, IMAGES.CRATE, 0)
   self.killed = nil
 end
 
@@ -311,33 +333,33 @@ Bomn.TIME = 3
 Bomn.RADIUS = 8
 
 Bomn.ANIMATION = {
-  {time = 5.0,  image = IMAGES.BOMNS[5]},
-  {time = 4.75, image = nil},
-  {time = 4.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
-  {time = 4.25, image = nil},
-  {time = 4.0,  image = IMAGES.BOMNS[4]},
-  {time = 3.75, image = nil},
-  {time = 3.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
-  {time = 3.25, image = nil},
-  {time = 3.0,  image = IMAGES.BOMNS[3]},
-  {time = 2.75, image = nil},
-  {time = 2.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
-  {time = 2.25, image = nil},
-  {time = 2.0,  image = IMAGES.BOMNS[2]},
-  {time = 1.75, image = nil},
-  {time = 1.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
-  {time = 1.25, image = nil},
-  {time = 1.0,  image = IMAGES.BOMNS[1]},
-  {time = 0.75, image = nil},
-  {time = 0.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
-  {time = 0.4,  image = nil},
-  {time = 0.3,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
-  {time = 0.2,  image = nil},
-  {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS]},
+  {time = 5.0,  image = IMAGES.BOMNS[5],             z_order = 2},
+  {time = 4.75, image = nil,                         z_order = 2},
+  {time = 4.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+  {time = 4.25, image = nil,                         z_order = 2},
+  {time = 4.0,  image = IMAGES.BOMNS[4],             z_order = 2},
+  {time = 3.75, image = nil,                         z_order = 2},
+  {time = 3.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+  {time = 3.25, image = nil,                         z_order = 2},
+  {time = 3.0,  image = IMAGES.BOMNS[3],             z_order = 2},
+  {time = 2.75, image = nil,                         z_order = 2},
+  {time = 2.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+  {time = 2.25, image = nil,                         z_order = 2},
+  {time = 2.0,  image = IMAGES.BOMNS[2],             z_order = 2},
+  {time = 1.75, image = nil,                         z_order = 2},
+  {time = 1.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+  {time = 1.25, image = nil,                         z_order = 2},
+  {time = 1.0,  image = IMAGES.BOMNS[1],             z_order = 2},
+  {time = 0.75, image = nil,                         z_order = 2},
+  {time = 0.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+  {time = 0.4,  image = nil,                         z_order = 2},
+  {time = 0.3,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+  {time = 0.2,  image = nil,                         z_order = 2},
+  {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
 }
 
 function Bomn:init(entities, pos, dude)
-  Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME])
+  Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME], 2)
   self.solid = false
   self.time = Bomn.TIME
   self.dude = dude
@@ -407,7 +429,7 @@ end
 
 
 function Dude:init(entities, pos, player)
-  Entity.init(self, entities, pos, 10, IMAGES.DUDES[player])
+  Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
   self.player = player
   self.super_time = 0
   self.bomn = nil

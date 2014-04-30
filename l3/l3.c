@@ -377,6 +377,17 @@ static int sprentity_set_image(lua_State *restrict l) {
     return 1;
 }
 
+// Works on either "sprites" or entities.
+static int sprentity_set_z_order(lua_State *restrict l) {
+    b3_entity *entity = check_sprentity(l, 1);
+    int z_order = luaL_checkint(l, 2);
+
+    b3_set_entity_z_order(entity, z_order);
+
+    lua_pushvalue(l, 1);
+    return 1;
+}
+
 static b3_entity *check_entity(lua_State *restrict l, int index) {
     return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
 }
@@ -466,6 +477,7 @@ static int open_level(lua_State *restrict l) {
         {"get_pos", sprentity_get_pos},
         {"set_pos", sprentity_set_pos},
         {"set_image", sprentity_set_image},
+        {"set_z_order", sprentity_set_z_order},
         {NULL, NULL}
     };
     static const luaL_Reg entity_methods[] = {
@@ -475,6 +487,7 @@ static int open_level(lua_State *restrict l) {
         {"get_life", entity_get_life},
         {"set_life", entity_set_life},
         {"set_image", sprentity_set_image},
+        {"set_z_order", sprentity_set_z_order},
         {NULL, NULL}
     };
 

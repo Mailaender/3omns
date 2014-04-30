@@ -249,6 +249,7 @@ b3_entity *b3_set_entity_z_order(b3_entity *restrict entity, int z_order) {
     if(z_order != entity->z_order) {
         z_list_remove(entity->pool, entity);
         entity->z_order = z_order;
+        // TODO: batch the insert across multiple entities, maybe when drawing.
         z_list_insert(entity->pool, entity);
     }
     return entity;
