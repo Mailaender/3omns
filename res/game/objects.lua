@@ -392,7 +392,7 @@ function Bomn:explode(backing)
           to_blast[key] = other
         end
 
-        return false
+        return pos_equal(pos, self.pos)
       end
 
       return not pos_equal(pos, edge_pos)
