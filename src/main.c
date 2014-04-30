@@ -155,8 +155,9 @@ static void loop(l3_level *restrict level) {
 
             b3_draw_map(level->map, l3_tile_images, &game_rect);
             draw_border(&map_size, &tile_size);
-            b3_draw_entities(level->sprites, &game_rect);
             b3_draw_entities(level->entities, &game_rect);
+            // For now, "sprites" are always on top of the main entities.
+            b3_draw_entities(level->sprites, &game_rect);
             draw_hearts(level, &tile_size);
 
             if(paused)

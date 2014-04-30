@@ -660,9 +660,6 @@ l3_level l3_generate(void) {
     return copy;
 }
 
-// TODO: separate sprite object that gets updated (and only locally), but can't
-// act or be acted on.
-
 // TODO: separate AI/Agent object that has a thread/run coroutine that gets
 // resumed 10 or so times per second, that controls a particular entity.
 
