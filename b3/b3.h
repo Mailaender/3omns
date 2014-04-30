@@ -260,6 +260,8 @@ b3_entity *b3_set_entity_image(
     b3_entity *restrict entity,
     b3_image *restrict image
 );
+int b3_get_entity_z_order(b3_entity *restrict entity);
+b3_entity *b3_set_entity_z_order(b3_entity *restrict entity, int z_order);
 void *b3_get_entity_data(b3_entity *restrict entity);
 b3_entity *b3_set_entity_data(b3_entity *restrict entity, void *entity_data);
 

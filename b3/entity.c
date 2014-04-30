@@ -18,6 +18,9 @@ struct b3_entity {
     int life; // Sync'd with server.
 
     b3_image *image;
+    int z_order;
+    b3_entity *z_prev;
+    b3_entity *z_next;
 
     void *data;
     b3_free_entity_data_callback free_data_callback;
@@ -39,16 +42,14 @@ struct b3_entity_pool {
     int inactive_count;
     b3_entity **inactive;
 
+    b3_entity *z_first;
+    b3_entity *z_last;
+
     b3_entity entities[];
 };
 
 #define SIZEOF_ENTITY_POOL(pool, size) \
         (sizeof(*(pool)) + (size) * sizeof((pool)->entities[0]))
-
-struct draw_entity_data {
-    b3_size tile_size;
-    b3_pos origin;
-};
 
 
 b3_entity_pool *b3_new_entity_pool(int size, b3_map *restrict map) {
@@ -75,6 +76,54 @@ static void free_entity_data(b3_entity *restrict entity) {
     entity->data = NULL;
 }
 
+static void z_list_insert(
+    b3_entity_pool *restrict pool,
+    b3_entity *restrict entity
+) {
+    if(!pool->z_first) {
+        pool->z_first = entity;
+        pool->z_last = entity;
+        return;
+    }
+
+    for(b3_entity *restrict e = pool->z_first; e; e = e->z_next) {
+        if(entity->z_order <= e->z_order) {
+            entity->z_prev = e->z_prev;
+            entity->z_next = e;
+
+            if(e->z_prev)
+                e->z_prev->z_next = entity;
+            else
+                pool->z_first = entity;
+
+            e->z_prev = entity;
+            return;
+        }
+    }
+
+    entity->z_prev = pool->z_last;
+    pool->z_last->z_next = entity;
+    pool->z_last = entity;
+}
+
+static void z_list_remove(
+    b3_entity_pool *restrict pool,
+    b3_entity *restrict entity
+) {
+    if(entity->z_next)
+        entity->z_next->z_prev = entity->z_prev;
+    else
+        pool->z_last = entity->z_prev;
+
+    if(entity->z_prev)
+        entity->z_prev->z_next = entity->z_next;
+    else
+        pool->z_first = entity->z_next;
+
+    entity->z_next = NULL;
+    entity->z_prev = NULL;
+}
+
 static b3_entity_pool *deactivate_entity(b3_entity *restrict entity) {
     if(!entity || !entity->id)
         return NULL;
@@ -83,7 +132,10 @@ static b3_entity_pool *deactivate_entity(b3_entity *restrict entity) {
     b3_free_image(entity->image);
 
     b3_entity_pool *pool = entity->pool;
+
+    z_list_remove(pool, entity);
     memset(entity, 0, sizeof(*entity));
+
     return pool;
 }
 
@@ -110,6 +162,7 @@ b3_entity *b3_claim_entity(
     entity->id = ++(pool->id_generator);
     entity->free_data_callback = free_data_callback;
     pool->index[pool->count++] = (struct index_entry){entity->id, entity};
+    z_list_insert(pool, entity);
     return entity;
 }
 
@@ -146,7 +199,7 @@ void b3_release_entity(b3_entity *restrict entity) {
     memmove(
         entry,
         entry + 1,
-        (--(pool->count) - index) * sizeof(struct index_entry)
+        (--(pool->count) - index) * sizeof(*entry)
     );
 }
 
@@ -191,6 +244,19 @@ b3_entity *b3_set_entity_image(
     return entity;
 }
 
+int b3_get_entity_z_order(b3_entity *restrict entity) {
+    return entity->z_order;
+}
+
+b3_entity *b3_set_entity_z_order(b3_entity *restrict entity, int z_order) {
+    if(z_order != entity->z_order) {
+        z_list_remove(entity->pool, entity);
+        entity->z_order = z_order;
+        z_list_insert(entity->pool, entity);
+    }
+    return entity;
+}
+
 void *b3_get_entity_data(b3_entity *restrict entity) {
     return entity->data;
 }
@@ -215,25 +281,20 @@ void b3_for_each_entity(
     }
 }
 
-static void draw_entity(b3_entity *restrict entity, void *callback_data) {
-    const struct draw_entity_data *restrict draw_data = callback_data;
-
-    if(entity->image) {
-        b3_draw_image(entity->image, &B3_RECT(
-            draw_data->origin.x + entity->pos.x * draw_data->tile_size.width,
-            draw_data->origin.y + entity->pos.y * draw_data->tile_size.height,
-            draw_data->tile_size.width,
-            draw_data->tile_size.height
-        ));
-    }
-}
-
 void b3_draw_entities(
     b3_entity_pool *restrict pool,
     const b3_rect *restrict rect
 ) {
-    b3_for_each_entity(pool, draw_entity, &(struct draw_entity_data){
-        b3_get_map_tile_size(&pool->map_size, &rect->size),
-        rect->pos,
-    });
+    b3_size tile_size = b3_get_map_tile_size(&pool->map_size, &rect->size);
+
+    for(b3_entity *restrict e = pool->z_first; e; e = e->z_next) {
+        if(e->image) {
+            b3_draw_image(e->image, &B3_RECT(
+                rect->pos.x + e->pos.x * tile_size.width,
+                rect->pos.y + e->pos.y * tile_size.height,
+                tile_size.width,
+                tile_size.height
+            ));
+        }
+    }
 }
