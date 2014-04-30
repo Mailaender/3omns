@@ -43,7 +43,6 @@ struct b3_entity_pool {
     b3_entity **inactive;
 
     b3_entity *z_first;
-    b3_entity *z_last;
 
     b3_entity entities[];
 };
@@ -82,11 +81,10 @@ static void z_list_insert(
 ) {
     if(!pool->z_first) {
         pool->z_first = entity;
-        pool->z_last = entity;
         return;
     }
 
-    for(b3_entity *restrict e = pool->z_first; e; e = e->z_next) {
+    for(b3_entity *restrict e = pool->z_first; ; e = e->z_next) {
         if(entity->z_order <= e->z_order) {
             entity->z_prev = e->z_prev;
             entity->z_next = e;
@@ -99,11 +97,12 @@ static void z_list_insert(
             e->z_prev = entity;
             return;
         }
+        else if(!e->z_next) {
+            entity->z_prev = e;
+            e->z_next = entity;
+            return;
+        }
     }
-
-    entity->z_prev = pool->z_last;
-    pool->z_last->z_next = entity;
-    pool->z_last = entity;
 }
 
 static void z_list_remove(
@@ -112,8 +111,6 @@ static void z_list_remove(
 ) {
     if(entity->z_next)
         entity->z_next->z_prev = entity->z_prev;
-    else
-        pool->z_last = entity->z_prev;
 
     if(entity->z_prev)
         entity->z_prev->z_next = entity->z_next;
@@ -287,7 +284,7 @@ void b3_draw_entities(
 ) {
     b3_size tile_size = b3_get_map_tile_size(&pool->map_size, &rect->size);
 
-    for(b3_entity *restrict e = pool->z_first; e; e = e->z_next) {
+    for(b3_entity *e = pool->z_first; e; e = e->z_next) {
         if(e->image) {
             b3_draw_image(e->image, &B3_RECT(
                 rect->pos.x + e->pos.x * tile_size.width,
