@@ -16,6 +16,9 @@ struct b3_entity {
     b3_entity_id id; // Sync'd with server?
     b3_pos pos; // Sync'd with server.
     int life; // Sync'd with server.
+    // TODO: a way for Lua to sync state with server -- something like a
+    // generic "property changed" where you send a string name and its numeric
+    // value.  That way Lua-only things like super-status can get propagated.
 
     b3_image *image;
     int z_order;
