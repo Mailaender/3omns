@@ -437,6 +437,7 @@ Dude.BUMP_DAMAGE = 1
 Dude.BLAST_DAMAGE = 5
 
 function Dude:init(entities, pos, player)
+  -- TODO: teams?
   Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
   self.player = player
   self.super_time = 0
@@ -502,6 +503,8 @@ function Dude:move(direction, backing)
 end
 
 function Dude:fire()
+  -- TODO: when super, fire should trigger a blast immediately, allowable every
+  -- one second.
   if not self.bomn then
     self.bomn = self.entities:Bomn(self.pos, self)
   end
