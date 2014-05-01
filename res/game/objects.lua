@@ -283,6 +283,11 @@ function Entity:kill(backing)
   self:set_life(0, backing)
 end
 
+function Entity:hurt(damage, backing)
+  -- TODO: keep track of who's doing the hurting.
+  self:set_life(math.max(0, self.life - damage), backing)
+end
+
 function Entity:bumped(dude, dude_backing)
   return false
 end
@@ -428,6 +433,9 @@ function Bomn:l3_update(backing, elapsed)
 end
 
 
+Dude.BUMP_DAMAGE = 1
+Dude.BLAST_DAMAGE = 5
+
 function Dude:init(entities, pos, player)
   Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
   self.player = player
@@ -453,16 +461,16 @@ end
 
 function Dude:bumped(other_dude, other_dude_backing)
   if not self:is_super() then
-    self:set_life(self.life - 1)
+    self:hurt(Dude.BUMP_DAMAGE)
   elseif not other_dude:is_super() then
-    other_dude:set_life(other_dude.life - 1, other_dude_backing)
+    other_dude:hurt(Dude.BUMP_DAMAGE, other_dude_backing)
   end
   return false
 end
 
 function Dude:blasted(bomn, bomn_backing)
   if not self:is_super() then
-    self:set_life(math.max(0, self.life - 5))
+    self:hurt(Dude.BLAST_DAMAGE)
   end
 end
 
