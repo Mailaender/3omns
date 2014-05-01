@@ -1,3 +1,9 @@
+function debug_print(string)
+  if l3.DEBUG then
+    print(string)
+  end
+end
+
 function Pos(x, y)
   return {x = x, y = y}
 end

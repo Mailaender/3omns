@@ -1,7 +1,9 @@
-math.randomseed(os.time())
-
 dofile(l3.RESOURCE_PATH .. "/game/defs.lua")
 
+
+local seed = os.time()
+math.randomseed(seed)
+debug_print("Seed: " .. seed)
 
 do
   local sprites = l3.image.load(l3.RESOURCE_PATH .. "/gfx/sprites.png")

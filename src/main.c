@@ -2,6 +2,7 @@
 #include "l3/l3.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 
 #define _ // TODO: gettext i18n.
@@ -18,18 +19,45 @@
 
 #define HEART_SIZE 16
 
+struct debug_stats {
+    b3_ticks reset_time;
+    int loops;
+    int updates;
+    int renders;
+    int skips;
+    b3_text *text[4];
+    b3_rect text_rect[4];
+};
+
 
 static const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
 static const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
 static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
+static b3_size tile_size = {0, 0};
+
+static _Bool debug = 0;
+
 static _Bool paused = 0;
+
+static b3_font *debug_stats_font = NULL;
 
 static b3_text *paused_text = NULL;
 static b3_rect paused_text_rect = B3_RECT_INIT(0, 0, 0, 0);
 
 
+static void parse_args(int argc, char *restrict argv[]) {
+    for(int i = 1; i < argc; i++) {
+        if(!strcmp(argv[i], "--debug"))
+            debug = 1;
+        else
+            b3_fatal("Invalid argument: %s", argv[i]);
+    }
+}
+
 static void load_resources(void) {
+    debug_stats_font = b3_load_font(12, FONT_FILENAME, 0);
+
     b3_font *paused_font = b3_load_font(64, FONT_FILENAME, 0);
 
     paused_text = b3_new_text(paused_font, "%s", _("P A U S E D"));
@@ -46,6 +74,8 @@ static void load_resources(void) {
 }
 
 static void free_resources(void) {
+    b3_free_font(debug_stats_font);
+    debug_stats_font = NULL;
     b3_free_text(paused_text);
     paused_text = NULL;
 }
@@ -69,38 +99,32 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     }
 }
 
-static void draw_border(
-    const b3_size *restrict map_size,
-    const b3_size *restrict tile_size
-) {
+static void draw_border(const b3_size *restrict map_size) {
     if(!l3_border_image)
         return;
 
     b3_rect rect = B3_RECT_INIT(
         game_size.width,
         0,
-        tile_size->width,
-        tile_size->height
+        tile_size.width,
+        tile_size.height
     );
     for(int i = 0; i < map_size->height; i++) {
         b3_draw_image(l3_border_image, &rect);
-        rect.y += tile_size->height;
+        rect.y += tile_size.height;
     }
 }
 
-static void draw_hearts(
-    l3_level *restrict level,
-    const b3_size *restrict tile_size
-) {
+static void draw_hearts(l3_level *restrict level) {
     int columns = L3_DUDE_COUNT * 2 - 1;
     int padding = (
         window_size.width
                 - game_size.width
-                - tile_size->width // For border.
+                - tile_size.width // For border.
                 - columns * HEART_SIZE
     ) / 2;
     b3_rect rect = B3_RECT_INIT(
-        game_size.width + tile_size->width + padding,
+        game_size.width + tile_size.width + padding,
         0,
         HEART_SIZE,
         HEART_SIZE
@@ -127,14 +151,65 @@ static void draw_hearts(
     }
 }
 
+static void draw_debug_stats(struct debug_stats *restrict stats) {
+    if(!debug)
+        return;
+
+    for(int i = 0; i < 4; i++) {
+        if(stats->text[i])
+            b3_draw_text(stats->text[i], &stats->text_rect[i]);
+    }
+}
+
+static void update_debug_stats(
+    struct debug_stats *restrict stats,
+    b3_ticks elapsed
+) {
+    stats->reset_time -= elapsed;
+    if(stats->reset_time > 0)
+        return;
+
+    stats->reset_time = b3_tick_frequency;
+
+    for(int i = 0; i < 4; i++)
+        b3_free_text(stats->text[i]);
+
+    stats->text[0] = b3_new_text(debug_stats_font, "FPS: %d", stats->loops);
+    stats->text[1] = b3_new_text(debug_stats_font, "Ticks: %d", stats->updates);
+    stats->text[2] = b3_new_text(debug_stats_font, "Draws: %d", stats->renders);
+    stats->text[3] = b3_new_text(debug_stats_font, "SKIPS: %d", stats->skips);
+
+    for(int i = 0; i < 4; i++)
+        b3_set_text_color(stats->text[i], 0xbbffffff);
+
+    int y = 0;
+    for(int i = 0; i < 4; i++) {
+        b3_size text_size = b3_get_text_size(stats->text[i]);
+        stats->text_rect[i] = B3_RECT(
+            game_size.width + tile_size.width,
+            y,
+            text_size.width,
+            text_size.height
+        );
+        y += text_size.height;
+    }
+
+    stats->loops = 0;
+    stats->updates = 0;
+    stats->renders = 0;
+    stats->skips = 0;
+}
+
 static void loop(l3_level *restrict level) {
     const b3_ticks frame_ticks = b3_secs_to_ticks(0.015625); // 64 FPS.
     const b3_ticks draw_ticks = b3_secs_to_ticks(0.03125); // 32 FPS.
 
-    b3_size map_size = b3_get_map_size(level->map);
-    b3_size tile_size = b3_get_map_tile_size(&map_size, &game_size);
+    struct debug_stats stats = {b3_tick_frequency};
 
-    b3_ticks time = 0;
+    b3_size map_size = b3_get_map_size(level->map);
+    tile_size = b3_get_map_tile_size(&map_size, &game_size);
+
+    b3_ticks game_ticks = 0;
     b3_ticks ticks = b3_get_tick_count();
     b3_ticks last_ticks;
     b3_ticks next_draw_ticks = 0;
@@ -144,8 +219,19 @@ static void loop(l3_level *restrict level) {
         b3_ticks elapsed = ticks - last_ticks;
 
         if(!paused) {
-            for(time += elapsed; time >= frame_ticks; time -= frame_ticks)
+            int i = 0;
+            for(
+                game_ticks += elapsed;
+                game_ticks >= frame_ticks;
+                game_ticks -= frame_ticks, i++
+            ) {
                 l3_update(level, frame_ticks);
+
+                stats.updates++;
+            }
+
+            if(i > 0)
+                stats.skips += i - 1;
         }
 
         if(ticks >= next_draw_ticks) {
@@ -154,27 +240,35 @@ static void loop(l3_level *restrict level) {
             b3_begin_scene();
 
             b3_draw_map(level->map, l3_tile_images, &game_rect);
-            draw_border(&map_size, &tile_size);
+            draw_border(&map_size);
             b3_draw_entities(level->entities, &game_rect);
             // For now, "sprites" are always on top of the main entities.
             b3_draw_entities(level->sprites, &game_rect);
-            draw_hearts(level, &tile_size);
+            draw_hearts(level);
 
             if(paused)
                 b3_draw_text(paused_text, &paused_text_rect);
 
+            stats.renders++;
+            draw_debug_stats(&stats);
+
             b3_end_scene();
         }
+
+        stats.loops++;
+        update_debug_stats(&stats, elapsed);
     } while(!b3_process_events());
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
+    parse_args(argc, argv);
+
     atexit(b3_quit);
     atexit(l3_quit);
     atexit(free_resources);
 
     b3_init("3omns", &window_size);
-    l3_init(RESOURCES);
+    l3_init(RESOURCES, debug);
     load_resources();
 
     l3_level level = l3_generate();
