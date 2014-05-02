@@ -470,6 +470,7 @@ function Dude:bumped(other_dude, other_dude_backing)
 end
 
 function Dude:blasted(bomn, bomn_backing)
+  -- TODO: vary damage by distance from epicenter.
   if not self:is_super() then
     self:hurt(Dude.BLAST_DAMAGE)
   end
