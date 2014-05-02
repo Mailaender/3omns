@@ -17,12 +17,23 @@
 #define ENTITY_METATABLE L3_NAME ".entity"
 
 #define L3_GENERATE_NAME "l3_generate"
+#define L3_THINK_AGENT_NAME "l3_think"
 #define L3_TILE_IMAGES_NAME "L3_TILE_IMAGES"
 #define L3_BORDER_IMAGE_NAME "L3_BORDER_IMAGE"
 #define L3_HEART_IMAGES_NAME "L3_HEART_IMAGES"
 
 #define L3_ENTITY_UPDATE_NAME "l3_update"
 #define L3_ENTITY_ACTION_NAME "l3_action"
+
+struct l3_agent {
+    int ref_count;
+    b3_entity_pool *entities;
+    b3_entity_id dude_id;
+    _Bool first;
+    _Bool done;
+    lua_State *thread;
+    int thread_ref;
+};
 
 struct entity_data {
     lua_State *l;
@@ -677,15 +688,11 @@ l3_level l3_generate(void) {
     return copy;
 }
 
-// TODO: separate AI/Agent object that has a thread/run coroutine that gets
-// resumed 10 or so times per second, that controls a particular entity.
-
 static void update_entity(b3_entity *restrict entity, void *callback_data) {
     const struct update_entity_data *restrict update_data = callback_data;
 
-    const struct entity_data *restrict entity_data
-            = b3_get_entity_data(entity);
-    lua_State *restrict l = entity_data->l;
+    const struct entity_data *entity_data = b3_get_entity_data(entity);
+    lua_State *l = entity_data->l;
 
     if(entity_data->context_ref < 0 || !b3_get_entity_life(entity))
         return;
@@ -744,8 +751,7 @@ static void entity_action(
     b3_entity *restrict entity,
     enum action action
 ) {
-    const struct entity_data *restrict entity_data
-            = b3_get_entity_data(entity);
+    const struct entity_data *entity_data = b3_get_entity_data(entity);
 
     if(entity_data->context_ref < 0 || !b3_get_entity_life(entity))
         return;
@@ -772,4 +778,82 @@ void l3_input(l3_level *restrict level, b3_input input) {
     b3_entity *entity = b3_get_entity(level->entities, level->dude_ids[i]);
     if(entity)
         entity_action(lua, entity, input_to_action(input, i));
+}
+
+l3_agent *l3_new_agent(l3_level *restrict level, int dude_index) {
+    l3_agent *agent = b3_malloc(sizeof(*agent), 1);
+    agent->entities = b3_ref_entity_pool(level->entities);
+    agent->dude_id = level->dude_ids[dude_index];
+    agent->first = 1;
+    agent->thread = lua_newthread(lua);
+    agent->thread_ref = luaL_ref(lua, LUA_REGISTRYINDEX);
+    return l3_ref_agent(agent);
+}
+
+l3_agent *l3_ref_agent(l3_agent *restrict agent) {
+    agent->ref_count++;
+    return agent;
+}
+
+void l3_free_agent(l3_agent *restrict agent) {
+    if(agent && !--(agent->ref_count)) {
+        b3_free_entity_pool(agent->entities);
+        luaL_unref(lua, LUA_REGISTRYINDEX, agent->thread_ref);
+        b3_free(agent, sizeof(*agent));
+    }
+}
+
+// elapsed is only read on the first call to this function.  It's assumed to be
+// the same for each subsequent call.
+_Bool l3_think_agent(l3_agent *restrict agent, b3_ticks elapsed) {
+    if(agent->done)
+        return 1;
+
+    b3_entity *entity = b3_get_entity(agent->entities, agent->dude_id);
+    if(!entity || !b3_get_entity_life(entity))
+        goto done;
+
+    const struct entity_data *entity_data = b3_get_entity_data(entity);
+    if(entity_data->context_ref < 0)
+        goto done;
+
+    lua_State *l = entity_data->l;
+    lua_State *thread = agent->thread;
+
+    int result;
+    if(agent->first) {
+        agent->first = 0;
+
+        lua_rawgeti(thread, LUA_REGISTRYINDEX, entity_data->context_ref);
+        lua_getfield(thread, -1, L3_THINK_AGENT_NAME);
+        if(!lua_isfunction(thread, -1)) {
+            lua_pop(thread, 2);
+            goto done;
+        }
+
+        lua_insert(thread, -2);
+        lua_rawgeti(thread, LUA_REGISTRYINDEX, entity_data->entity_ref);
+        lua_pushnumber(thread, (lua_Number)b3_ticks_to_secs(elapsed));
+
+        result = lua_resume(thread, l, 3);
+    }
+    else {
+        lua_rawgeti(thread, LUA_REGISTRYINDEX, entity_data->entity_ref);
+        result = lua_resume(thread, l, 1);
+    }
+
+    if(result != LUA_OK && result != LUA_YIELD) {
+        lua_error(thread);
+        goto done;
+    }
+
+    lua_settop(thread, 0);
+    if(result == LUA_OK)
+        goto done;
+
+    return 0;
+
+done:
+    agent->done = 1;
+    return 1;
 }

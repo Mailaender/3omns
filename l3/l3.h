@@ -46,6 +46,15 @@ void l3_update(l3_level *restrict level, b3_ticks elapsed);
 void l3_input(l3_level *restrict level, b3_input input);
 
 
+typedef struct l3_agent l3_agent;
+
+l3_agent *l3_new_agent(l3_level *restrict level, int dude_index);
+l3_agent *l3_ref_agent(l3_agent *restrict agent);
+void l3_free_agent(l3_agent *restrict agent);
+
+_Bool l3_think_agent(l3_agent *restrict agent, b3_ticks elapsed);
+
+
 extern b3_image *l3_tile_images[B3_TILE_COUNT];
 extern b3_image *l3_border_image;
 extern b3_image *l3_heart_images[L3_DUDE_COUNT];

@@ -21,12 +21,13 @@
 
 struct debug_stats {
     b3_ticks reset_time;
-    int loops;
-    int updates;
-    int renders;
-    int skips;
-    b3_text *text[4];
-    b3_rect text_rect[4];
+    int loop_count;
+    int update_count;
+    int think_count;
+    int render_count;
+    int skip_count;
+    b3_text *text[5];
+    b3_rect text_rect[5];
 };
 
 
@@ -155,7 +156,7 @@ static void draw_debug_stats(struct debug_stats *restrict stats) {
     if(!debug)
         return;
 
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < 5; i++) {
         if(stats->text[i])
             b3_draw_text(stats->text[i], &stats->text_rect[i]);
     }
@@ -171,19 +172,25 @@ static void update_debug_stats(
 
     stats->reset_time = b3_tick_frequency;
 
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < 5; i++)
         b3_free_text(stats->text[i]);
 
-    stats->text[0] = b3_new_text(debug_stats_font, "FPS: %d", stats->loops);
-    stats->text[1] = b3_new_text(debug_stats_font, "Ticks: %d", stats->updates);
-    stats->text[2] = b3_new_text(debug_stats_font, "Draws: %d", stats->renders);
-    stats->text[3] = b3_new_text(debug_stats_font, "SKIPS: %d", stats->skips);
+    stats->text[0]
+            = b3_new_text(debug_stats_font, "Loops: %d", stats->loop_count);
+    stats->text[1]
+            = b3_new_text(debug_stats_font, "Ticks: %d", stats->update_count);
+    stats->text[2]
+            = b3_new_text(debug_stats_font, "Thinks: %d", stats->think_count);
+    stats->text[3]
+            = b3_new_text(debug_stats_font, "Draws: %d", stats->render_count);
+    stats->text[4]
+            = b3_new_text(debug_stats_font, "SKIPS: %d", stats->skip_count);
 
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < 5; i++)
         b3_set_text_color(stats->text[i], 0xbbffffff);
 
     int y = 0;
-    for(int i = 0; i < 4; i++) {
+    for(int i = 0; i < 5; i++) {
         b3_size text_size = b3_get_text_size(stats->text[i]);
         stats->text_rect[i] = B3_RECT(
             game_size.width + tile_size.width,
@@ -194,14 +201,16 @@ static void update_debug_stats(
         y += text_size.height;
     }
 
-    stats->loops = 0;
-    stats->updates = 0;
-    stats->renders = 0;
-    stats->skips = 0;
+    stats->loop_count = 0;
+    stats->update_count = 0;
+    stats->think_count = 0;
+    stats->render_count = 0;
+    stats->skip_count = 0;
 }
 
 static void loop(l3_level *restrict level) {
     const b3_ticks frame_ticks = b3_secs_to_ticks(0.015625); // 64 FPS.
+    const b3_ticks think_ticks = b3_secs_to_ticks(0.0625); // 16 FPS.
     const b3_ticks draw_ticks = b3_secs_to_ticks(0.03125); // 32 FPS.
 
     struct debug_stats stats = {b3_tick_frequency};
@@ -209,7 +218,11 @@ static void loop(l3_level *restrict level) {
     b3_size map_size = b3_get_map_size(level->map);
     tile_size = b3_get_map_tile_size(&map_size, &game_size);
 
+    l3_agent *agent3 = l3_new_agent(level, 2);
+    l3_agent *agent4 = l3_new_agent(level, 3);
+
     b3_ticks game_ticks = 0;
+    b3_ticks ai_ticks = 0;
     b3_ticks ticks = b3_get_tick_count();
     b3_ticks last_ticks;
     b3_ticks next_draw_ticks = 0;
@@ -227,11 +240,22 @@ static void loop(l3_level *restrict level) {
             ) {
                 l3_update(level, frame_ticks);
 
-                stats.updates++;
+                stats.update_count++;
             }
 
             if(i > 0)
-                stats.skips += i - 1;
+                stats.skip_count += i - 1;
+
+            for(
+                ai_ticks += elapsed;
+                ai_ticks >= think_ticks;
+                ai_ticks -= think_ticks
+            ) {
+                l3_think_agent(agent3, think_ticks);
+                l3_think_agent(agent4, think_ticks);
+
+                stats.think_count++;
+            }
         }
 
         if(ticks >= next_draw_ticks) {
@@ -249,15 +273,18 @@ static void loop(l3_level *restrict level) {
             if(paused)
                 b3_draw_text(paused_text, &paused_text_rect);
 
-            stats.renders++;
+            stats.render_count++;
             draw_debug_stats(&stats);
 
             b3_end_scene();
         }
 
-        stats.loops++;
+        stats.loop_count++;
         update_debug_stats(&stats, elapsed);
     } while(!b3_process_events());
+
+    l3_free_agent(agent3);
+    l3_free_agent(agent4);
 }
 
 int main(int argc, char *argv[]) {

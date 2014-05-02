@@ -531,3 +531,11 @@ function Dude:l3_action(backing, action)
     self:move(action, backing)
   end
 end
+
+function Dude:l3_think(backing, elapsed)
+  while true do
+    print("Player " .. self.player .. " thinking...")
+    coroutine.yield()
+  end
+  -- TODO
+end
