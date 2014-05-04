@@ -1,16 +1,24 @@
-dofile(l3.RESOURCE_PATH .. "/game/defs.lua")
+package.path = string.format(
+  "%s/game/?.lua;%s/game/?/?.lua;%s",
+  l3.RESOURCE_PATH,
+  l3.RESOURCE_PATH,
+  package.path
+)
+
+local core = require("core")
+local util = require("util")
 
 
 local seed = os.time()
 math.randomseed(seed)
-debug_print("Seed: " .. seed)
+util.debug_print("Seed: " .. seed)
 
 do
-  local sprites = l3.image.load(l3.RESOURCE_PATH .. "/gfx/sprites.png")
+  local sprites = l3.image.load(util.resource("/gfx/sprites.png"))
   local TILE_SIZE = 16
 
   local function SpriteRect(x, y)
-    return Rect(x, y, TILE_SIZE, TILE_SIZE)
+    return core.Rect(x, y, TILE_SIZE, TILE_SIZE)
   end
 
   IMAGES = {
@@ -69,6 +77,4 @@ L3_TILE_IMAGES = {
 L3_BORDER_IMAGE = IMAGES.WALL
 L3_HEART_IMAGES = IMAGES.HEARTS
 
-
-dofile(l3.RESOURCE_PATH .. "/game/objects.lua")
-dofile(l3.RESOURCE_PATH .. "/game/generate.lua")
+l3_generate = require("generate").generate

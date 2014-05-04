@@ -1,17 +1,22 @@
-local MAP_SIZE = Size(30, 30)
+local core     = require("core")
+local util     = require("util")
+local Entities = require("entities")
+
+
+local MAP_SIZE = core.Size(30, 30)
 local MAX_SPRITES = MAP_SIZE.width * MAP_SIZE.height * 2
 local MAX_ENTITIES = MAP_SIZE.width * MAP_SIZE.height + 4
 
 local function generate_spawns(ctx)
   local quads = {
-    Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2),
-    Pos(0,                  0),
-    Pos(MAP_SIZE.width / 2, 0),
-    Pos(0,                  MAP_SIZE.height / 2),
+    core.Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2),
+    core.Pos(0,                  0),
+    core.Pos(MAP_SIZE.width / 2, 0),
+    core.Pos(0,                  MAP_SIZE.height / 2),
   }
 
   for i, q in ipairs(quads) do
-    ctx.spawns[i] = Pos(
+    ctx.spawns[i] = core.Pos(
       math.random(q.x + 2, q.x + MAP_SIZE.width  / 2 - 2),
       math.random(q.y + 2, q.y + MAP_SIZE.height / 2 - 2)
     )
@@ -20,7 +25,7 @@ end
 
 local function spawn_at(ctx, pos)
   for _, s in ipairs(ctx.spawns) do
-    if pos_equal(pos, s) then return true end
+    if core.pos_equal(pos, s) then return true end
   end
   return false
 end
@@ -29,8 +34,8 @@ local function wall_grid(ctx, center)
   local walls = {}
   for x = center.x - 3, center.x + 3, 3 do
     for y = center.y - 3, center.y + 3, 3 do
-      if not spawn_at(ctx, Pos(x, y)) then
-        walls[#walls + 1] = Pos(x, y)
+      if not spawn_at(ctx, core.Pos(x, y)) then
+        walls[#walls + 1] = core.Pos(x, y)
       end
     end
   end
@@ -45,28 +50,28 @@ local function wall_grid(ctx, center)
 end
 
 local function generate_walls(ctx)
-  local fourth = Size(
+  local fourth = core.Size(
     math.floor(MAP_SIZE.width  / 4),
     math.floor(MAP_SIZE.height / 4)
   )
   local pos = {
-    Pos(fourth.width,                  fourth.height),
-    Pos(fourth.width,                  MAP_SIZE.height - fourth.height),
-    Pos(MAP_SIZE.width - fourth.width, fourth.height),
-    Pos(MAP_SIZE.width - fourth.width, MAP_SIZE.height - fourth.height),
+    core.Pos(fourth.width,                  fourth.height),
+    core.Pos(fourth.width,                  MAP_SIZE.height - fourth.height),
+    core.Pos(MAP_SIZE.width - fourth.width, fourth.height),
+    core.Pos(MAP_SIZE.width - fourth.width, MAP_SIZE.height - fourth.height),
   }
 
   for _, p in ipairs(pos) do
     wall_grid(ctx, p)
   end
-  wall_grid(ctx, Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2))
+  wall_grid(ctx, core.Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2))
 end
 
 local function fill_space(ctx)
   for x = 1, MAP_SIZE.width do
     for y = 1, MAP_SIZE.height do
-      if ctx.level:get_tile(Pos(x, y)) == 0 then
-        ctx.level:set_tile(Pos(x, y), TILES.BLANK)
+      if ctx.level:get_tile(core.Pos(x, y)) == 0 then
+        ctx.level:set_tile(core.Pos(x, y), TILES.BLANK)
       end
     end
   end
@@ -90,7 +95,7 @@ end
 
 local function bisect(a, b)
   -- Rounded up or down at random.
-  return Pos(
+  return core.Pos(
     math.floor((a.x + b.x) / 2 + 0.5 * math.random(0, 1)),
     math.floor((a.y + b.y) / 2 + 0.5 * math.random(0, 1))
   )
@@ -101,13 +106,13 @@ local function spawn_crates(ctx)
   local function crates(pos)
     if not valid(pos) then return false end
 
-    local start = Pos(
+    local start = core.Pos(
       pos.x + span_dir.x * math.random(-2, -1),
       pos.y + span_dir.y * math.random(-2, -1)
     )
 
     for i = 0, 3 do
-      local p = Pos(start.x + span_dir.x * i, start.y + span_dir.y * i)
+      local p = core.Pos(start.x + span_dir.x * i, start.y + span_dir.y * i)
       if valid(p) and empty(ctx, p) then
         ctx.crates[#ctx.crates + 1] = ctx.entities:Crate(p)
       end
@@ -116,24 +121,24 @@ local function spawn_crates(ctx)
     return true
   end
 
-  local center = Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2)
+  local center = core.Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2)
   local bisection
 
   bisection = bisect(ctx.spawns[1], ctx.spawns[3])
-  span_dir = Pos(0, 1)
-  line(center, bisection, crates)
+  span_dir = core.Pos(0, 1)
+  util.line(center, bisection, crates)
 
   bisection = bisect(ctx.spawns[2], ctx.spawns[4])
-  span_dir = Pos(0, 1)
-  line(center, bisection, crates)
+  span_dir = core.Pos(0, 1)
+  util.line(center, bisection, crates)
 
   bisection = bisect(ctx.spawns[2], ctx.spawns[3])
-  span_dir = Pos(1, 0)
-  line(center, bisection, crates)
+  span_dir = core.Pos(1, 0)
+  util.line(center, bisection, crates)
 
   bisection = bisect(ctx.spawns[1], ctx.spawns[4])
-  span_dir = Pos(1, 0)
-  line(center, bisection, crates)
+  span_dir = core.Pos(1, 0)
+  util.line(center, bisection, crates)
 end
 
 local function fill_crates(ctx)
@@ -151,7 +156,7 @@ local function fill_crates(ctx)
   end
 end
 
-function l3_generate()
+local function generate()
   local level = l3.level.new(MAP_SIZE, MAX_SPRITES, MAX_ENTITIES)
   local ctx = {
     level = level,
@@ -170,3 +175,8 @@ function l3_generate()
 
   return level
 end
+
+
+return {
+  generate = generate,
+}
