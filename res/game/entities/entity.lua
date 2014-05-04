@@ -6,16 +6,17 @@ local Entity = obj.class()
 
 function Entity:init(entities, pos, life, image, z_order)
   self.entities = entities
+  self.solid = true -- Whether the entity blocks blasts and player movement.
+
   local backing
   self.id, backing = entities:new_backing(self)
   self:set_pos(pos, backing)
   self:set_life(life, backing)
   self:set_image(image, backing)
   self:set_z_order(z_order, backing)
-  self.solid = true -- Whether the entity blocks blasts and player movement.
 end
 
-Entity.is_a = obj.is_a
+Entity.get_type = obj.get_type
 
 function Entity:get_backing()
   return self.entities:get_backing(self.id)

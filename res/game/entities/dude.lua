@@ -11,12 +11,11 @@ Dude.BLAST_DAMAGE = 5
 
 function Dude:init(entities, pos, player)
   -- TODO: teams?
-  Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
   self.player = player
   self.super_time = 0
   self.bomn = nil
 
-  entities:set_dude(self)
+  Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
 end
 
 function Dude:is_super()

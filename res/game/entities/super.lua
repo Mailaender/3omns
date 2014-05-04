@@ -5,8 +5,9 @@ local Entity = require("entities.entity")
 local Super = obj.class(Entity)
 
 function Super:init(entities, pos)
-  Entity.init(self, entities, pos, 1, IMAGES.SUPER, 0)
   self.solid = false
+
+  Entity.init(self, entities, pos, 1, IMAGES.SUPER, 0)
 end
 
 function Super:bumped(dude, dude_backing)

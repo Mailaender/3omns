@@ -11,7 +11,7 @@ function Sprite:init(level, pos, image, z_order)
   self:set_z_order(z_order, backing)
 end
 
-Sprite.is_a = obj.is_a
+Sprite.get_type = obj.get_type
 
 function Sprite:set_pos(pos, backing)
   if self.pos == nil or not core.pos_equal(pos, self.pos) then

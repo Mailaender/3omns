@@ -4,10 +4,11 @@ local function new(class, ...)
   return self
 end
 
-local function is_a(object, class)
-  -- FIXME: handle inheritance (this doesn't work when checking superclasses).
-  return getmetatable(object) == class
+local function get_type(object)
+  return getmetatable(object)
 end
+
+-- TODO: an is_a function that handles inheritance.
 
 local function class(parent)
   local c = {}
@@ -23,6 +24,6 @@ end
 
 
 return {
-  is_a  = is_a,
-  class = class,
+  get_type = get_type,
+  class    = class,
 }
