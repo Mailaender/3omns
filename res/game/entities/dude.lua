@@ -9,6 +9,8 @@ Dude.SUPER_TIME = 10
 Dude.BUMP_DAMAGE = 1
 Dude.BLAST_DAMAGE = 5
 
+Dude.AI_WALK_TIME = 0.2
+
 function Dude:init(entities, pos, player)
   -- TODO: teams?
   self.player = player
@@ -104,11 +106,38 @@ function Dude:l3_action(backing, action)
   end
 end
 
-function Dude:l3_think(backing, elapsed)
+function Dude:ai_random_walk(ctx, interrupt)
+  local move_elapsed = 0
+
   while true do
-    print("Player " .. self.player .. " thinking...")
+    if interrupt and interrupt(ctx) then return end
+
+    if move_elapsed >= Dude.AI_WALK_TIME then
+      move_elapsed = move_elapsed - Dude.AI_WALK_TIME
+
+      local dirs = {"u", "d", "l", "r"}
+      self:move(dirs[math.random(#dirs)], ctx.backing)
+    end
+
     coroutine.yield()
+    move_elapsed = move_elapsed + ctx.yield_time
   end
+end
+
+-- TODO: go fishing for supers (or run toward an exposed one) when calm.
+-- TODO: when super, go on a murder rampage.
+-- TODO: when in danger, run away (or toward close opponent bomns).
+-- TODO: lacking anything else, hunt down opponents.
+
+function Dude:l3_think(backing, yield_time)
+  -- The AI system assumes proper tail-call elimination.  I believe I've
+  -- structured everything properly, but I haven't tested.
+
+  local ctx = {
+    backing    = backing,
+    yield_time = yield_time,
+  }
+  return self:ai_random_walk(ctx)
 end
 
 
