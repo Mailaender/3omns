@@ -91,5 +91,14 @@ function Entities:remove(entity)
   self.pos_index[core.pos_key(entity.pos)] = nil
 end
 
+function Entities:get_nearest(pos, type)
+  local a = {}
+  for _, e in pairs(self.type_index[type]) do
+    a[#a + 1] = {distance = core.distance(pos, e.pos), entity = e}
+  end
+  table.sort(a, function(a, b) return a.distance < b.distance end)
+  return a
+end
+
 
 return Entities
