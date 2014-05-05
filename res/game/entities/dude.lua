@@ -1,4 +1,5 @@
 local core   = require("core")
+local util   = require("util")
 local obj    = require("object")
 local Entity = require("entities.entity")
 
@@ -107,27 +108,81 @@ function Dude:l3_action(backing, action)
 end
 
 function Dude:ai_random_walk(ctx, interrupt)
-  local move_elapsed = 0
+  local elapsed = 0
+  local next_move = 0
 
   while true do
-    if interrupt and interrupt(ctx) then return end
+    coroutine.yield()
+    elapsed = elapsed + ctx.yield_time
 
-    if move_elapsed >= Dude.AI_WALK_TIME then
-      move_elapsed = move_elapsed - Dude.AI_WALK_TIME
+    if interrupt and interrupt(ctx, elapsed) then return end
+
+    if elapsed >= next_move then
+      next_move = next_move + Dude.AI_WALK_TIME
 
       local dirs = {"u", "d", "l", "r"}
       self:move(dirs[math.random(#dirs)], ctx.backing)
     end
-
-    coroutine.yield()
-    move_elapsed = move_elapsed + ctx.yield_time
   end
+end
+
+function Dude:ai_move_to(pos, ctx, interrupt)
+  local elapsed = 0
+  local next_move = 0
+  local path = {}
+
+  util.line(self.pos, pos, function(p)
+    path[#path + 1] = p
+    return not core.pos_equal(p, pos)
+  end)
+  table.remove(path, 1) -- Nix current pos.
+
+  while #path > 0 do
+    coroutine.yield()
+    elapsed = elapsed + ctx.yield_time
+
+    if interrupt and interrupt(ctx, elapsed) then return end
+
+    if elapsed >= next_move then
+      next_move = next_move + Dude.AI_WALK_TIME
+
+      -- TODO: avoid obstacles.
+      local m = {}
+      if     path[1].y < self.pos.y then m[#m + 1] = "u"
+      elseif path[1].y > self.pos.y then m[#m + 1] = "d" end
+      if     path[1].x < self.pos.x then m[#m + 1] = "l"
+      elseif path[1].x > self.pos.x then m[#m + 1] = "r" end
+
+      self:move(m[math.random(#m)], ctx.backing)
+
+      if core.pos_equal(self.pos, path[1]) then
+        table.remove(path, 1)
+      end
+    end
+  end
+end
+
+function Dude:ai_hunt(ctx)
+  local dudes = self.entities:get_nearest(self.pos, Dude)
+  table.remove(dudes, 1) -- Nix self.
+
+  if #dudes == 0 then
+    return self:ai_random_walk(ctx)
+  end
+
+  local function interrupt(ctx, elapsed)
+    -- TODO: or dude dies or a bomn gets dropped anywhere.
+    return elapsed > 1
+  end
+  self:ai_move_to(dudes[1].entity.pos, ctx, interrupt)
+  -- TODO: when opponent is cornered, drop bomn.
+
+  return self:ai_hunt(ctx)
 end
 
 -- TODO: go fishing for supers (or run toward an exposed one) when calm.
 -- TODO: when super, go on a murder rampage.
 -- TODO: when in danger, run away (or toward close opponent bomns).
--- TODO: lacking anything else, hunt down opponents.
 
 function Dude:l3_think(backing, yield_time)
   -- The AI system assumes proper tail-call elimination.  I believe I've
@@ -137,7 +192,7 @@ function Dude:l3_think(backing, yield_time)
     backing    = backing,
     yield_time = yield_time,
   }
-  return self:ai_random_walk(ctx)
+  return self:ai_hunt(ctx)
 end
 
 
