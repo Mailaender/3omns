@@ -301,6 +301,8 @@ int main(int argc, char *argv[]) {
     l3_level level = l3_generate();
     b3_set_input_callback(handle_input, &level);
 
+    // TODO: a Lua debug console directly tied into the Lua environment.
+
     loop(&level);
 
     l3_free_level(&level);
