@@ -2,6 +2,7 @@ local core   = require("core")
 local util   = require("util")
 local obj    = require("object")
 local Entity = require("entities.entity")
+local Bomn   = require("entities.bomn")
 
 
 local Dude = obj.class(Entity)
@@ -10,7 +11,7 @@ Dude.SUPER_TIME = 10
 Dude.BUMP_DAMAGE = 1
 Dude.BLAST_DAMAGE = 5
 
-Dude.AI_WALK_TIME = 0.2
+Dude.AI_ACTION_TIME = 0.2
 
 function Dude:init(entities, pos, player)
   -- TODO: teams?
@@ -23,6 +24,10 @@ end
 
 function Dude:is_super()
   return self.super_time > 0
+end
+
+function Dude:can_fire()
+  return self.bomn == nil
 end
 
 function Dude:superify(backing)
@@ -81,7 +86,7 @@ end
 function Dude:fire()
   -- TODO: when super, fire should trigger a blast immediately, allowable every
   -- one second.
-  if not self.bomn then
+  if self:can_fire() then
     self.bomn = self.entities:Bomn(self.pos, self)
   end
 end
@@ -107,28 +112,43 @@ function Dude:l3_action(backing, action)
   end
 end
 
+local function ai_yield(ctx, elapsed)
+  coroutine.yield()
+  return elapsed + ctx.yield_time
+end
+
+local function ai_wait(till, ctx, elapsed)
+  while elapsed < till do
+    elapsed = ai_yield(ctx, elapsed)
+  end
+  return elapsed
+end
+
 function Dude:ai_random_walk(ctx, interrupt)
+  interrupt = interrupt or function() return false end
+
   local elapsed = 0
-  local next_move = 0
+  local next_action = 0
 
-  while true do
-    coroutine.yield()
-    elapsed = elapsed + ctx.yield_time
-
-    if interrupt and interrupt(ctx, elapsed) then return end
-
-    if elapsed >= next_move then
-      next_move = next_move + Dude.AI_WALK_TIME
+  while not interrupt(ctx, elapsed) do
+    if elapsed >= next_action then
+      next_action = next_action + Dude.AI_ACTION_TIME
 
       local dirs = {"u", "d", "l", "r"}
       self:move(dirs[math.random(#dirs)], ctx.backing)
     end
+
+    elapsed = ai_yield(ctx, elapsed)
   end
+
+  ai_wait(next_action, ctx, elapsed)
 end
 
 function Dude:ai_move_to(pos, ctx, interrupt)
+  interrupt = interrupt or function() return false end
+
   local elapsed = 0
-  local next_move = 0
+  local next_action = 0
   local path = {}
 
   util.line(self.pos, pos, function(p)
@@ -137,14 +157,9 @@ function Dude:ai_move_to(pos, ctx, interrupt)
   end)
   table.remove(path, 1) -- Nix current pos.
 
-  while #path > 0 do
-    coroutine.yield()
-    elapsed = elapsed + ctx.yield_time
-
-    if interrupt and interrupt(ctx, elapsed) then return end
-
-    if elapsed >= next_move then
-      next_move = next_move + Dude.AI_WALK_TIME
+  while #path > 0 and not interrupt(ctx, elapsed) do
+    if elapsed >= next_action then
+      next_action = next_action + Dude.AI_ACTION_TIME
 
       -- TODO: avoid obstacles.
       local m = {}
@@ -159,29 +174,70 @@ function Dude:ai_move_to(pos, ctx, interrupt)
         table.remove(path, 1)
       end
     end
+
+    elapsed = ai_yield(ctx, elapsed)
   end
+
+  ai_wait(next_action, ctx, elapsed)
+end
+
+function Dude:ai_fire(ctx)
+  self:fire()
+
+  ai_wait(Dude.AI_ACTION_TIME, ctx, 0)
 end
 
 function Dude:ai_hunt(ctx)
   local dudes = self.entities:get_nearest(self.pos, Dude)
   table.remove(dudes, 1) -- Nix self.
 
-  if #dudes == 0 then
-    return self:ai_random_walk(ctx)
+  local target
+  for _, d in ipairs(dudes) do
+    if not d.entity:is_super() then
+      target = d.entity
+      break
+    end
   end
 
-  local function interrupt(ctx, elapsed)
-    -- TODO: or dude dies or a bomn gets dropped anywhere.
+  local function interrupt_walk(ctx, elapsed)
+    -- TODO: or we're in danger.
     return elapsed > 1
   end
-  self:ai_move_to(dudes[1].entity.pos, ctx, interrupt)
-  -- TODO: when opponent is cornered, drop bomn.
+
+  if target then
+    local target_cornered = false
+    if self:can_fire() then
+      local s = self.entities.level_size
+      local corners = {
+        core.Pos(1,       1),
+        core.Pos(s.width, 1),
+        core.Pos(s.width, s.height),
+        core.Pos(1,       s.height),
+      }
+
+      for _, c in ipairs(corners) do
+        local dist = core.blast_dist(self.pos, c)
+        if dist <= Bomn.RADIUS and core.blast_dist(target.pos, c) < dist then
+          target_cornered = true
+          break
+        end
+      end
+    end
+
+    if target_cornered then
+      self:ai_fire(ctx)
+    else
+      self:ai_move_to(target.pos, ctx, interrupt_walk)
+    end
+  else
+    -- TODO: a better idle loop.
+    self:ai_random_walk(ctx, interrupt_walk)
+  end
 
   return self:ai_hunt(ctx)
 end
 
 -- TODO: go fishing for supers (or run toward an exposed one) when calm.
--- TODO: when super, go on a murder rampage.
 -- TODO: when in danger, run away (or toward close opponent bomns).
 
 function Dude:l3_think(backing, yield_time)
@@ -192,6 +248,10 @@ function Dude:l3_think(backing, yield_time)
     backing    = backing,
     yield_time = yield_time,
   }
+
+  -- Wait just a tick to be a little more human at the start.
+  ai_wait(Dude.AI_ACTION_TIME + math.random(0, 5) / 10, ctx, 0)
+
   return self:ai_hunt(ctx)
 end
 

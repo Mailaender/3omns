@@ -53,6 +53,10 @@ function Entities:get_backing(id)
   return self.level:get_entity(id)
 end
 
+function Entities:exists(id)
+  return self:get_backing(id) ~= nil
+end
+
 function Entities:get_tile(pos)
   return self.level:get_tile(pos)
 end
@@ -94,9 +98,17 @@ end
 function Entities:get_nearest(pos, type)
   local a = {}
   for _, e in pairs(self.type_index[type]) do
-    a[#a + 1] = {distance = core.distance(pos, e.pos), entity = e}
+    a[#a + 1] = {dist = core.walk_dist(pos, e.pos), entity = e}
   end
-  table.sort(a, function(a, b) return a.distance < b.distance end)
+  table.sort(a, function(a, b) return a.dist < b.dist end)
+  return a
+end
+
+function Entities:get_any(type)
+  local a = {}
+  for _, e in pairs(self.type_index[type]) do
+    a[#a + 1] = e
+  end
   return a
 end
 

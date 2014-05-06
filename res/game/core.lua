@@ -14,8 +14,13 @@ local function pos_key(pos)
 end
 
 -- In key presses, not as the crow flies.
-local function distance(a, b)
+local function walk_dist(a, b)
   return math.abs(a.x - b.x) + math.abs(a.y - b.y)
+end
+
+-- As a bomn blast would travel.
+local function blast_dist(a, b)
+  return math.floor(math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) + 0.5)
 end
 
 local function Size(width, height)
@@ -28,10 +33,11 @@ end
 
 
 return {
-  Pos       = Pos,
-  pos_equal = pos_equal,
-  pos_key   = pos_key,
-  distance  = distance,
-  Size      = Size,
-  Rect      = Rect,
+  Pos        = Pos,
+  pos_equal  = pos_equal,
+  pos_key    = pos_key,
+  walk_dist  = walk_dist,
+  blast_dist = blast_dist,
+  Size       = Size,
+  Rect       = Rect,
 }
