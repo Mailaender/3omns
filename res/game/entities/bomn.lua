@@ -37,11 +37,11 @@ Bomn.ANIMATION = {
 }
 
 function Bomn:init(entities, pos, dude)
+  Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME], 2)
+
   self.solid = false
   self.time = Bomn.TIME
   self.dude = dude
-
-  Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME], 2)
 end
 
 function Bomn:animate(backing, old_time)

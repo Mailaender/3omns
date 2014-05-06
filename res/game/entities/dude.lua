@@ -15,11 +15,12 @@ Dude.AI_ACTION_TIME = 0.2
 
 function Dude:init(entities, pos, player)
   -- TODO: teams?
-  self.player = player
-  self.super_time = 0
-  self.bomn = nil
+  self.player = player -- Must come before init, for Entities.new_backing.
 
   Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
+
+  self.super_time = 0
+  self.bomn = nil
 end
 
 function Dude:is_super()

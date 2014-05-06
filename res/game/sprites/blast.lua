@@ -19,9 +19,9 @@ for i, v in ipairs(IMAGES.BLASTS) do
 end
 
 function Blast:init(level, pos)
-  self.time = Blast.TIME
-
   Sprite.init(self, level, pos, IMAGES.BLASTS[1], #IMAGES.BLASTS - 1)
+
+  self.time = Blast.TIME
 end
 
 function Blast:animate(backing, old_time)

@@ -5,9 +5,9 @@ local Entity = require("entities.entity")
 local Crate = obj.class(Entity)
 
 function Crate:init(entities, pos)
-  self.killed = nil
-
   Entity.init(self, entities, pos, 1, IMAGES.CRATE, 0)
+
+  self.killed = nil
 end
 
 -- "Hold" in the sense that when the crate is destroyed, the function gets
