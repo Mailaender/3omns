@@ -125,6 +125,12 @@ local function ai_wait(till, ctx, elapsed)
   return elapsed
 end
 
+function Dude:ai_get_nearest_dudes(ctx)
+  local dudes = self:get_nearest(Dude)
+  table.remove(dudes, 1) -- Nix self.
+  return dudes
+end
+
 function Dude:ai_random_walk(ctx, interrupt)
   interrupt = interrupt or function() return false end
 
@@ -163,6 +169,7 @@ function Dude:ai_move_to(pos, ctx, interrupt)
       next_action = next_action + Dude.AI_ACTION_TIME
 
       -- TODO: avoid obstacles.
+      -- TODO: sit still if the next move would put us in danger.
       local m = {}
       if     path[1].y < self.pos.y then m[#m + 1] = "u"
       elseif path[1].y > self.pos.y then m[#m + 1] = "d" end
@@ -188,9 +195,31 @@ function Dude:ai_fire(ctx)
   ai_wait(Dude.AI_ACTION_TIME, ctx, 0)
 end
 
+function Dude:ai_get_danger(ctx)
+  if self:is_super() then return nil end
+
+  for _, b in ipairs(self:get_nearest(Bomn)) do
+    if core.blast_dist(self.pos, b.entity.pos) <= Bomn.RADIUS then
+      return b.entity
+    end
+  end
+
+  for _, d in ipairs(self:ai_get_nearest_dudes(ctx)) do
+    if d.dist < 8
+        and (d.entity:is_super() or d.entity.life / self.life > 1.2) then
+      return d.entity
+    end
+  end
+
+  return nil
+end
+
+function Dude:ai_run(ctx, danger)
+  -- TODO
+end
+
 function Dude:ai_hunt(ctx)
-  local dudes = self.entities:get_nearest(self.pos, Dude)
-  table.remove(dudes, 1) -- Nix self.
+  local dudes = self:ai_get_nearest_dudes(ctx)
 
   local target
   for _, d in ipairs(dudes) do
@@ -200,9 +229,10 @@ function Dude:ai_hunt(ctx)
     end
   end
 
+  local danger
   local function interrupt_walk(ctx, elapsed)
-    -- TODO: or we're in danger.
-    return elapsed > 1
+    danger = self:ai_get_danger(ctx)
+    return elapsed > 1 or danger
   end
 
   if target then
@@ -235,11 +265,15 @@ function Dude:ai_hunt(ctx)
     self:ai_random_walk(ctx, interrupt_walk)
   end
 
-  return self:ai_hunt(ctx)
+  if not danger then danger = self:ai_get_danger(ctx) end
+  if danger then
+    return self:ai_run(ctx, danger)
+  else
+    return self:ai_hunt(ctx)
+  end
 end
 
 -- TODO: go fishing for supers (or run toward an exposed one) when calm.
--- TODO: when in danger, run away (or toward close opponent bomns).
 
 function Dude:l3_think(backing, yield_time)
   -- The AI system assumes proper tail-call elimination.  I believe I've

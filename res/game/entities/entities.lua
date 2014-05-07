@@ -97,18 +97,10 @@ end
 
 function Entities:get_nearest(pos, type)
   local a = {}
-  for _, e in pairs(self.type_index[type]) do
+  for _, e in pairs(self.type_index[type] or {}) do
     a[#a + 1] = {dist = core.walk_dist(pos, e.pos), entity = e}
   end
   table.sort(a, function(a, b) return a.dist < b.dist end)
-  return a
-end
-
-function Entities:get_any(type)
-  local a = {}
-  for _, e in pairs(self.type_index[type]) do
-    a[#a + 1] = e
-  end
   return a
 end
 

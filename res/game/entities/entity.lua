@@ -26,6 +26,10 @@ function Entity:exists()
   return self:get_backing() ~= nil
 end
 
+function Entity:get_nearest(type)
+  return self.entities:get_nearest(self.pos, type)
+end
+
 function Entity:set_pos(pos, backing)
   if self.pos == nil or not core.pos_equal(pos, self.pos) then
     backing = backing or self:get_backing()
