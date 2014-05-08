@@ -61,13 +61,13 @@ function Entities:get_tile(pos)
   return self.level:get_tile(pos)
 end
 
-function Entities:valid_pos(pos)
+function Entities:pos_valid(pos)
   return pos.x >= 1 and pos.x <= self.level_size.width
       and pos.y >= 1 and pos.y <= self.level_size.height
 end
 
 function Entities:walkable(pos)
-  return self:valid_pos(pos) and self:get_tile(pos) ~= TILES.WALL
+  return self:pos_valid(pos) and self:get_tile(pos) ~= TILES.WALL
 end
 
 function Entities:get_entity(pos)
@@ -95,7 +95,7 @@ function Entities:remove(entity)
   self.pos_index[core.pos_key(entity.pos)] = nil
 end
 
-function Entities:get_nearest(pos, type)
+function Entities:get_nearest(type, pos)
   local a = {}
   for _, e in pairs(self.type_index[type] or {}) do
     a[#a + 1] = {dist = core.walk_dist(pos, e.pos), entity = e}

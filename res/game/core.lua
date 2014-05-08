@@ -13,6 +13,10 @@ local function pos_key(pos)
   return string.format("%x,%x", pos.x, pos.y)
 end
 
+local function pos_add(a, b)
+  return Pos(a.x + b.x, a.y + b.y)
+end
+
 -- In key presses, not as the crow flies.
 local function walk_dist(a, b)
   return math.abs(a.x - b.x) + math.abs(a.y - b.y)
@@ -36,6 +40,7 @@ return {
   Pos        = Pos,
   pos_equal  = pos_equal,
   pos_key    = pos_key,
+  pos_add    = pos_add,
   walk_dist  = walk_dist,
   blast_dist = blast_dist,
   Size       = Size,

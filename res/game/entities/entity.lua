@@ -26,8 +26,10 @@ function Entity:exists()
   return self:get_backing() ~= nil
 end
 
-function Entity:get_nearest(type)
-  return self.entities:get_nearest(self.pos, type)
+function Entity:get_nearest(type, pos)
+  pos = pos or self.pos
+
+  return self.entities:get_nearest(type, pos)
 end
 
 function Entity:set_pos(pos, backing)

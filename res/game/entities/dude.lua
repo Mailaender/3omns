@@ -64,7 +64,7 @@ function Dude:move(direction, backing)
   elseif direction == "l" then dir = core.Pos(-1,  0)
   else                         dir = core.Pos( 1,  0) end
 
-  local new_pos = core.Pos(self.pos.x + dir.x, self.pos.y + dir.y)
+  local new_pos = core.pos_add(self.pos, dir)
   if not self.entities:walkable(new_pos) then return end
 
   -- This is kind of weird, but because bumping can cause an arbitrary shift in
@@ -125,8 +125,8 @@ local function ai_wait(till, ctx, elapsed)
   return elapsed
 end
 
-function Dude:ai_get_nearest_dudes(ctx)
-  local dudes = self:get_nearest(Dude)
+function Dude:ai_get_nearest_dudes(ctx, pos)
+  local dudes = self:get_nearest(Dude, pos)
   table.remove(dudes, 1) -- Nix self.
   return dudes
 end
@@ -195,17 +195,19 @@ function Dude:ai_fire(ctx)
   ai_wait(Dude.AI_ACTION_TIME, ctx, 0)
 end
 
-function Dude:ai_get_danger(ctx)
+function Dude:ai_get_danger(ctx, pos)
+  pos = pos or self.pos
+
   if self:is_super() then return nil end
 
-  for _, b in ipairs(self:get_nearest(Bomn)) do
-    if core.blast_dist(self.pos, b.entity.pos) <= Bomn.RADIUS then
+  for _, b in ipairs(self:get_nearest(Bomn, pos)) do
+    if core.blast_dist(pos, b.entity.pos) <= Bomn.RADIUS then
       return b.entity
     end
   end
 
-  for _, d in ipairs(self:ai_get_nearest_dudes(ctx)) do
-    if d.dist < 8
+  for _, d in ipairs(self:ai_get_nearest_dudes(ctx, pos)) do
+    if d.dist <= 5
         and (d.entity:is_super() or d.entity.life / self.life > 1.2) then
       return d.entity
     end
@@ -214,8 +216,61 @@ function Dude:ai_get_danger(ctx)
   return nil
 end
 
+function Dude:ai_next_state(ctx, danger)
+  danger = danger or self:ai_get_danger(ctx)
+
+  if danger then
+    return self:ai_run(ctx, danger)
+  else
+    return self:ai_hunt(ctx)
+  end
+end
+
 function Dude:ai_run(ctx, danger)
-  -- TODO
+  local directions = {
+    core.Pos( 0, -1),
+    core.Pos( 1, -1),
+    core.Pos( 1,  0),
+    core.Pos( 1,  1),
+    core.Pos( 0,  1),
+    core.Pos(-1,  1),
+    core.Pos(-1,  0),
+    core.Pos(-1, -1),
+  }
+
+  -- TODO: run toward opponent bomns and disarm if close enough.
+  local safe = {}
+  for _, d in ipairs(directions) do
+    local function safe_callback(p)
+      if not self.entities:pos_valid(p) then
+        return false
+      end
+      if not self:ai_get_danger(ctx, p) then
+        safe[#safe + 1] = {
+          dist = core.walk_dist(self.pos, p),
+          pos = core.pos_add(p, core.pos_add(d, d)), -- Overshoot a bit.
+        }
+        return false
+      end
+      return true
+    end
+
+    util.line(self.pos, core.pos_add(self.pos, d), safe_callback)
+  end
+  table.sort(safe, function(a, b) return a.dist < b.dist end)
+
+  local function interrupt_walk(ctx, elapsed)
+    return elapsed > 3
+  end
+
+  if #safe > 0 then
+    self:ai_move_to(safe[1].pos, ctx, interrupt_walk)
+  else
+    -- TODO: there should always be a safe place.
+    self:ai_random_walk(ctx, interrupt_walk)
+  end
+
+  return self:ai_next_state(ctx)
 end
 
 function Dude:ai_hunt(ctx)
@@ -229,10 +284,8 @@ function Dude:ai_hunt(ctx)
     end
   end
 
-  local danger
   local function interrupt_walk(ctx, elapsed)
-    danger = self:ai_get_danger(ctx)
-    return elapsed > 1 or danger
+    return elapsed > 1 or self:ai_get_danger(ctx)
   end
 
   if target then
@@ -265,12 +318,7 @@ function Dude:ai_hunt(ctx)
     self:ai_random_walk(ctx, interrupt_walk)
   end
 
-  if not danger then danger = self:ai_get_danger(ctx) end
-  if danger then
-    return self:ai_run(ctx, danger)
-  else
-    return self:ai_hunt(ctx)
-  end
+  return self:ai_next_state(ctx)
 end
 
 -- TODO: go fishing for supers (or run toward an exposed one) when calm.

@@ -55,7 +55,7 @@ function Bomn:explode(backing)
   local to_blast = {}
   util.circle_contig(self.pos, Bomn.RADIUS, function(edge_pos)
     util.line(self.pos, edge_pos, function(pos)
-      if not self.entities:valid_pos(pos)
+      if not self.entities:pos_valid(pos)
           or self.entities:get_tile(pos) == TILES.WALL then
         return false
       end
