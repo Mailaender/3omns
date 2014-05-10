@@ -169,7 +169,7 @@ function Dude:ai_move_to(pos, ctx, interrupt)
       next_action = next_action + Dude.AI_ACTION_TIME
 
       -- TODO: avoid obstacles.
-      -- TODO: sit still if the next move would put us in danger.
+      -- TODO: proper pathfinding that avoids dangers and obstacles.
       local m = {}
       if     path[1].y < self.pos.y then m[#m + 1] = "u"
       elseif path[1].y > self.pos.y then m[#m + 1] = "d" end
@@ -278,7 +278,7 @@ function Dude:ai_hunt(ctx)
 
   local target
   for _, d in ipairs(dudes) do
-    if not d.entity:is_super() then
+    if not self:ai_get_danger(ctx, d.entity.pos) then
       target = d.entity
       break
     end
