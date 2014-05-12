@@ -1,5 +1,6 @@
 #include "b3/b3.h"
 #include "l3/l3.h"
+#include "n3/n3.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -297,6 +298,9 @@ int main(int argc, char *argv[]) {
     b3_init("3omns", &window_size);
     l3_init(RESOURCES, debug);
     load_resources();
+
+    n3_host host;
+    int sd = n3_new_server_socket(n3_init_host_any_local(&host, 30325));
 
     l3_level level = l3_generate();
     b3_set_input_callback(handle_input, &level);

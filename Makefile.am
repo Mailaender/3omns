@@ -1,1 +1,1 @@
-SUBDIRS = b3 l3 src
+SUBDIRS = b3 l3 n3 res src
