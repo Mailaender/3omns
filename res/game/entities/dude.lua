@@ -57,14 +57,17 @@ function Dude:blasted(bomn, bomn_backing)
   end
 end
 
-function Dude:move(direction, backing)
+function Dude:move_pos(action)
   local dir
-  if     direction == "u" then dir = core.Pos( 0, -1)
-  elseif direction == "d" then dir = core.Pos( 0,  1)
-  elseif direction == "l" then dir = core.Pos(-1,  0)
-  else                         dir = core.Pos( 1,  0) end
+  if     action == "u" then dir = core.Pos( 0, -1)
+  elseif action == "d" then dir = core.Pos( 0,  1)
+  elseif action == "l" then dir = core.Pos(-1,  0)
+  else                      dir = core.Pos( 1,  0) end
+  return core.pos_add(self.pos, dir)
+end
 
-  local new_pos = core.pos_add(self.pos, dir)
+function Dude:move(action, backing)
+  local new_pos = self:move_pos(action)
   if not self.entities:walkable(new_pos) then return end
 
   -- This is kind of weird, but because bumping can cause an arbitrary shift in
@@ -159,7 +162,9 @@ function Dude:ai_move_to(pos, ctx, interrupt)
   local path = {}
 
   util.line(self.pos, pos, function(p)
-    path[#path + 1] = p
+    if self.entities:walkable(p) then
+      path[#path + 1] = p
+    end
     return not core.pos_equal(p, pos)
   end)
   table.remove(path, 1) -- Nix current pos.
@@ -168,13 +173,46 @@ function Dude:ai_move_to(pos, ctx, interrupt)
     if elapsed >= next_action then
       next_action = next_action + Dude.AI_ACTION_TIME
 
-      -- TODO: avoid obstacles.
       -- TODO: proper pathfinding that avoids dangers and obstacles.
       local m = {}
-      if     path[1].y < self.pos.y then m[#m + 1] = "u"
-      elseif path[1].y > self.pos.y then m[#m + 1] = "d" end
-      if     path[1].x < self.pos.x then m[#m + 1] = "l"
-      elseif path[1].x > self.pos.x then m[#m + 1] = "r" end
+      local function add_if_valid(dir)
+        if self.entities:walkable(self:move_pos(dir)) then
+          m[#m + 1] = dir
+        end
+      end
+      if     path[1].y < self.pos.y then add_if_valid("u")
+      elseif path[1].y > self.pos.y then add_if_valid("d") end
+      if     path[1].x < self.pos.x then add_if_valid("l")
+      elseif path[1].x > self.pos.x then add_if_valid("r") end
+
+      if #m > 1 then
+        local dx = math.abs(path[1].x - self.pos.x)
+        local dy = math.abs(path[1].y - self.pos.y)
+        if dx > dy then
+          -- TODO: using underscore.lua would help here.
+          local t = {}
+          for _, v in ipairs(m) do
+            if v ~= "u" and v ~= "d" then t[#t + 1] = v end
+          end
+          m = t
+        elseif dy > dx then
+          local t = {}
+          for _, v in ipairs(m) do
+            if v ~= "l" and v ~= "r" then t[#t + 1] = v end
+          end
+          m = t
+        end
+      end
+
+      if #m == 0 then
+        if path[1].x ~= self.pos.x then
+          add_if_valid("u")
+          add_if_valid("d")
+        else
+          add_if_valid("l")
+          add_if_valid("r")
+        end
+      end
 
       self:move(m[math.random(#m)], ctx.backing)
 
