@@ -148,9 +148,12 @@ size_t n3_receive(
     if(msg.msg_flags & MSG_TRUNC)
         b3_fatal("Received data truncated");
 
-    // FIXME: is msg actually filled out like this on return?
-    for(int i = 0; i < buf_count; i++)
-        sizes[i] = iovecs[i].iov_len;
+    size_t remainder = (size_t)received;
+    for(int i = 0; i < buf_count; i++) {
+        size_t in_buf = (remainder > sizes[i] ? sizes[i] : remainder);
+        sizes[i] = in_buf;
+        remainder -= in_buf;
+    }
     if(remote)
         remote->size = msg.msg_namelen;
 
