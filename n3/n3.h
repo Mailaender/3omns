@@ -34,7 +34,7 @@ void n3_free_socket(int sd);
 void n3_send(
     int sd,
     int buf_count,
-    uint8_t *const bufs[], // TODO: const-correct-ness.
+    const uint8_t *const bufs[],
     const size_t sizes[], // Total should be <= 548.
     const n3_host *restrict remote // NULL if client.
 );

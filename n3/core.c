@@ -90,7 +90,7 @@ void n3_free_socket(int sd) {
 void n3_send(
     int sd,
     int buf_count,
-    uint8_t *const bufs[],
+    const uint8_t *const bufs[],
     const size_t sizes[],
     const n3_host *restrict remote
 ) {

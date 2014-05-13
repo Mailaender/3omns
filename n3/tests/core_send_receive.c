@@ -78,7 +78,7 @@ static void server(int notify_fd) {
 
     uint8_t send_buf0[5];
     uint8_t send_buf1[20];
-    uint8_t *send_bufs[2] = {send_buf0, send_buf1};
+    const uint8_t *send_bufs[2] = {send_buf0, send_buf1};
     size_t send_sizes[2] = {
         sizeof(send_buf0),
         server_send_size - sizeof(send_buf0),
@@ -103,7 +103,7 @@ static void client(int wait_fd) {
     uint8_t send_buf0[2];
     uint8_t send_buf1[20];
     uint8_t send_buf2[1] = {'x'};
-    uint8_t *send_bufs[3] = {send_buf0, send_buf1, send_buf2};
+    const uint8_t *send_bufs[3] = {send_buf0, send_buf1, send_buf2};
     size_t send_sizes[3] = {
         sizeof(send_buf0),
         client_send_size - sizeof(send_buf0),
