@@ -54,11 +54,11 @@ static void server(int notify_fd) {
     );
 
     test_assert(received_size == client_send_size,
-            "total sizes match");
+            "total received sizes match");
     test_assert(receive_sizes[0] == sizeof(receive_buf0),
-            "first buffer size matches");
+            "first received buffer size matches");
     test_assert(receive_sizes[1] == client_send_size - sizeof(receive_buf0),
-            "second buffer size matches");
+            "second received buffer size matches");
 
     char received_data[client_send_size + 1];
     memcpy(&received_data[0], receive_buf0, receive_sizes[0]);
@@ -76,7 +76,19 @@ static void server(int notify_fd) {
         test_assert(received_host.size == sizeof(struct sockaddr_in6),
                 "received IPv6 address size correct");
 
-    // TODO: send.
+    uint8_t send_buf0[5];
+    uint8_t send_buf1[20];
+    uint8_t *send_bufs[2] = {send_buf0, send_buf1};
+    size_t send_sizes[2] = {
+        sizeof(send_buf0),
+        server_send_size - sizeof(send_buf0),
+    };
+    memcpy(send_buf0, &server_send_data[0], send_sizes[0]);
+    memcpy(send_buf1, &server_send_data[send_sizes[0]], send_sizes[1]);
+
+    n3_send(server_sd, 2, send_bufs, send_sizes, &received_host);
+
+    n3_free_socket(server_sd);
 }
 
 static void client(int wait_fd) {
@@ -90,17 +102,54 @@ static void client(int wait_fd) {
 
     uint8_t send_buf0[2];
     uint8_t send_buf1[20];
-    uint8_t *send_bufs[2] = {send_buf0, send_buf1};
-    size_t send_sizes[2] = {
+    uint8_t send_buf2[1] = {'x'};
+    uint8_t *send_bufs[3] = {send_buf0, send_buf1, send_buf2};
+    size_t send_sizes[3] = {
         sizeof(send_buf0),
-        client_send_size - sizeof(send_buf0)
+        client_send_size - sizeof(send_buf0),
+        0,
     };
     memcpy(send_buf0, &client_send_data[0], send_sizes[0]);
     memcpy(send_buf1, &client_send_data[send_sizes[0]], send_sizes[1]);
 
-    n3_send(client_sd, 2, send_bufs, send_sizes, NULL);
+    n3_send(client_sd, 3, send_bufs, send_sizes, NULL);
 
-    // TODO: receive.
+    int poll_rc = wait_for_read(client_sd);
+    assert(poll_rc == 1);
+
+    uint8_t receive_buf0[4];
+    uint8_t receive_buf1[20];
+    uint8_t receive_buf2[1];
+    uint8_t *receive_bufs[3] = {receive_buf0, receive_buf1, receive_buf2};
+    size_t receive_sizes[3] = {
+        sizeof(receive_buf0),
+        sizeof(receive_buf1),
+        sizeof(receive_buf2),
+    };
+    size_t received_size = n3_receive(
+        client_sd,
+        3,
+        receive_bufs,
+        receive_sizes,
+        NULL
+    );
+
+    test_assert(received_size == server_send_size,
+            "total received sizes match");
+    test_assert(receive_sizes[0] == sizeof(receive_buf0),
+            "first received buffer size matches");
+    test_assert(receive_sizes[1] == server_send_size - sizeof(receive_buf0),
+            "second received buffer size matches");
+    test_assert(receive_sizes[2] == 0, "third received buffer empty");
+
+    char received_data[server_send_size + 1];
+    memcpy(&received_data[0], receive_buf0, receive_sizes[0]);
+    memcpy(&received_data[receive_sizes[0]], receive_buf1, receive_sizes[1]);
+    received_data[sizeof(received_data) - 1] = '\0';
+    test_assert(!strcmp(received_data, server_send_data),
+            "received data matches sent data");
+
+    n3_free_socket(client_sd);
 }
 
 int main(void) {
