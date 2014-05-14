@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <argp.h>
 
 
 #define _ // TODO: gettext i18n.
@@ -32,6 +33,9 @@ struct debug_stats {
 };
 
 
+const char *argp_program_version = PACKAGE_STRING;
+const char *argp_program_bug_address = PACKAGE_BUGREPORT;
+
 static const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
 static const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
 static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -48,13 +52,34 @@ static b3_text *paused_text = NULL;
 static b3_rect paused_text_rect = B3_RECT_INIT(0, 0, 0, 0);
 
 
-static void parse_args(int argc, char *restrict argv[]) {
-    for(int i = 1; i < argc; i++) {
-        if(!strcmp(argv[i], "--debug"))
-            debug = 1;
-        else
-            b3_fatal("Invalid argument: %s", argv[i]);
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+    switch(key) {
+    case 'd':
+        debug = 1;
+        break;
+    default:
+        return ARGP_ERR_UNKNOWN;
     }
+    return 0;
+}
+
+static void parse_args(int argc, char *argv[]) {
+    // TODO: I guess argp handles gettext-ing these itself?
+    static const char doc[]
+        = {"Old-school arcade-style tile-based bomb-dropping deathmatch jam"};
+    static struct argp_option options[] = {
+        {.name = "debug", .key = 'd', .doc = "Run in debug mode"},
+        {0}
+    };
+    static struct argp argp = {
+        .options = options,
+        .parser = parse_opt,
+        .doc = doc,
+    };
+
+    error_t e = argp_parse(&argp, argc, argv, 0, NULL, NULL);
+    if(e)
+        b3_fatal("Error parsing arguments: %s", strerror(e));
 }
 
 static void load_resources(void) {
