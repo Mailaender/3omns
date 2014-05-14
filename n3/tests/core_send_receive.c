@@ -17,10 +17,10 @@ static const uint16_t port = 12345;
 
 static const char server_send_data[] = {"abcdefgh"};
 static const size_t server_send_size
-        = b3_static_array_count(server_send_data) - 1;
+        = B3_STATIC_ARRAY_COUNT(server_send_data) - 1;
 static const char client_send_data[] = {"ijklm"};
 static const size_t client_send_size
-        = b3_static_array_count(client_send_data) - 1;
+        = B3_STATIC_ARRAY_COUNT(client_send_data) - 1;
 
 
 static int wait_for_read(int fd) {
