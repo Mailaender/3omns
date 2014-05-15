@@ -26,7 +26,7 @@ struct b3_entity {
     b3_entity *z_next;
 
     void *data;
-    b3_free_entity_data_callback free_data_callback;
+    b3_free_entity_data_callback free_data;
 };
 
 struct b3_entity_pool {
@@ -73,8 +73,8 @@ b3_entity_pool *b3_ref_entity_pool(b3_entity_pool *restrict pool) {
 }
 
 static void free_entity_data(b3_entity *restrict entity) {
-    if(entity->data && entity->free_data_callback)
-        entity->free_data_callback(entity, entity->data);
+    if(entity->data && entity->free_data)
+        entity->free_data(entity, entity->data);
     entity->data = NULL;
 }
 
@@ -160,7 +160,7 @@ b3_entity *b3_claim_entity(
     b3_entity *entity = pool->inactive[--(pool->inactive_count)];
     entity->pool = pool;
     entity->id = ++(pool->id_generator);
-    entity->free_data_callback = free_data_callback;
+    entity->free_data = free_data_callback;
     pool->index[pool->count++] = (struct index_entry){entity->id, entity};
     z_list_insert(pool, entity);
     return entity;

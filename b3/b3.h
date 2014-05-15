@@ -66,15 +66,53 @@ struct b3_rect {
 #define B3_RECT(x, y, w, h) ((b3_rect)B3_RECT_INIT((x), (y), (w), (h)))
 
 
+typedef enum b3_input b3_input;
+enum b3_input {
+    B3_INPUT_BACK,
+    B3_INPUT_PAUSE,
+    B3_INPUT_UP_0,
+    B3_INPUT_UP_1,
+    B3_INPUT_UP_2,
+    B3_INPUT_UP_3,
+    B3_INPUT_DOWN_0,
+    B3_INPUT_DOWN_1,
+    B3_INPUT_DOWN_2,
+    B3_INPUT_DOWN_3,
+    B3_INPUT_LEFT_0,
+    B3_INPUT_LEFT_1,
+    B3_INPUT_LEFT_2,
+    B3_INPUT_LEFT_3,
+    B3_INPUT_RIGHT_0,
+    B3_INPUT_RIGHT_1,
+    B3_INPUT_RIGHT_2,
+    B3_INPUT_RIGHT_3,
+    B3_INPUT_FIRE_0,
+    B3_INPUT_FIRE_1,
+    B3_INPUT_FIRE_2,
+    B3_INPUT_FIRE_3,
+};
+
+#define B3_INPUT_UP(x) (B3_INPUT_UP_0 + (x))
+#define B3_INPUT_DOWN(x) (B3_INPUT_DOWN_0 + (x))
+#define B3_INPUT_LEFT(x) (B3_INPUT_LEFT_0 + (x))
+#define B3_INPUT_RIGHT(x) (B3_INPUT_RIGHT_0 + (x))
+#define B3_INPUT_FIRE(x) (B3_INPUT_FIRE_0 + (x))
+#define B3_INPUT_IS_PLAYER(i) ((i) >= B3_INPUT_UP_0)
+#define B3_INPUT_PLAYER(i) (((i) - B3_INPUT_UP_0) % 4)
+
+typedef _Bool (*b3_input_callback)(b3_input input, _Bool pressed, void *data);
+
+
 void b3_init(
     const char *restrict window_title,
-    const b3_size *restrict window_size
+    const b3_size *restrict window_size,
+    b3_input_callback input_callback
 );
 void b3_quit(void);
 
 extern b3_size b3_window_size;
 
-_Bool b3_process_events(void);
+_Bool b3_process_events(void *input_callback_data);
 
 
 typedef int64_t b3_ticks;
@@ -152,45 +190,6 @@ b3_color b3_get_text_color(b3_text *restrict text);
 b3_text *b3_set_text_color(b3_text *restrict text, b3_color color);
 
 void b3_draw_text(b3_text *restrict text, const b3_rect *restrict rect);
-
-
-typedef enum b3_input b3_input;
-enum b3_input {
-    B3_INPUT_BACK,
-    B3_INPUT_PAUSE,
-    B3_INPUT_UP_0,
-    B3_INPUT_UP_1,
-    B3_INPUT_UP_2,
-    B3_INPUT_UP_3,
-    B3_INPUT_DOWN_0,
-    B3_INPUT_DOWN_1,
-    B3_INPUT_DOWN_2,
-    B3_INPUT_DOWN_3,
-    B3_INPUT_LEFT_0,
-    B3_INPUT_LEFT_1,
-    B3_INPUT_LEFT_2,
-    B3_INPUT_LEFT_3,
-    B3_INPUT_RIGHT_0,
-    B3_INPUT_RIGHT_1,
-    B3_INPUT_RIGHT_2,
-    B3_INPUT_RIGHT_3,
-    B3_INPUT_FIRE_0,
-    B3_INPUT_FIRE_1,
-    B3_INPUT_FIRE_2,
-    B3_INPUT_FIRE_3,
-};
-
-#define B3_INPUT_UP(x) (B3_INPUT_UP_0 + (x))
-#define B3_INPUT_DOWN(x) (B3_INPUT_DOWN_0 + (x))
-#define B3_INPUT_LEFT(x) (B3_INPUT_LEFT_0 + (x))
-#define B3_INPUT_RIGHT(x) (B3_INPUT_RIGHT_0 + (x))
-#define B3_INPUT_FIRE(x) (B3_INPUT_FIRE_0 + (x))
-#define B3_INPUT_IS_PLAYER(i) ((i) >= B3_INPUT_UP_0)
-#define B3_INPUT_PLAYER(i) (((i) - B3_INPUT_UP_0) % 4)
-
-typedef _Bool (*b3_input_callback)(b3_input input, _Bool pressed, void *data);
-
-void b3_set_input_callback(b3_input_callback callback, void *data);
 
 
 typedef uint8_t b3_tile;

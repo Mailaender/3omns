@@ -383,7 +383,7 @@ static void loop(l3_level *restrict level) {
 
         stats.loop_count++;
         update_debug_stats(&stats, elapsed);
-    } while(!b3_process_events());
+    } while(!b3_process_events(level));
 
     l3_free_agent(agent3);
     l3_free_agent(agent4);
@@ -396,12 +396,11 @@ int main(int argc, char *argv[]) {
     atexit(l3_quit);
     atexit(quit);
 
-    b3_init("3omns", &window_size);
+    b3_init("3omns", &window_size, handle_input);
     l3_init(RESOURCES, debug);
     init();
 
     l3_level level = l3_generate();
-    b3_set_input_callback(handle_input, &level);
 
     // TODO: a Lua debug console directly tied into the Lua environment.
 

@@ -36,13 +36,13 @@ static SDL_Renderer *renderer = NULL;
 
 static _Bool quit = 0;
 
-static b3_input_callback input_callback = NULL;
-static void *input_callback_data = NULL;
+static b3_input_callback handle_input = NULL;
 
 
 void b3_init(
     const char *restrict window_title,
-    const b3_size *restrict window_size
+    const b3_size *restrict window_size,
+    b3_input_callback input_callback
 ) {
     quit = 0;
 
@@ -78,11 +78,12 @@ void b3_init(
     renderer = SDL_CreateRenderer(window, -1, 0);
     if(!renderer)
         b3_fatal("Error creating rendering context: %s", SDL_GetError());
+
+    handle_input = input_callback;
 }
 
 void b3_quit(void) {
-    input_callback = NULL;
-    input_callback_data = NULL;
+    handle_input = NULL;
 
     if(renderer) {
         SDL_DestroyRenderer(renderer);
@@ -132,30 +133,33 @@ static int keysym_to_input(const SDL_Keysym *restrict keysym) {
     return -1;
 }
 
-static _Bool handle_key_event(const SDL_KeyboardEvent *restrict event) {
+static _Bool handle_key_event(
+    const SDL_KeyboardEvent *restrict event,
+    void *input_callback_data
+) {
     // TODO: gamepads or joysticks.
 
-    if(!input_callback || event->repeat)
+    if(!handle_input || event->repeat)
         return 0;
 
     int input = keysym_to_input(&event->keysym);
     if(input < 0)
         return 0;
 
-    return input_callback(
+    return handle_input(
         (b3_input)input,
         event->state == SDL_PRESSED,
         input_callback_data
     );
 }
 
-_Bool b3_process_events(void) {
+_Bool b3_process_events(void *input_callback_data) {
     SDL_Event event;
     while(SDL_PollEvent(&event) && !quit) {
         if(event.type == SDL_QUIT)
             quit = 1;
         else if(event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
-            if(handle_key_event(&event.key))
+            if(handle_key_event(&event.key, input_callback_data))
                 quit = 1;
         }
     }
@@ -234,11 +238,6 @@ void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect) {
         &(SDL_Rect){r->x, r->y, r->width, r->height},
         &(SDL_Rect){rect->x, rect->y, rect->width, rect->height}
     );
-}
-
-void b3_set_input_callback(b3_input_callback callback, void *data) {
-    input_callback = callback;
-    input_callback_data = data;
 }
 
 b3_font *b3_load_font(int size, const char *restrict filename, int index) {
