@@ -198,8 +198,11 @@ size_t n3_receive(
     }
 
     ssize_t received = recvmsg(socket_fd, &msg, MSG_DONTWAIT);
-    if(received < 0)
+    if(received < 0) {
+        if(errno == EAGAIN)
+            return 0;
         b3_fatal("Error receiving: %s", strerror(errno));
+    }
     // FIXME: this introduces a remotely activatable denial of service, where
     // a malicious remote host can send a huge message, causing the local
     // executable to exit with error.  For testing, I need to know if this ever
