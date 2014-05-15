@@ -2,6 +2,8 @@
 #include "b3/b3.h"
 
 #include <stddef.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -9,6 +11,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 static void resolve(
@@ -17,7 +21,7 @@ static void resolve(
     uint16_t port
 ) {
     char service[6];
-    snprintf(service, sizeof(service), "%u", port);
+    snprintf(service, sizeof(service), "%"PRIu16, port);
 
     struct addrinfo hints = {
         .ai_flags = AI_V4MAPPED | AI_ADDRCONFIG,
@@ -56,6 +60,30 @@ n3_host *n3_init_host(
 n3_host *n3_init_host_any_local(n3_host *restrict host, uint16_t port) {
     resolve(host, NULL, port);
     return host;
+}
+
+char *n3_host_to_string(const n3_host *restrict host) {
+    if(host->address.ss_family != AF_INET && host->address.ss_family != AF_INET6)
+        return b3_copy_string("(unknown)");
+
+    void *address;
+    uint16_t nport;
+    if(host->address.ss_family == AF_INET) {
+        struct sockaddr_in *restrict addr = (struct sockaddr_in *)&host->address;
+        address = &addr->sin_addr;
+        nport = addr->sin_port;
+    }
+    else {
+        struct sockaddr_in6 *restrict addr = (struct sockaddr_in6 *)&host->address;
+        address = &addr->sin6_addr;
+        nport = addr->sin6_port;
+    }
+
+    char hostname[INET6_ADDRSTRLEN];
+    if(!inet_ntop(host->address.ss_family, address, hostname, sizeof(hostname)))
+        b3_fatal("Error converting host address to string: %s", strerror(errno));
+
+    return b3_copy_format("%s|%"PRIu16, hostname, ntohs(nport));
 }
 
 static int new_socket(_Bool server, const n3_host *restrict address) {

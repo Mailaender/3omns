@@ -22,7 +22,7 @@ n3_host *n3_init_host(
 );
 n3_host *n3_init_host_any_local(n3_host *restrict host, uint16_t port);
 
-// TODO: to_string.
+char *n3_host_to_string(const n3_host *restrict host);
 
 
 int n3_new_server_socket(const n3_host *restrict local);
