@@ -134,7 +134,6 @@ static int new_socket(_Bool server, const n3_host *restrict address) {
             address->size
         ) < 0)
             b3_fatal("Error connecting client socket: %s", strerror(errno));
-        // TODO: bind to IN*ADDR_ANY at port 0, to nail down ephemeral port #?
     }
 
     return socket_fd;

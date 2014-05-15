@@ -1,6 +1,6 @@
 AC_PREREQ([2.68])
 AC_INIT([3omns], [0.0.0+git], [chaz@chazomatic.us])
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 
 AC_CONFIG_FILES([
 	Makefile

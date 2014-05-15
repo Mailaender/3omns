@@ -13,7 +13,7 @@
 
 
 // FIXME: find a port that's not in use instead of hard-coding it.
-static const uint16_t port = 12345;
+static const n3_port port = 12345;
 
 static const char server_send_data[] = {"abcdefgh"};
 static const size_t server_send_size
@@ -31,13 +31,18 @@ static void server(int notify_fd) {
     n3_host listen;
     n3_init_host_any_local(&listen, port);
 
-    int server_sd = n3_new_server_socket(&listen);
+    int server_fd = n3_new_server_socket(&listen);
 
     uint8_t c = 1;
     ssize_t notify_written = write(notify_fd, &c, 1);
     assert(notify_written == 1);
 
-    int poll_rc = wait_for_read(server_sd);
+    n3_host test_listen;
+    n3_init_host_from_socket_local(&test_listen, server_fd);
+    test_assert(n3_get_host_port(&test_listen) == port,
+            "server port correct");
+
+    int poll_rc = wait_for_read(server_fd);
     assert(poll_rc == 1);
 
     uint8_t receive_buf0[3];
@@ -46,7 +51,7 @@ static void server(int notify_fd) {
     size_t receive_sizes[2] = {sizeof(receive_buf0), sizeof(receive_buf1)};
     n3_host received_host;
     size_t received_size = n3_receive(
-        server_sd,
+        server_fd,
         2,
         receive_bufs,
         receive_sizes,
@@ -67,14 +72,17 @@ static void server(int notify_fd) {
     test_assert(!strcmp(received_data, client_send_data),
             "received data matches sent data");
 
-    test_assert(received_host.address.ss_family == AF_INET || received_host.address.ss_family == AF_INET6,
+    test_assert(received_host.address.ss_family == AF_INET
+            || received_host.address.ss_family == AF_INET6,
             "received from IP address");
-    if(received_host.address.ss_family == AF_INET)
+    if(received_host.address.ss_family == AF_INET) {
         test_assert(received_host.size == sizeof(struct sockaddr_in),
                 "received IPv4 address size correct");
-    else
+    }
+    else {
         test_assert(received_host.size == sizeof(struct sockaddr_in6),
                 "received IPv6 address size correct");
+    }
 
     uint8_t send_buf0[5];
     uint8_t send_buf1[20];
@@ -86,9 +94,9 @@ static void server(int notify_fd) {
     memcpy(send_buf0, &server_send_data[0], send_sizes[0]);
     memcpy(send_buf1, &server_send_data[send_sizes[0]], send_sizes[1]);
 
-    n3_send(server_sd, 2, send_bufs, send_sizes, &received_host);
+    n3_send(server_fd, 2, send_bufs, send_sizes, &received_host);
 
-    n3_free_socket(server_sd);
+    n3_free_socket(server_fd);
 }
 
 static void client(int wait_fd) {
@@ -98,7 +106,12 @@ static void client(int wait_fd) {
     int wait_rc = wait_for_read(wait_fd);
     assert(wait_rc == 1);
 
-    int client_sd = n3_new_client_socket(&connect);
+    int client_fd = n3_new_client_socket(&connect);
+
+    n3_host test_connect;
+    n3_init_host_from_socket_local(&test_connect, client_fd);
+    test_assert(n3_get_host_port(&test_connect) != 0,
+            "client port immediately available");
 
     uint8_t send_buf0[2];
     uint8_t send_buf1[20];
@@ -112,9 +125,9 @@ static void client(int wait_fd) {
     memcpy(send_buf0, &client_send_data[0], send_sizes[0]);
     memcpy(send_buf1, &client_send_data[send_sizes[0]], send_sizes[1]);
 
-    n3_send(client_sd, 3, send_bufs, send_sizes, NULL);
+    n3_send(client_fd, 3, send_bufs, send_sizes, NULL);
 
-    int poll_rc = wait_for_read(client_sd);
+    int poll_rc = wait_for_read(client_fd);
     assert(poll_rc == 1);
 
     uint8_t receive_buf0[4];
@@ -127,7 +140,7 @@ static void client(int wait_fd) {
         sizeof(receive_buf2),
     };
     size_t received_size = n3_receive(
-        client_sd,
+        client_fd,
         3,
         receive_bufs,
         receive_sizes,
@@ -149,7 +162,7 @@ static void client(int wait_fd) {
     test_assert(!strcmp(received_data, server_send_data),
             "received data matches sent data");
 
-    n3_free_socket(client_sd);
+    n3_free_socket(client_fd);
 }
 
 int main(void) {
