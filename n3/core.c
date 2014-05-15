@@ -62,7 +62,10 @@ n3_host *n3_init_host_any_local(n3_host *restrict host, n3_port port) {
     return host;
 }
 
-n3_host *n3_init_host_from_socket_local(n3_host *restrict host, int socket_fd) {
+n3_host *n3_init_host_from_socket_local(
+    n3_host *restrict host,
+    int socket_fd
+) {
     socklen_t size = sizeof(host->address);
     if(getsockname(socket_fd, (struct sockaddr *)&host->address, &size) < 0)
         b3_fatal("Error getting socket address: %s", strerror(errno));
@@ -77,21 +80,27 @@ char *n3_get_host_address(
     char *restrict address,
     size_t size
 ) {
-    if(host->address.ss_family != AF_INET && host->address.ss_family != AF_INET6)
+    if(host->address.ss_family != AF_INET
+            && host->address.ss_family != AF_INET6)
         snprintf(address, size, "%s", "(unknown)");
     else {
         void *addr = (host->address.ss_family == AF_INET
                 ? (void *)&((struct sockaddr_in *)&host->address)->sin_addr
                 : (void *)&((struct sockaddr_in6 *)&host->address)->sin6_addr);
-        if(!inet_ntop(host->address.ss_family, addr, address, size))
-            b3_fatal("Error converting host address to string: %s", strerror(errno));
+        if(!inet_ntop(host->address.ss_family, addr, address, size)) {
+            b3_fatal(
+                "Error converting host address to string: %s",
+                strerror(errno)
+            );
+        }
     }
 
     return address;
 }
 
 n3_port n3_get_host_port(const n3_host *restrict host) {
-    if(host->address.ss_family != AF_INET && host->address.ss_family != AF_INET6)
+    if(host->address.ss_family != AF_INET
+            && host->address.ss_family != AF_INET6)
         return 0;
 
     n3_port nport = (host->address.ss_family == AF_INET
@@ -102,15 +111,28 @@ n3_port n3_get_host_port(const n3_host *restrict host) {
 
 static int new_socket(_Bool server, const n3_host *restrict address) {
     int socket_fd = socket(address->address.ss_family, SOCK_DGRAM, 0);
-    if(socket_fd < 0)
-        b3_fatal("Error creating %s socket: %s", (server ? "server" : "client"), strerror(errno));
+    if(socket_fd < 0) {
+        b3_fatal(
+            "Error creating %s socket: %s",
+            (server ? "server" : "client"),
+            strerror(errno)
+        );
+    }
 
     if(server) {
-        if(bind(socket_fd, (struct sockaddr *)&address->address, address->size) < 0)
+        if(bind(
+            socket_fd,
+            (struct sockaddr *)&address->address,
+            address->size
+        ) < 0)
             b3_fatal("Error binding server socket: %s", strerror(errno));
     }
     else {
-        if(connect(socket_fd, (struct sockaddr *)&address->address, address->size) < 0)
+        if(connect(
+            socket_fd,
+            (struct sockaddr *)&address->address,
+            address->size
+        ) < 0)
             b3_fatal("Error connecting client socket: %s", strerror(errno));
         // TODO: bind to IN*ADDR_ANY at port 0, to nail down ephemeral port #?
     }
@@ -144,16 +166,14 @@ void n3_send(
         iovecs[i].iov_len = sizes[i];
         size += sizes[i];
     }
-    struct msghdr msg = {
-        .msg_iov = iovecs,
-        .msg_iovlen = (size_t)buf_count,
-    };
+    struct msghdr msg = {.msg_iov = iovecs, .msg_iovlen = (size_t)buf_count};
     if(remote) {
         msg.msg_name = (void *)&remote->address;
         msg.msg_namelen = remote->size;
     }
 
-    ssize_t sent = sendmsg(socket_fd, &msg, MSG_DONTWAIT); // TODO: MSG_CONFIRM?
+    // TODO: MSG_CONFIRM?
+    ssize_t sent = sendmsg(socket_fd, &msg, MSG_DONTWAIT);
     if(sent < 0)
         b3_fatal("Error sending: %s", strerror(errno));
     if((size_t)sent != size)
@@ -172,10 +192,7 @@ size_t n3_receive(
         iovecs[i].iov_base = bufs[i];
         iovecs[i].iov_len = sizes[i];
     }
-    struct msghdr msg = {
-        .msg_iov = iovecs,
-        .msg_iovlen = (size_t)buf_count,
-    };
+    struct msghdr msg = {.msg_iov = iovecs, .msg_iovlen = (size_t)buf_count};
     if(remote) {
         msg.msg_name = &remote->address;
         msg.msg_namelen = sizeof(remote->address);
