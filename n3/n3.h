@@ -41,8 +41,6 @@ int n3_new_server_socket(const n3_host *restrict local);
 int n3_new_client_socket(const n3_host *restrict remote);
 void n3_free_socket(int socket_fd);
 
-// TODO: get local address.
-
 void n3_send(
     int socket_fd,
     int buf_count,
