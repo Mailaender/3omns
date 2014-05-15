@@ -2,8 +2,12 @@
 #include "l3/l3.h"
 #include "n3/n3.h"
 
-#include <stdlib.h>
+#include <errno.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <argp.h>
 
 
@@ -20,6 +24,11 @@
 #define GAME_HEIGHT WINDOW_HEIGHT
 
 #define HEART_SIZE 16
+
+#define DEFAULT_PORT 30325
+#define DEFAULT_PORT_STRING B3_STRINGIFY(DEFAULT_PORT)
+
+#define DEBUG_PRINT(...) ((void)(debug && printf(__VA_ARGS__)))
 
 struct debug_stats {
     b3_ticks reset_time;
@@ -43,6 +52,10 @@ static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
 static b3_size tile_size = {0, 0};
 
 static _Bool debug = 0;
+static _Bool serve = 0;
+static _Bool client = 0;
+static const char *hostname = NULL;
+static uint16_t port = DEFAULT_PORT;
 
 static _Bool paused = 0;
 
@@ -51,12 +64,43 @@ static b3_font *debug_stats_font = NULL;
 static b3_text *paused_text = NULL;
 static b3_rect paused_text_rect = B3_RECT_INIT(0, 0, 0, 0);
 
+static int socket_fd = -1;
+
+
+static error_t parse_uint16(uint16_t *out, const char *string) {
+    char *endptr;
+    errno = 0;
+    long l = strtol(string, &endptr, 10);
+    if(errno)
+        return errno;
+    if(*endptr)
+        return EINVAL;
+    if(l < 0 || l > UINT16_MAX)
+        return ERANGE;
+    *out = (uint16_t)l;
+    return 0;
+}
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     switch(key) {
     case 'd':
         debug = 1;
         break;
+    case 'c':
+        client = 1;
+        hostname = arg;
+        break;
+    case 's':
+        serve = 1;
+        hostname = arg;
+        break;
+    case 'p':
+        {
+            error_t e = parse_uint16(&port, arg);
+            if(e)
+                b3_fatal("Error parsing port '%s': %s", arg, strerror(e));
+            break;
+        }
     default:
         return ARGP_ERR_UNKNOWN;
     }
@@ -68,21 +112,34 @@ static void parse_args(int argc, char *argv[]) {
     static const char doc[]
         = {"Old-school arcade-style tile-based bomb-dropping deathmatch jam"};
     static struct argp_option options[] = {
-        {.name = "debug", .key = 'd', .doc = "Run in debug mode"},
+        {"debug", 'd', NULL, 0, "Run in debug mode"},
+        // TODO: let this be controlled from in-game.
+        {NULL, 0, NULL, 0, "Network play options:", 1},
+        {"connect", 'c', "server", 0, "Connect to network host", 1},
+        {"serve", 's', "from", OPTION_ARG_OPTIONAL,
+                "Host network game, listening on the given address "
+                "(default: the wildcard address)", 1},
+        {"port", 'p', "port", 0, "Port for listening or connecting (default: "
+                DEFAULT_PORT_STRING")", 1},
         {0}
     };
-    static struct argp argp = {
-        .options = options,
-        .parser = parse_opt,
-        .doc = doc,
-    };
+    static struct argp argp = {options, parse_opt, NULL, doc};
 
     error_t e = argp_parse(&argp, argc, argv, 0, NULL, NULL);
     if(e)
         b3_fatal("Error parsing arguments: %s", strerror(e));
 }
 
-static void load_resources(void) {
+static const char *host_to_string(const n3_host *restrict host) {
+    static char string[N3_ADDRESS_SIZE + 10]; // 10 for "UDP |12345".
+    char address[N3_ADDRESS_SIZE] = {""};
+    n3_get_host_address(host, address, sizeof(address));
+    n3_port port = n3_get_host_port(host);
+    snprintf(string, sizeof(string), "UDP %s|%"PRIu16, address, port);
+    return string;
+}
+
+static void init(void) {
     debug_stats_font = b3_load_font(12, FONT_FILENAME, 0);
 
     b3_font *paused_font = b3_load_font(64, FONT_FILENAME, 0);
@@ -98,13 +155,32 @@ static void load_resources(void) {
         paused_text_size.height
     );
     b3_free_font(paused_font);
+
+    n3_host host;
+    if(client || (serve && hostname))
+        n3_init_host(&host, hostname, port);
+    else if(serve)
+        n3_init_host_any_local(&host, port);
+
+    if(serve) {
+        socket_fd = n3_new_server_socket(&host);
+        DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
+    }
+    else if(client) {
+        socket_fd = n3_new_client_socket(&host);
+        DEBUG_PRINT("Connecting to %s\n", host_to_string(&host));
+    }
 }
 
-static void free_resources(void) {
+static void quit(void) {
     b3_free_font(debug_stats_font);
     debug_stats_font = NULL;
     b3_free_text(paused_text);
     paused_text = NULL;
+    if(socket_fd >= 0) {
+        n3_free_socket(socket_fd);
+        socket_fd = -1;
+    }
 }
 
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
@@ -318,14 +394,11 @@ int main(int argc, char *argv[]) {
 
     atexit(b3_quit);
     atexit(l3_quit);
-    atexit(free_resources);
+    atexit(quit);
 
     b3_init("3omns", &window_size);
     l3_init(RESOURCES, debug);
-    load_resources();
-
-    n3_host host;
-    int sd = n3_new_server_socket(n3_init_host_any_local(&host, 30325));
+    init();
 
     l3_level level = l3_generate();
     b3_set_input_callback(handle_input, &level);

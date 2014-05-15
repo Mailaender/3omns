@@ -8,6 +8,9 @@
 
 #define B3_STATIC_ARRAY_COUNT(a) (sizeof(a) / sizeof((a)[0]))
 
+#define B3_STRINGIFY(x) B3_STRINGIFY_(x)
+#define B3_STRINGIFY_(x) #x
+
 
 #define b3_fatal(...) \
         b3_fatal_(__FILE__, __LINE__, __func__, __VA_ARGS__)
