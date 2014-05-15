@@ -70,8 +70,8 @@ n3_host *n3_init_host_from_socket_local(
     if(getsockname(socket_fd, (struct sockaddr *)&host->address, &size) < 0)
         b3_fatal("Error getting socket address: %s", strerror(errno));
     if(size > sizeof(host->address))
-        b3_fatal("Socket address too big, %'zd bytes", (ssize_t)size);
-    host->size = (size_t)size;
+        b3_fatal("Socket address too big, %'zu bytes", (size_t)size);
+    host->size = size;
     return host;
 }
 
