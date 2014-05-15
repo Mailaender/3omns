@@ -18,7 +18,7 @@
 static void resolve(
     n3_host *restrict host,
     const char *restrict hostname,
-    uint16_t port
+    n3_port port
 ) {
     char service[6];
     snprintf(service, sizeof(service), "%"PRIu16, port);
@@ -51,56 +51,71 @@ static void resolve(
 n3_host *n3_init_host(
     n3_host *restrict host,
     const char *restrict hostname,
-    uint16_t port
+    n3_port port
 ) {
     resolve(host, hostname, port);
     return host;
 }
 
-n3_host *n3_init_host_any_local(n3_host *restrict host, uint16_t port) {
+n3_host *n3_init_host_any_local(n3_host *restrict host, n3_port port) {
     resolve(host, NULL, port);
     return host;
 }
 
-char *n3_host_to_string(const n3_host *restrict host) {
+n3_host *n3_init_host_from_socket_local(n3_host *restrict host, int socket_fd) {
+    socklen_t size = sizeof(host->address);
+    if(getsockname(socket_fd, (struct sockaddr *)&host->address, &size) < 0)
+        b3_fatal("Error getting socket address: %s", strerror(errno));
+    if(size > sizeof(host->address))
+        b3_fatal("Socket address too big, %'zd bytes", (ssize_t)size);
+    host->size = (size_t)size;
+    return host;
+}
+
+char *n3_get_host_address(
+    const n3_host *restrict host,
+    char *restrict address,
+    size_t size
+) {
     if(host->address.ss_family != AF_INET && host->address.ss_family != AF_INET6)
-        return b3_copy_string("(unknown)");
-
-    void *address;
-    uint16_t nport;
-    if(host->address.ss_family == AF_INET) {
-        struct sockaddr_in *restrict addr = (struct sockaddr_in *)&host->address;
-        address = &addr->sin_addr;
-        nport = addr->sin_port;
-    }
+        snprintf(address, size, "%s", "(unknown)");
     else {
-        struct sockaddr_in6 *restrict addr = (struct sockaddr_in6 *)&host->address;
-        address = &addr->sin6_addr;
-        nport = addr->sin6_port;
+        void *addr = (host->address.ss_family == AF_INET
+                ? (void *)&((struct sockaddr_in *)&host->address)->sin_addr
+                : (void *)&((struct sockaddr_in6 *)&host->address)->sin6_addr);
+        if(!inet_ntop(host->address.ss_family, addr, address, size))
+            b3_fatal("Error converting host address to string: %s", strerror(errno));
     }
 
-    char hostname[INET6_ADDRSTRLEN];
-    if(!inet_ntop(host->address.ss_family, address, hostname, sizeof(hostname)))
-        b3_fatal("Error converting host address to string: %s", strerror(errno));
+    return address;
+}
 
-    return b3_copy_format("%s|%"PRIu16, hostname, ntohs(nport));
+n3_port n3_get_host_port(const n3_host *restrict host) {
+    if(host->address.ss_family != AF_INET && host->address.ss_family != AF_INET6)
+        return 0;
+
+    n3_port nport = (host->address.ss_family == AF_INET
+            ? ((struct sockaddr_in *)&host->address)->sin_port
+            : ((struct sockaddr_in6 *)&host->address)->sin6_port);
+    return ntohs(nport);
 }
 
 static int new_socket(_Bool server, const n3_host *restrict address) {
-    int sd = socket(address->address.ss_family, SOCK_DGRAM, 0);
-    if(sd < 0)
+    int socket_fd = socket(address->address.ss_family, SOCK_DGRAM, 0);
+    if(socket_fd < 0)
         b3_fatal("Error creating %s socket: %s", (server ? "server" : "client"), strerror(errno));
 
     if(server) {
-        if(bind(sd, (struct sockaddr *)&address->address, address->size) < 0)
+        if(bind(socket_fd, (struct sockaddr *)&address->address, address->size) < 0)
             b3_fatal("Error binding server socket: %s", strerror(errno));
     }
     else {
-        if(connect(sd, (struct sockaddr *)&address->address, address->size) < 0)
+        if(connect(socket_fd, (struct sockaddr *)&address->address, address->size) < 0)
             b3_fatal("Error connecting client socket: %s", strerror(errno));
+        // TODO: bind to IN*ADDR_ANY at port 0, to nail down ephemeral port #?
     }
 
-    return sd;
+    return socket_fd;
 }
 
 int n3_new_server_socket(const n3_host *restrict local) {
@@ -111,12 +126,12 @@ int n3_new_client_socket(const n3_host *restrict remote) {
     return new_socket(0, remote);
 }
 
-void n3_free_socket(int sd) {
-    close(sd);
+void n3_free_socket(int socket_fd) {
+    close(socket_fd);
 }
 
 void n3_send(
-    int sd,
+    int socket_fd,
     int buf_count,
     const uint8_t *const bufs[],
     const size_t sizes[],
@@ -138,7 +153,7 @@ void n3_send(
         msg.msg_namelen = remote->size;
     }
 
-    ssize_t sent = sendmsg(sd, &msg, MSG_DONTWAIT); // TODO: MSG_CONFIRM?
+    ssize_t sent = sendmsg(socket_fd, &msg, MSG_DONTWAIT); // TODO: MSG_CONFIRM?
     if(sent < 0)
         b3_fatal("Error sending: %s", strerror(errno));
     if((size_t)sent != size)
@@ -146,7 +161,7 @@ void n3_send(
 }
 
 size_t n3_receive(
-    int sd,
+    int socket_fd,
     int buf_count,
     uint8_t *restrict bufs[],
     size_t sizes[],
@@ -166,7 +181,7 @@ size_t n3_receive(
         msg.msg_namelen = sizeof(remote->address);
     }
 
-    ssize_t received = recvmsg(sd, &msg, MSG_DONTWAIT);
+    ssize_t received = recvmsg(socket_fd, &msg, MSG_DONTWAIT);
     if(received < 0)
         b3_fatal("Error receiving: %s", strerror(errno));
     // FIXME: this introduces a remotely activatable denial of service, where
