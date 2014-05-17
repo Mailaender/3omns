@@ -139,12 +139,13 @@ static void client(int wait_fd) {
         sizeof(receive_buf1),
         sizeof(receive_buf2),
     };
+    n3_host received_host;
     size_t received_size = n3_receive(
         client_fd,
         3,
         receive_bufs,
         receive_sizes,
-        NULL
+        &received_host
     );
 
     test_assert(received_size == server_send_size,
@@ -161,6 +162,9 @@ static void client(int wait_fd) {
     received_data[sizeof(received_data) - 1] = '\0';
     test_assert(!strcmp(received_data, server_send_data),
             "received data matches sent data");
+
+    test_assert(!n3_compare_hosts(&received_host, &connect),
+            "received from connected host");
 
     n3_free_socket(client_fd);
 }

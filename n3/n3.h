@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 
 
 // TODO: error reporting (return NULL/false and pass extra char ** for desc.).
@@ -35,6 +34,7 @@ char *n3_get_host_address(
     size_t size
 );
 n3_port n3_get_host_port(const n3_host *restrict host);
+int n3_compare_hosts(const n3_host *restrict a, const n3_host *restrict b);
 
 
 int n3_new_server_socket(const n3_host *restrict local);

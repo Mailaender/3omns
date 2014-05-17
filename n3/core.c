@@ -75,6 +75,20 @@ n3_host *n3_init_host_from_socket_local(
     return host;
 }
 
+static inline in_port_t *get_nport(const n3_host *restrict host) {
+    // Assume either AF_INET or AF_INET6.
+    return (host->address.ss_family == AF_INET
+            ? &((struct sockaddr_in *)&host->address)->sin_port
+            : &((struct sockaddr_in6 *)&host->address)->sin6_port);
+}
+
+static inline void *get_addr(const n3_host *restrict host) {
+    // Assume either AF_INET or AF_INET6.
+    return (host->address.ss_family == AF_INET
+            ? (void *)&((struct sockaddr_in *)&host->address)->sin_addr
+            : (void *)&((struct sockaddr_in6 *)&host->address)->sin6_addr);
+}
+
 char *n3_get_host_address(
     const n3_host *restrict host,
     char *restrict address,
@@ -84,10 +98,12 @@ char *n3_get_host_address(
             && host->address.ss_family != AF_INET6)
         snprintf(address, size, "%s", "(unknown)");
     else {
-        void *addr = (host->address.ss_family == AF_INET
-                ? (void *)&((struct sockaddr_in *)&host->address)->sin_addr
-                : (void *)&((struct sockaddr_in6 *)&host->address)->sin6_addr);
-        if(!inet_ntop(host->address.ss_family, addr, address, size)) {
+        if(!inet_ntop(
+            host->address.ss_family,
+            get_addr(host),
+            address,
+            size
+        )) {
             b3_fatal(
                 "Error converting host address to string: %s",
                 strerror(errno)
@@ -103,10 +119,29 @@ n3_port n3_get_host_port(const n3_host *restrict host) {
             && host->address.ss_family != AF_INET6)
         return 0;
 
-    n3_port nport = (host->address.ss_family == AF_INET
-            ? ((struct sockaddr_in *)&host->address)->sin_port
-            : ((struct sockaddr_in6 *)&host->address)->sin6_port);
-    return ntohs(nport);
+    return ntohs(*get_nport(host));
+}
+
+int n3_compare_hosts(const n3_host *restrict a, const n3_host *restrict b) {
+    if(a->address.ss_family != b->address.ss_family)
+        return (a->address.ss_family < b->address.ss_family ? -1 : 1);
+
+    // Assume either AF_INET or AF_INET6.
+    in_port_t a_nport = *get_nport(a);
+    in_port_t b_nport = *get_nport(b);
+    if(a_nport != b_nport)
+        return (a_nport < b_nport ? -1 : 1); // Ignore byte ordering.
+
+    // TODO: do IPv6's sin6_flowinfo or sin6_scope_id fields factor into this?
+
+    return memcmp(
+        get_addr(a),
+        get_addr(b),
+        // Assume either AF_INET or AF_INET6.
+        (a->address.ss_family == AF_INET
+                ? sizeof(struct in_addr)
+                : sizeof(struct in6_addr))
+    );
 }
 
 static int new_socket(_Bool server, const n3_host *restrict address) {
