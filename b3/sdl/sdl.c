@@ -167,7 +167,7 @@ _Bool b3_process_events(void *input_callback_data) {
     return quit;
 }
 
-b3_ticks b3_get_tick_count() {
+b3_ticks b3_get_tick_count(void) {
     return (b3_ticks)SDL_GetPerformanceCounter();
 }
 

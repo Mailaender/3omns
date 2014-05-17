@@ -117,7 +117,7 @@ _Bool b3_process_events(void *input_callback_data);
 
 typedef int64_t b3_ticks;
 
-b3_ticks b3_get_tick_count();
+b3_ticks b3_get_tick_count(void);
 extern b3_ticks b3_tick_frequency;
 
 static inline b3_ticks b3_secs_to_ticks(double secs) {
