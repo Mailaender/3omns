@@ -41,6 +41,8 @@ struct debug_stats {
     b3_rect text_rect[5];
 };
 
+// TODO: a Lua debug console directly tied into the Lua environment.
+
 
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
@@ -53,7 +55,7 @@ static b3_size tile_size = {0, 0};
 
 static _Bool debug = 0;
 static _Bool serve = 0;
-static _Bool client = 0;
+static _Bool remote = 0;
 static const char *hostname = NULL;
 static uint16_t port = DEFAULT_PORT;
 
@@ -64,7 +66,8 @@ static b3_font *debug_stats_font = NULL;
 static b3_text *paused_text = NULL;
 static b3_rect paused_text_rect = B3_RECT_INIT(0, 0, 0, 0);
 
-static int socket_fd = -1;
+static n3_client *client = NULL;
+static n3_server *server = NULL;
 
 
 static error_t parse_uint16(uint16_t *out, const char *string) {
@@ -87,7 +90,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         debug = 1;
         break;
     case 'c':
-        client = 1;
+        remote = 1;
         hostname = arg;
         break;
     case 's':
@@ -157,18 +160,18 @@ static void init(void) {
     b3_free_font(paused_font);
 
     n3_host host;
-    if(client || (serve && hostname))
+    if(remote || (serve && hostname))
         n3_init_host(&host, hostname, port);
     else if(serve)
         n3_init_host_any_local(&host, port);
 
-    if(serve) {
-        socket_fd = n3_new_server_socket(&host);
-        DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
-    }
-    else if(client) {
-        socket_fd = n3_new_client_socket(&host);
+    if(remote) {
+        client = n3_new_client(&host);
         DEBUG_PRINT("Connecting to %s\n", host_to_string(&host));
+    }
+    else if(serve) {
+        server = n3_new_server(&host, NULL);
+        DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
     }
 }
 
@@ -177,9 +180,50 @@ static void quit(void) {
     debug_stats_font = NULL;
     b3_free_text(paused_text);
     paused_text = NULL;
-    if(socket_fd >= 0) {
-        n3_free_socket(socket_fd);
-        socket_fd = -1;
+    if(client) {
+        n3_free_client(client);
+        client = NULL;
+    }
+    if(server) {
+        n3_free_server(server);
+        server = NULL;
+    }
+}
+
+static void send_pause_message(_Bool paused) {
+    uint8_t buf[2] = {'p', (paused ? '1' : '0')};
+    if(remote)
+        n3_client_send(client, buf, sizeof(buf));
+    else if(serve)
+        n3_server_broadcast(server, buf, sizeof(buf));
+}
+
+static void process_message(const uint8_t *restrict buf, size_t size) {
+    switch(buf[0]) {
+    case 'p':
+        if(size == 2)
+            paused = (buf[1] == '0' ? 0 : 1);
+        break;
+    }
+}
+
+static void process_messages(void) {
+    uint8_t buf[2];
+    if(remote) {
+        for(
+            size_t received;
+            (received = n3_client_receive(client, buf, sizeof(buf))) > 0;
+        )
+            process_message(buf, received);
+    }
+    else if(serve) {
+        for(
+            size_t received;
+            (received = n3_server_receive(server, buf, sizeof(buf), NULL, NULL)) > 0;
+        ) {
+            n3_server_broadcast(server, buf, received);
+            process_message(buf, received);
+        }
     }
 }
 
@@ -194,6 +238,7 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
         return 1;
     case B3_INPUT_PAUSE:
         paused = !paused;
+        send_pause_message(paused);
         return 0;
     default:
         if(!paused)
@@ -320,8 +365,13 @@ static void loop(l3_level *restrict level) {
     b3_size map_size = b3_get_map_size(level->map);
     tile_size = b3_get_map_tile_size(&map_size, &game_size);
 
-    l3_agent *agent3 = l3_new_agent(level, 2);
-    l3_agent *agent4 = l3_new_agent(level, 3);
+    // TODO: move these elsewhere.
+    l3_agent *agent3 = NULL;
+    l3_agent *agent4 = NULL;
+    if(!remote) {
+        agent3 = l3_new_agent(level, 2);
+        agent4 = l3_new_agent(level, 3);
+    }
 
     b3_ticks game_ticks = 0;
     b3_ticks ai_ticks = 0;
@@ -348,15 +398,17 @@ static void loop(l3_level *restrict level) {
             if(i > 0)
                 stats.skip_count += i - 1;
 
-            for(
-                ai_ticks += elapsed;
-                ai_ticks >= think_ticks;
-                ai_ticks -= think_ticks
-            ) {
-                l3_think_agent(agent3, think_ticks);
-                l3_think_agent(agent4, think_ticks);
+            if(!remote) {
+                for(
+                    ai_ticks += elapsed;
+                    ai_ticks >= think_ticks;
+                    ai_ticks -= think_ticks
+                ) {
+                    l3_think_agent(agent3, think_ticks);
+                    l3_think_agent(agent4, think_ticks);
 
-                stats.think_count++;
+                    stats.think_count++;
+                }
             }
         }
 
@@ -383,6 +435,8 @@ static void loop(l3_level *restrict level) {
 
         stats.loop_count++;
         update_debug_stats(&stats, elapsed);
+
+        process_messages();
     } while(!b3_process_events(level));
 
     l3_free_agent(agent3);
@@ -401,8 +455,6 @@ int main(int argc, char *argv[]) {
     init();
 
     l3_level level = l3_generate();
-
-    // TODO: a Lua debug console directly tied into the Lua environment.
 
     loop(&level);
 
