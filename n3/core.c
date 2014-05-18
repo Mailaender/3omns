@@ -243,7 +243,7 @@ size_t n3_receive(
     // executable to exit with error.  For testing, I need to know if this ever
     // happens, though, so I'm leaving it in for now.
     if(msg.msg_flags & MSG_TRUNC)
-        b3_fatal("Received data truncated");
+        b3_fatal("Received data truncated, %'zd bytes", received);
 
     size_t remainder = (size_t)received;
     for(int i = 0; i < buf_count; i++) {

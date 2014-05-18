@@ -194,10 +194,32 @@ static void insert_connection(
     n3_server *restrict server,
     const n3_host *restrict host
 ) {
-    // TODO: a binary search instead of a scan.
-    for(int i = 0; i < server->connection_count; i++) {
-        // TODO
+    struct connection c;
+    init_connection(&c, host);
+
+    if(server->connection_count + 1 > server->connection_size) {
+        server->connection_size *= 2;
+        server->connections = b3_realloc(
+            server->connections,
+            server->connection_size * sizeof(*server->connections)
+        );
     }
+
+    // TODO: a binary search instead of a scan.
+    int i;
+    for(i = 0; i < server->connection_count; i++) {
+        if(compare_connections(&c, &server->connections[i]) < 0)
+            break;
+    }
+
+    memmove(
+        &server->connections[i + 1],
+        &server->connections[i],
+        (server->connection_count - i) * sizeof(*server->connections)
+    );
+
+    memcpy(&server->connections[i], &c, sizeof(c));
+    server->connection_count++;
 }
 
 size_t n3_server_receive(
