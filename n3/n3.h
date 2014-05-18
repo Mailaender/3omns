@@ -57,4 +57,59 @@ size_t n3_receive(
 );
 
 
+typedef struct n3_client n3_client;
+
+n3_client *n3_new_client(const n3_host *restrict remote);
+void n3_free_client(n3_client *restrict client);
+
+// TODO: getters: socket_fd.
+
+void n3_client_send(
+    n3_client *restrict client,
+    const uint8_t *restrict buf,
+    size_t size
+);
+size_t n3_client_receive(
+    n3_client *restrict client,
+    uint8_t *restrict buf,
+    size_t size
+);
+
+
+typedef struct n3_server n3_server;
+
+typedef _Bool (*n3_connection_filter_callback)(
+    n3_server *server,
+    const n3_host *host,
+    void *data
+);
+
+n3_server *n3_new_server(
+    const n3_host *restrict local,
+    n3_connection_filter_callback connection_filter_callback
+);
+void n3_free_server(n3_server *restrict server);
+
+// TODO: getters: connections, socket_fd.
+
+void n3_server_broadcast(
+    n3_server *restrict server,
+    const uint8_t *restrict buf,
+    size_t size
+);
+void n3_server_send_to(
+    n3_server *restrict server,
+    const uint8_t *restrict buf,
+    size_t size,
+    const n3_host *restrict host
+);
+size_t n3_server_receive(
+    n3_server *restrict server,
+    uint8_t *restrict buf,
+    size_t size,
+    n3_host *restrict host,
+    void *connection_filter_data
+);
+
+
 #endif
