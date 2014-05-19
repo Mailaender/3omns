@@ -55,7 +55,7 @@ static b3_size tile_size = {0, 0};
 
 static _Bool debug = 0;
 static _Bool serve = 0;
-static _Bool remote = 0;
+static _Bool client = 0;
 static const char *hostname = NULL;
 static uint16_t port = DEFAULT_PORT;
 
@@ -66,8 +66,7 @@ static b3_font *debug_stats_font = NULL;
 static b3_text *paused_text = NULL;
 static b3_rect paused_text_rect = B3_RECT_INIT(0, 0, 0, 0);
 
-static n3_client *client = NULL;
-static n3_server *server = NULL;
+static n3_link *link = NULL;
 
 
 static error_t parse_uint16(uint16_t *out, const char *string) {
@@ -90,7 +89,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         debug = 1;
         break;
     case 'c':
-        remote = 1;
+        client = 1;
         hostname = arg;
         break;
     case 's':
@@ -160,17 +159,17 @@ static void init(void) {
     b3_free_font(paused_font);
 
     n3_host host;
-    if(remote || (serve && hostname))
+    if(client || (serve && hostname))
         n3_init_host(&host, hostname, port);
     else if(serve)
         n3_init_host_any_local(&host, port);
 
-    if(remote) {
-        client = n3_new_client(&host);
+    if(client) {
+        link = n3_new_link(0, &host);
         DEBUG_PRINT("Connecting to %s\n", host_to_string(&host));
     }
     else if(serve) {
-        server = n3_new_server(&host, NULL);
+        link = n3_new_link(1, &host);
         DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
     }
 }
@@ -180,51 +179,34 @@ static void quit(void) {
     debug_stats_font = NULL;
     b3_free_text(paused_text);
     paused_text = NULL;
-    if(client) {
-        n3_free_client(client);
-        client = NULL;
-    }
-    if(server) {
-        n3_free_server(server);
-        server = NULL;
-    }
+    n3_free_link(link);
+    link = NULL;
 }
 
 static void send_pause_message(_Bool paused) {
-    uint8_t buf[2] = {'p', (paused ? '1' : '0')};
-    if(remote)
-        n3_client_send(client, buf, sizeof(buf));
-    else if(serve)
-        n3_server_broadcast(server, buf, sizeof(buf));
+    if(!link)
+        return;
+
+    n3_message m = {.type = N3_MESSAGE_PAUSE};
+    m.pause.paused = paused;
+    n3_link_send(link, &m);
 }
 
-static void process_message(const uint8_t *restrict buf, size_t size) {
-    switch(buf[0]) {
-    case 'p':
-        if(size == 2)
-            paused = (buf[1] == '0' ? 0 : 1);
+static void process_message(const n3_message *restrict message) {
+    switch(message->type) {
+    case N3_MESSAGE_PAUSE:
+        paused = message->pause.paused;
         break;
     }
 }
 
 static void process_messages(void) {
-    uint8_t buf[2];
-    if(remote) {
-        for(
-            size_t received;
-            (received = n3_client_receive(client, buf, sizeof(buf))) > 0;
-        )
-            process_message(buf, received);
-    }
-    else if(serve) {
-        for(
-            size_t received;
-            (received = n3_server_receive(server, buf, sizeof(buf), NULL, NULL)) > 0;
-        ) {
-            n3_server_broadcast(server, buf, received);
-            process_message(buf, received);
-        }
-    }
+    if(!link)
+        return;
+
+    n3_message message;
+    for(n3_message *m; (m = n3_link_receive(link, &message)) != NULL; )
+        process_message(m);
 }
 
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
@@ -368,7 +350,7 @@ static void loop(l3_level *restrict level) {
     // TODO: move these elsewhere.
     l3_agent *agent3 = NULL;
     l3_agent *agent4 = NULL;
-    if(!remote) {
+    if(!client) {
         agent3 = l3_new_agent(level, 2);
         agent4 = l3_new_agent(level, 3);
     }
@@ -398,7 +380,7 @@ static void loop(l3_level *restrict level) {
             if(i > 0)
                 stats.skip_count += i - 1;
 
-            if(!remote) {
+            if(!client) {
                 for(
                     ai_ticks += elapsed;
                     ai_ticks >= think_ticks;
