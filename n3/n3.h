@@ -112,4 +112,58 @@ size_t n3_server_receive(
 );
 
 
+// A good maximum buffer size to avoid path fragmentation.  If you know your
+// path MTU is bigger, feel free to ignore this.  The IPv4 minimum reassembly
+// buffer size is 576, minus 20 for the IP header, minus 8 for the UDP header,
+// equals 548.  For details, see Michael Kerrisk's "The Linux Programming
+// Interface" (2010) (ISBN-13: 978-1-59327-220-3), p. 1190, sec.  58.6.2, under
+// "Selecting a UDP datagram size to avoid IP fragmentation".  The n3 protocol
+// takes 8 more bytes, leaving 540 for messages sent using the protocol.
+#define N3_SAFE_MESSAGE_SIZE 540 // 548 max UDP packet size - 8 protocol bytes.
+
+
+typedef enum n3_message_type n3_message_type;
+enum n3_message_type {
+    N3_MESSAGE_PAUSE = 1,
+};
+
+typedef struct n3_pause_message n3_pause_message;
+struct n3_pause_message {
+    n3_message_type type; // N3_MESSAGE_PAUSE.
+    _Bool paused;
+};
+
+typedef union n3_message n3_message;
+union n3_message {
+    n3_message_type type;
+    n3_pause_message pause;
+};
+
+void n3_read_message(
+    const uint8_t *restrict buf,
+    size_t size,
+    n3_message *restrict message
+);
+size_t n3_write_message(
+    uint8_t *restrict buf,
+    size_t size,
+    const n3_message *restrict message
+);
+
+
+typedef struct n3_link n3_link;
+
+n3_link *n3_new_link(_Bool serve, const n3_host *restrict host);
+void n3_free_link(n3_link *restrict link);
+
+// TODO: if I ever make a standalone version of this library, take out the
+// 3omns-specific message stuff, and make these take/receive buffers instead of
+// messages... let the caller read/write to the buffers from their own code.
+void n3_link_send(n3_link *restrict link, const n3_message *restrict message);
+n3_message *n3_link_receive(
+    n3_link *restrict link,
+    n3_message *restrict message
+);
+
+
 #endif

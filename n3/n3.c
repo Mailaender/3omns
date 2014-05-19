@@ -24,6 +24,14 @@ struct n3_server {
     int connection_count;
 };
 
+struct n3_link {
+    _Bool serve;
+    union {
+        n3_client client;
+        n3_server server;
+    };
+};
+
 
 static const uint8_t magic[8] = {0x31,0xc6,0xa9,0xfa,0x99,0xbe,0xea,0x9b};
 
@@ -36,24 +44,10 @@ static struct connection *init_connection(
     return connection;
 }
 
-n3_client *n3_new_client(const n3_host *restrict remote) {
-    n3_client *client = b3_malloc(sizeof(*client), 1);
-    client->socket_fd = n3_new_client_socket(remote);
-    init_connection(&client->connection, remote);
-
-    // TODO: make a "connection".
-
-    return client;
-}
-
-void n3_free_client(n3_client *restrict client) {
-    if(client) {
-        if(client->socket_fd >= 0) {
-            n3_free_socket(client->socket_fd);
-            client->socket_fd = -1;
-        }
-        b3_free(client, 0);
-    }
+static int compare_connections(const void *a_, const void *b_) {
+    const struct connection *restrict a = a_;
+    const struct connection *restrict b = b_;
+    return n3_compare_hosts(&a->remote, &b->remote);
 }
 
 static void proto_send(
@@ -96,6 +90,37 @@ static size_t proto_receive(
     return 0;
 }
 
+static n3_client *init_client(
+    n3_client *restrict client,
+    const n3_host *restrict remote
+) {
+    client->socket_fd = n3_new_client_socket(remote);
+    init_connection(&client->connection, remote);
+
+    // TODO: make a "connection".
+
+    return client;
+}
+
+static void destroy_client(n3_client *restrict client) {
+    if(client->socket_fd >= 0) {
+        n3_free_socket(client->socket_fd);
+        client->socket_fd = -1;
+    }
+}
+
+n3_client *n3_new_client(const n3_host *restrict remote) {
+    n3_client *client = b3_malloc(sizeof(*client), 1);
+    return init_client(client, remote);
+}
+
+void n3_free_client(n3_client *restrict client) {
+    if(client) {
+        destroy_client(client);
+        b3_free(client, 0);
+    }
+}
+
 void n3_client_send(
     n3_client *restrict client,
     const uint8_t *restrict buf,
@@ -115,11 +140,11 @@ size_t n3_client_receive(
     return proto_receive(client->socket_fd, buf, size, NULL);
 }
 
-n3_server *n3_new_server(
+static n3_server *init_server(
+    n3_server *restrict server,
     const n3_host *restrict local,
     n3_connection_filter_callback connection_filter_callback
 ) {
-    n3_server *server = b3_malloc(sizeof(*server), 1);
     server->socket_fd = n3_new_server_socket(local);
     server->filter_connection = connection_filter_callback;
     server->connection_size = 8;
@@ -130,17 +155,29 @@ n3_server *n3_new_server(
     return server;
 }
 
+static void destroy_server(n3_server *restrict server) {
+    if(server->socket_fd >= 0) {
+        n3_free_socket(server->socket_fd);
+        server->socket_fd = -1;
+    }
+    server->filter_connection = NULL;
+    b3_free(server->connections, 0);
+    server->connections = NULL;
+    server->connection_size = 0;
+    server->connection_count = 0;
+}
+
+n3_server *n3_new_server(
+    const n3_host *restrict local,
+    n3_connection_filter_callback connection_filter_callback
+) {
+    n3_server *server = b3_malloc(sizeof(*server), 1);
+    return init_server(server, local, connection_filter_callback);
+}
+
 void n3_free_server(n3_server *restrict server) {
     if(server) {
-        if(server->socket_fd >= 0) {
-            n3_free_socket(server->socket_fd);
-            server->socket_fd = -1;
-        }
-        server->filter_connection = NULL;
-        b3_free(server->connections, 0);
-        server->connections = NULL;
-        server->connection_size = 0;
-        server->connection_count = 0;
+        destroy_server(server);
         b3_free(server, 0);
     }
 }
@@ -169,12 +206,6 @@ void n3_server_send_to(
     // TODO: ensure host is an endpoint we're connected to?
 
     proto_send(server->socket_fd, buf, size, host);
-}
-
-static int compare_connections(const void *a_, const void *b_) {
-    const struct connection *restrict a = a_;
-    const struct connection *restrict b = b_;
-    return n3_compare_hosts(&a->remote, &b->remote);
 }
 
 static struct connection *search_connections(
@@ -251,4 +282,54 @@ size_t n3_server_receive(
     }
 
     return 0;
+}
+
+n3_link *n3_new_link(_Bool serve, const n3_host *restrict host) {
+    n3_link *link = b3_malloc(sizeof(*link), 1);
+    link->serve = serve;
+    if(serve)
+        init_server(&link->server, host, NULL); // TODO
+    else
+        init_client(&link->client, host);
+    return link;
+}
+
+void n3_free_link(n3_link *restrict link) {
+    if(link) {
+        if(link->serve)
+            destroy_server(&link->server);
+        else
+            destroy_client(&link->client);
+        link->serve = 0;
+        b3_free(link, 0);
+    }
+}
+
+void n3_link_send(n3_link *restrict link, const n3_message *restrict message) {
+    uint8_t buf[N3_SAFE_MESSAGE_SIZE];
+    size_t size = n3_write_message(buf, sizeof(buf), message);
+
+    if(link->serve)
+        n3_server_broadcast(&link->server, buf, size);
+    else
+        n3_client_send(&link->client, buf, size);
+}
+
+n3_message *n3_link_receive(
+    n3_link *restrict link,
+    n3_message *restrict message
+) {
+    uint8_t buf[N3_SAFE_MESSAGE_SIZE];
+    size_t received = (link->serve
+            ? n3_server_receive(&link->server, buf, sizeof(buf), NULL, NULL) // TODO
+            : n3_client_receive(&link->client, buf, sizeof(buf)));
+    if(!received)
+        return NULL;
+
+    // TODO: don't send to the one that sent it to us?
+    if(link->serve)
+        n3_server_broadcast(&link->server, buf, received);
+
+    n3_read_message(buf, received, message);
+    return message;
 }
