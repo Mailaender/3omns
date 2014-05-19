@@ -284,11 +284,15 @@ size_t n3_server_receive(
     return 0;
 }
 
-n3_link *n3_new_link(_Bool serve, const n3_host *restrict host) {
+n3_link *n3_new_link(
+    _Bool serve,
+    const n3_host *restrict host,
+    n3_connection_filter_callback connection_filter_callback
+) {
     n3_link *link = b3_malloc(sizeof(*link), 1);
     link->serve = serve;
     if(serve)
-        init_server(&link->server, host, NULL); // TODO
+        init_server(&link->server, host, connection_filter_callback);
     else
         init_client(&link->client, host);
     return link;
@@ -305,7 +309,10 @@ void n3_free_link(n3_link *restrict link) {
     }
 }
 
-void n3_link_send(n3_link *restrict link, const n3_message *restrict message) {
+void n3_send_message(
+    n3_link *restrict link,
+    const n3_message *restrict message
+) {
     uint8_t buf[N3_SAFE_MESSAGE_SIZE];
     size_t size = n3_write_message(buf, sizeof(buf), message);
 
@@ -315,14 +322,26 @@ void n3_link_send(n3_link *restrict link, const n3_message *restrict message) {
         n3_client_send(&link->client, buf, size);
 }
 
-n3_message *n3_link_receive(
+n3_message *n3_receive_message(
     n3_link *restrict link,
-    n3_message *restrict message
+    n3_message *restrict message,
+    void *connection_filter_data
 ) {
     uint8_t buf[N3_SAFE_MESSAGE_SIZE];
-    size_t received = (link->serve
-            ? n3_server_receive(&link->server, buf, sizeof(buf), NULL, NULL) // TODO
-            : n3_client_receive(&link->client, buf, sizeof(buf)));
+    size_t received;
+
+    if(link->serve) {
+        received = n3_server_receive(
+            &link->server,
+            buf,
+            sizeof(buf),
+            NULL,
+            connection_filter_data
+        );
+    }
+    else
+        received = n3_client_receive(&link->client, buf, sizeof(buf));
+
     if(!received)
         return NULL;
 

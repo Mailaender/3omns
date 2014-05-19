@@ -45,7 +45,7 @@ void n3_send(
     int socket_fd,
     int buf_count,
     const uint8_t *const bufs[],
-    const size_t sizes[], // Total should be <= 548.
+    const size_t sizes[], // Total should be <= 548 (see N3_SAFE_MESSAGE_SIZE).
     const n3_host *restrict remote // NULL if client.
 );
 size_t n3_receive(
@@ -62,7 +62,7 @@ typedef struct n3_client n3_client;
 n3_client *n3_new_client(const n3_host *restrict remote);
 void n3_free_client(n3_client *restrict client);
 
-// TODO: getters: socket_fd.
+// TODO: getters: socket_fd, local n3_host.
 
 void n3_client_send(
     n3_client *restrict client,
@@ -129,7 +129,7 @@ enum n3_message_type {
 
 typedef struct n3_pause_message n3_pause_message;
 struct n3_pause_message {
-    n3_message_type type; // N3_MESSAGE_PAUSE.
+    n3_message_type type; // N3_MESSAGE_PAUSE
     _Bool paused;
 };
 
@@ -153,16 +153,24 @@ size_t n3_write_message(
 
 typedef struct n3_link n3_link;
 
-n3_link *n3_new_link(_Bool serve, const n3_host *restrict host);
+n3_link *n3_new_link(
+    _Bool serve,
+    const n3_host *restrict host,
+    n3_connection_filter_callback connection_filter_callback
+);
 void n3_free_link(n3_link *restrict link);
 
 // TODO: if I ever make a standalone version of this library, take out the
 // 3omns-specific message stuff, and make these take/receive buffers instead of
 // messages... let the caller read/write to the buffers from their own code.
-void n3_link_send(n3_link *restrict link, const n3_message *restrict message);
-n3_message *n3_link_receive(
+void n3_send_message(
     n3_link *restrict link,
-    n3_message *restrict message
+    const n3_message *restrict message
+);
+n3_message *n3_receive_message(
+    n3_link *restrict link,
+    n3_message *restrict message,
+    void *connection_filter_data
 );
 
 
