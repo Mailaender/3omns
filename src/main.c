@@ -141,6 +141,15 @@ static const char *host_to_string(const n3_host *restrict host) {
     return string;
 }
 
+static _Bool filter_connection(
+    n3_server *server,
+    const n3_host *host,
+    void *data
+) {
+    DEBUG_PRINT("%s connected\n", host_to_string(host));
+    return 1;
+}
+
 static void init(void) {
     debug_stats_font = b3_load_font(12, FONT_FILENAME, 0);
 
@@ -164,13 +173,13 @@ static void init(void) {
     else if(serve)
         n3_init_host_any_local(&host, port);
 
-    if(client) {
-        link = n3_new_link(0, &host);
-        DEBUG_PRINT("Connecting to %s\n", host_to_string(&host));
-    }
-    else if(serve) {
-        link = n3_new_link(1, &host);
-        DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
+    if(client || serve) {
+        link = n3_new_link(serve, &host, filter_connection);
+        DEBUG_PRINT(
+            "%s %s\n",
+            (serve ? "Listening at" : "Connecting to"),
+            host_to_string(&host)
+        );
     }
 }
 
@@ -187,9 +196,10 @@ static void send_pause_message(_Bool paused) {
     if(!link)
         return;
 
-    n3_message m = {.type = N3_MESSAGE_PAUSE};
-    m.pause.paused = paused;
-    n3_link_send(link, &m);
+    n3_send_message(
+        link,
+        &(n3_message){.pause = {N3_MESSAGE_PAUSE, paused}}
+    );
 }
 
 static void process_message(const n3_message *restrict message) {
@@ -204,8 +214,10 @@ static void process_messages(void) {
     if(!link)
         return;
 
-    n3_message message;
-    for(n3_message *m; (m = n3_link_receive(link, &message)) != NULL; )
+    for(
+        n3_message message, *m;
+        (m = n3_receive_message(link, &message, NULL)) != NULL;
+    )
         process_message(m);
 }
 
