@@ -2,7 +2,6 @@
 #include "b3/b3.h"
 
 #include <stddef.h>
-#include <stdint.h>
 #include <inttypes.h>
 #include <errno.h>
 #include <string.h>
@@ -189,7 +188,7 @@ void n3_free_socket(int socket_fd) {
 void n3_send(
     int socket_fd,
     int buf_count,
-    const uint8_t *const bufs[],
+    const void *const bufs[],
     const size_t sizes[],
     const n3_host *restrict remote
 ) {
@@ -217,7 +216,7 @@ void n3_send(
 size_t n3_receive(
     int socket_fd,
     int buf_count,
-    uint8_t *restrict bufs[],
+    void *restrict bufs[],
     size_t sizes[],
     n3_host *restrict remote
 ) {

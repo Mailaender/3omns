@@ -2,6 +2,7 @@
 #include "b3/b3.h"
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -44,25 +45,25 @@ static int compare_connections(const void *a_, const void *b_) {
 
 static void proto_send(
     int socket_fd,
-    const uint8_t *restrict buf,
+    const void *restrict buf,
     size_t size,
     const n3_host *restrict host
 ) {
     // TODO: reliability.
 
-    const uint8_t *bufs[] = {magic, buf};
+    const void *bufs[] = {magic, buf};
     size_t sizes[] = {sizeof(magic), size};
     n3_send(socket_fd, B3_STATIC_ARRAY_COUNT(bufs), bufs, sizes, host);
 }
 
 static size_t proto_receive(
     int socket_fd,
-    uint8_t *restrict buf,
+    void *restrict buf,
     size_t size,
     n3_host *restrict host
 ) {
     uint8_t magic_test[sizeof(magic)];
-    uint8_t *bufs[] = {magic_test, buf};
+    void *bufs[] = {magic_test, buf};
     size_t sizes[] = {sizeof(magic_test), size};
 
     for(
@@ -108,7 +109,7 @@ void n3_free_client(n3_client *restrict client) {
 
 void n3_client_send(
     n3_client *restrict client,
-    const uint8_t *restrict buf,
+    const void *restrict buf,
     size_t size
 ) {
     proto_send(client->socket_fd, buf, size, NULL);
@@ -116,7 +117,7 @@ void n3_client_send(
 
 size_t n3_client_receive(
     n3_client *restrict client,
-    uint8_t *restrict buf,
+    void *restrict buf,
     size_t size
 ) {
     // TODO: is it safe to assume we can only receive from the connect()ed
@@ -170,7 +171,7 @@ void n3_for_each_connection(
 
 void n3_broadcast(
     n3_server *restrict server,
-    const uint8_t *restrict buf,
+    const void *restrict buf,
     size_t size
 ) {
     for(int i = 0; i < server->connection_count; i++) {
@@ -185,7 +186,7 @@ void n3_broadcast(
 
 void n3_send_to(
     n3_server *restrict server,
-    const uint8_t *restrict buf,
+    const void *restrict buf,
     size_t size,
     const n3_host *restrict host
 ) {
@@ -241,7 +242,7 @@ static void insert_connection(
 
 size_t n3_server_receive(
     n3_server *restrict server,
-    uint8_t *restrict buf,
+    void *restrict buf,
     size_t size,
     n3_host *restrict host,
     void *connection_filter_data

@@ -47,7 +47,7 @@ static void server(int notify_fd) {
 
     uint8_t receive_buf0[3];
     uint8_t receive_buf1[20];
-    uint8_t *receive_bufs[2] = {receive_buf0, receive_buf1};
+    void *receive_bufs[2] = {receive_buf0, receive_buf1};
     size_t receive_sizes[2] = {sizeof(receive_buf0), sizeof(receive_buf1)};
     n3_host received_host;
     size_t received_size = n3_receive(
@@ -86,7 +86,7 @@ static void server(int notify_fd) {
 
     uint8_t send_buf0[5];
     uint8_t send_buf1[20];
-    const uint8_t *send_bufs[2] = {send_buf0, send_buf1};
+    const void *send_bufs[2] = {send_buf0, send_buf1};
     size_t send_sizes[2] = {
         sizeof(send_buf0),
         server_send_size - sizeof(send_buf0),
@@ -116,7 +116,7 @@ static void client(int wait_fd) {
     uint8_t send_buf0[2];
     uint8_t send_buf1[20];
     uint8_t send_buf2[1] = {'x'};
-    const uint8_t *send_bufs[3] = {send_buf0, send_buf1, send_buf2};
+    const void *send_bufs[3] = {send_buf0, send_buf1, send_buf2};
     size_t send_sizes[3] = {
         sizeof(send_buf0),
         client_send_size - sizeof(send_buf0),
@@ -133,7 +133,7 @@ static void client(int wait_fd) {
     uint8_t receive_buf0[4];
     uint8_t receive_buf1[20];
     uint8_t receive_buf2[1];
-    uint8_t *receive_bufs[3] = {receive_buf0, receive_buf1, receive_buf2};
+    void *receive_bufs[3] = {receive_buf0, receive_buf1, receive_buf2};
     size_t receive_sizes[3] = {
         sizeof(receive_buf0),
         sizeof(receive_buf1),

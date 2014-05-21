@@ -2,7 +2,6 @@
 #define __n3_h__
 
 #include <stddef.h>
-#include <stdint.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -44,14 +43,14 @@ void n3_free_socket(int socket_fd);
 void n3_send(
     int socket_fd,
     int buf_count,
-    const uint8_t *const bufs[],
+    const void *const bufs[],
     const size_t sizes[], // Total should be <= 548 (see N3_SAFE_MESSAGE_SIZE).
     const n3_host *restrict remote // NULL if client.
 );
 size_t n3_receive(
     int socket_fd,
     int buf_count,
-    uint8_t *restrict bufs[],
+    void *restrict bufs[],
     size_t sizes[],
     n3_host *restrict remote // NULL if client.
 );
@@ -76,12 +75,12 @@ void n3_free_client(n3_client *restrict client);
 
 void n3_client_send(
     n3_client *restrict client,
-    const uint8_t *restrict buf,
+    const void *restrict buf,
     size_t size
 );
 size_t n3_client_receive(
     n3_client *restrict client,
-    uint8_t *restrict buf,
+    void *restrict buf,
     size_t size
 );
 
@@ -110,18 +109,18 @@ void n3_for_each_connection(
 
 void n3_broadcast(
     n3_server *restrict server,
-    const uint8_t *restrict buf,
+    const void *restrict buf,
     size_t size
 );
 void n3_send_to(
     n3_server *restrict server,
-    const uint8_t *restrict buf,
+    const void *restrict buf,
     size_t size,
     const n3_host *restrict host
 );
 size_t n3_server_receive(
     n3_server *restrict server,
-    uint8_t *restrict buf,
+    void *restrict buf,
     size_t size,
     n3_host *restrict host,
     void *connection_filter_data
