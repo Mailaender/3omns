@@ -18,18 +18,10 @@ struct n3_client {
 
 struct n3_server {
     int socket_fd;
-    n3_connection_filter_callback filter_connection;
+    n3_connection_callback filter_connection;
     struct connection *connections;
     int connection_size;
     int connection_count;
-};
-
-struct n3_link {
-    _Bool serve;
-    union {
-        n3_client client;
-        n3_server server;
-    };
 };
 
 
@@ -90,18 +82,6 @@ static size_t proto_receive(
     return 0;
 }
 
-static n3_client *init_client(
-    n3_client *restrict client,
-    const n3_host *restrict remote
-) {
-    client->socket_fd = n3_new_client_socket(remote);
-    init_connection(&client->connection, remote);
-
-    // TODO: make a "connection".
-
-    return client;
-}
-
 static void destroy_client(n3_client *restrict client) {
     if(client->socket_fd >= 0) {
         n3_free_socket(client->socket_fd);
@@ -111,7 +91,12 @@ static void destroy_client(n3_client *restrict client) {
 
 n3_client *n3_new_client(const n3_host *restrict remote) {
     n3_client *client = b3_malloc(sizeof(*client), 1);
-    return init_client(client, remote);
+    client->socket_fd = n3_new_client_socket(remote);
+    init_connection(&client->connection, remote);
+
+    // TODO: make a "connection".
+
+    return client;
 }
 
 void n3_free_client(n3_client *restrict client) {
@@ -140,21 +125,6 @@ size_t n3_client_receive(
     return proto_receive(client->socket_fd, buf, size, NULL);
 }
 
-static n3_server *init_server(
-    n3_server *restrict server,
-    const n3_host *restrict local,
-    n3_connection_filter_callback connection_filter_callback
-) {
-    server->socket_fd = n3_new_server_socket(local);
-    server->filter_connection = connection_filter_callback;
-    server->connection_size = 8;
-    server->connections = b3_malloc(
-        server->connection_size * sizeof(*server->connections),
-        1
-    );
-    return server;
-}
-
 static void destroy_server(n3_server *restrict server) {
     if(server->socket_fd >= 0) {
         n3_free_socket(server->socket_fd);
@@ -169,10 +139,17 @@ static void destroy_server(n3_server *restrict server) {
 
 n3_server *n3_new_server(
     const n3_host *restrict local,
-    n3_connection_filter_callback connection_filter_callback
+    n3_connection_callback connection_filter_callback
 ) {
     n3_server *server = b3_malloc(sizeof(*server), 1);
-    return init_server(server, local, connection_filter_callback);
+    server->socket_fd = n3_new_server_socket(local);
+    server->filter_connection = connection_filter_callback;
+    server->connection_size = 8;
+    server->connections = b3_malloc(
+        server->connection_size * sizeof(*server->connections),
+        1
+    );
+    return server;
 }
 
 void n3_free_server(n3_server *restrict server) {
@@ -182,7 +159,16 @@ void n3_free_server(n3_server *restrict server) {
     }
 }
 
-void n3_server_broadcast(
+void n3_for_each_connection(
+    n3_server *restrict server,
+    n3_connection_callback callback,
+    void *data
+) {
+    for(int i = 0; i < server->connection_count; i++)
+        callback(server, &server->connections[i].remote, data);
+}
+
+void n3_broadcast(
     n3_server *restrict server,
     const uint8_t *restrict buf,
     size_t size
@@ -197,7 +183,7 @@ void n3_server_broadcast(
     }
 }
 
-void n3_server_send_to(
+void n3_send_to(
     n3_server *restrict server,
     const uint8_t *restrict buf,
     size_t size,
@@ -267,6 +253,7 @@ size_t n3_server_receive(
         size_t received;
         (received = proto_receive(server->socket_fd, buf, size, r_host)) > 0;
     ) {
+        // TODO: this connection juggling needs to happen inside proto_receive.
         if(!search_connections(server, r_host)) {
             if(server->filter_connection && !server->filter_connection(
                 server,
@@ -282,73 +269,4 @@ size_t n3_server_receive(
     }
 
     return 0;
-}
-
-n3_link *n3_new_link(
-    _Bool serve,
-    const n3_host *restrict host,
-    n3_connection_filter_callback connection_filter_callback
-) {
-    n3_link *link = b3_malloc(sizeof(*link), 1);
-    link->serve = serve;
-    if(serve)
-        init_server(&link->server, host, connection_filter_callback);
-    else
-        init_client(&link->client, host);
-    return link;
-}
-
-void n3_free_link(n3_link *restrict link) {
-    if(link) {
-        if(link->serve)
-            destroy_server(&link->server);
-        else
-            destroy_client(&link->client);
-        link->serve = 0;
-        b3_free(link, 0);
-    }
-}
-
-void n3_send_message(
-    n3_link *restrict link,
-    const n3_message *restrict message
-) {
-    uint8_t buf[N3_SAFE_MESSAGE_SIZE];
-    size_t size = n3_write_message(buf, sizeof(buf), message);
-
-    if(link->serve)
-        n3_server_broadcast(&link->server, buf, size);
-    else
-        n3_client_send(&link->client, buf, size);
-}
-
-n3_message *n3_receive_message(
-    n3_link *restrict link,
-    n3_message *restrict message,
-    void *connection_filter_data
-) {
-    uint8_t buf[N3_SAFE_MESSAGE_SIZE];
-    size_t received;
-
-    if(link->serve) {
-        received = n3_server_receive(
-            &link->server,
-            buf,
-            sizeof(buf),
-            NULL,
-            connection_filter_data
-        );
-    }
-    else
-        received = n3_client_receive(&link->client, buf, sizeof(buf));
-
-    if(!received)
-        return NULL;
-
-    // TODO: don't send to the one that sent it to us?
-    if(link->serve)
-        n3_server_broadcast(&link->server, buf, received);
-
-    n3_read_message(buf, received, message);
-    return message;
 }
