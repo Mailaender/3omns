@@ -30,6 +30,17 @@
 
 #define DEBUG_PRINT(...) ((void)(debug && printf(__VA_ARGS__)))
 
+struct round {
+    l3_level level;
+    b3_size map_size;
+    b3_size tile_size;
+
+    l3_agent *agents[L3_DUDE_COUNT];
+
+    _Bool paused;
+};
+#define ROUND_INIT {L3_LEVEL_INIT, {0,0}, {0,0}, {NULL}, 0}
+
 struct debug_stats {
     b3_ticks reset_time;
     int loop_count;
@@ -52,8 +63,6 @@ static const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
 static const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
 static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-static b3_size tile_size = {0, 0};
-
 static _Bool debug = 0;
 static _Bool serve = 0;
 static _Bool client = 0;
@@ -62,8 +71,6 @@ static n3_port port = DEFAULT_PORT;
 
 static n3_server *server = NULL;
 static n3_client *net_client = NULL;
-
-static _Bool paused = 0;
 
 static b3_font *debug_stats_font = NULL;
 
@@ -155,33 +162,44 @@ static void notify_connect(void) {
     send_notification(buf, sizeof(buf), NULL);
 }
 
-static void notify_paused(const n3_host *restrict host) {
-    uint8_t buf[] = {'p', (paused ? '1' : '0')};
+static void notify_paused(
+    const struct round *restrict round,
+    const n3_host *restrict host
+) {
+    uint8_t buf[] = {'p', (round->paused ? '1' : '0')};
     send_notification(buf, sizeof(buf), host);
 }
 
-static void process_paused(const uint8_t *restrict buf, size_t size) {
+static void process_paused(
+    struct round *restrict round,
+    const uint8_t *restrict buf,
+    size_t size
+) {
     if(size >= 2)
-        paused = (buf[1] == '0' ? 0 : 1);
+        round->paused = (buf[1] == '0' ? 0 : 1);
 }
 
-static size_t receive_notification(uint8_t *restrict buf, size_t size) {
+static size_t receive_notification(
+    struct round *restrict round,
+    uint8_t *restrict buf,
+    size_t size
+) {
     if(client)
         return n3_client_receive(net_client, buf, size);
     if(server)
-        return n3_server_receive(server, buf, size, NULL, NULL);
+        return n3_server_receive(server, buf, size, NULL, round);
     return 0;
 }
 
-static void process_notifications(void) {
+static void process_notifications(struct round *restrict round) {
     uint8_t buf[N3_SAFE_BUFFER_SIZE];
     for(
         size_t received;
-        (received = receive_notification(buf, sizeof(buf))) > 0;
+        (received = receive_notification(round, buf, sizeof(buf))) > 0;
     ) {
         switch(buf[0]) {
         case 'c': /* "Connect"; do nothing. */ break;
-        case 'p': process_paused(buf, received); break;
+        case 'p': process_paused(round, buf, received); break;
         }
     }
 }
@@ -200,8 +218,10 @@ static _Bool filter_connection(
     const n3_host *restrict host,
     void *data
 ) {
+    const struct round *restrict round = data;
+
     DEBUG_PRINT("%s connected\n", host_to_string(host));
-    notify_paused(host);
+    notify_paused(round, host);
     return 1;
 }
 
@@ -256,7 +276,7 @@ static void quit_res(void) {
 }
 
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
-    l3_level *restrict level = data;
+    struct round *restrict round = data;
 
     if(!pressed)
         return 0;
@@ -265,42 +285,42 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     case B3_INPUT_BACK:
         return 1;
     case B3_INPUT_PAUSE:
-        paused = !paused;
-        notify_paused(NULL);
+        round->paused = !round->paused;
+        notify_paused(round, NULL);
         return 0;
     default:
-        if(!paused)
-            l3_input(level, input);
+        if(!round->paused)
+            l3_input(&round->level, input);
         return 0;
     }
 }
 
-static void draw_border(const b3_size *restrict map_size) {
+static void draw_border(const struct round *restrict round) {
     if(!l3_border_image)
         return;
 
     b3_rect rect = B3_RECT_INIT(
         game_size.width,
         0,
-        tile_size.width,
-        tile_size.height
+        round->tile_size.width,
+        round->tile_size.height
     );
-    for(int i = 0; i < map_size->height; i++) {
+    for(int i = 0; i < round->map_size.height; i++) {
         b3_draw_image(l3_border_image, &rect);
-        rect.y += tile_size.height;
+        rect.y += round->tile_size.height;
     }
 }
 
-static void draw_hearts(l3_level *restrict level) {
+static void draw_hearts(const struct round *restrict round) {
     int columns = L3_DUDE_COUNT * 2 - 1;
     int padding = (
         window_size.width
                 - game_size.width
-                - tile_size.width // For border.
+                - round->tile_size.width // For border.
                 - columns * HEART_SIZE
     ) / 2;
     b3_rect rect = B3_RECT_INIT(
-        game_size.width + tile_size.width + padding,
+        game_size.width + round->tile_size.width + padding,
         0,
         HEART_SIZE,
         HEART_SIZE
@@ -313,7 +333,10 @@ static void draw_hearts(l3_level *restrict level) {
         if(!l3_heart_images[i])
             continue;
 
-        b3_entity *dude = b3_get_entity(level->entities, level->dude_ids[i]);
+        b3_entity *dude = b3_get_entity(
+            round->level.entities,
+            round->level.dude_ids[i]
+        );
         if(!dude)
             continue;
 
@@ -338,6 +361,7 @@ static void draw_debug_stats(struct debug_stats *restrict stats) {
 }
 
 static void update_debug_stats(
+    const struct round *restrict round,
     struct debug_stats *restrict stats,
     b3_ticks elapsed
 ) {
@@ -368,7 +392,7 @@ static void update_debug_stats(
     for(int i = 0; i < 5; i++) {
         b3_size text_size = b3_get_text_size(stats->text[i]);
         stats->text_rect[i] = B3_RECT(
-            game_size.width + tile_size.width,
+            game_size.width + round->tile_size.width,
             y,
             text_size.width,
             text_size.height
@@ -383,23 +407,12 @@ static void update_debug_stats(
     // Don't reset skip_count.
 }
 
-static void loop(l3_level *restrict level) {
+static void loop(struct round *restrict round) {
     const b3_ticks frame_ticks = b3_secs_to_ticks(0.015625); // 64 FPS.
     const b3_ticks think_ticks = b3_secs_to_ticks(0.0625); // 16 FPS.
     const b3_ticks draw_ticks = b3_secs_to_ticks(0.03125); // 32 FPS.
 
     struct debug_stats stats = {b3_tick_frequency};
-
-    b3_size map_size = b3_get_map_size(level->map);
-    tile_size = b3_get_map_tile_size(&map_size, &game_size);
-
-    // TODO: move these elsewhere.
-    l3_agent *agent3 = NULL;
-    l3_agent *agent4 = NULL;
-    if(!client) {
-        agent3 = l3_new_agent(level, 2);
-        agent4 = l3_new_agent(level, 3);
-    }
 
     b3_ticks game_ticks = 0;
     b3_ticks ai_ticks = 0;
@@ -411,14 +424,14 @@ static void loop(l3_level *restrict level) {
         ticks = b3_get_tick_count();
         b3_ticks elapsed = ticks - last_ticks;
 
-        if(!paused) {
+        if(!round->paused) {
             int i = 0;
             for(
                 game_ticks += elapsed;
                 game_ticks >= frame_ticks;
                 game_ticks -= frame_ticks, i++
             ) {
-                l3_update(level, frame_ticks);
+                l3_update(&round->level, frame_ticks);
 
                 stats.update_count++;
             }
@@ -432,8 +445,8 @@ static void loop(l3_level *restrict level) {
                     ai_ticks >= think_ticks;
                     ai_ticks -= think_ticks
                 ) {
-                    l3_think_agent(agent3, think_ticks);
-                    l3_think_agent(agent4, think_ticks);
+                    for(int i = 0; i < L3_DUDE_COUNT && round->agents[i]; i++)
+                        l3_think_agent(round->agents[i], think_ticks);
 
                     stats.think_count++;
                 }
@@ -445,14 +458,14 @@ static void loop(l3_level *restrict level) {
 
             b3_begin_scene();
 
-            b3_draw_map(level->map, l3_tile_images, &game_rect);
-            draw_border(&map_size);
-            b3_draw_entities(level->entities, &game_rect);
+            b3_draw_map(round->level.map, l3_tile_images, &game_rect);
+            draw_border(round);
+            b3_draw_entities(round->level.entities, &game_rect);
             // For now, "sprites" are always on top of the main entities.
-            b3_draw_entities(level->sprites, &game_rect);
-            draw_hearts(level);
+            b3_draw_entities(round->level.sprites, &game_rect);
+            draw_hearts(round);
 
-            if(paused)
+            if(round->paused)
                 b3_draw_text(paused_text, &paused_text_rect);
 
             stats.render_count++;
@@ -462,13 +475,30 @@ static void loop(l3_level *restrict level) {
         }
 
         stats.loop_count++;
-        update_debug_stats(&stats, elapsed);
+        update_debug_stats(round, &stats, elapsed);
 
-        process_notifications();
-    } while(!b3_process_events(level));
+        process_notifications(round);
+    } while(!b3_process_events(round));
+}
 
-    l3_free_agent(agent3);
-    l3_free_agent(agent4);
+static void free_round(struct round *restrict round) {
+    for(int i = 0; i < L3_DUDE_COUNT; i++)
+        l3_free_agent(round->agents[i]);
+    l3_free_level(&round->level);
+    *round = (struct round)ROUND_INIT;
+}
+
+static void new_round(struct round *restrict round) {
+    free_round(round);
+
+    round->level = l3_generate();
+    round->map_size = b3_get_map_size(round->level.map);
+    round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
+
+    if(!client) {
+        round->agents[0] = l3_new_agent(&round->level, 2);
+        round->agents[1] = l3_new_agent(&round->level, 3);
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -484,10 +514,11 @@ int main(int argc, char *argv[]) {
     l3_init(RESOURCES, debug);
     init_res();
 
-    l3_level level = l3_generate();
+    struct round round = ROUND_INIT;
+    new_round(&round);
 
-    loop(&level);
+    loop(&round);
 
-    l3_free_level(&level);
+    free_round(&round);
     return 0;
 }
