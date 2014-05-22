@@ -134,6 +134,58 @@ static void parse_args(int argc, char *argv[]) {
         b3_fatal("Error parsing arguments: %s", strerror(e));
 }
 
+static void send_notification(
+    const uint8_t *restrict buf,
+    size_t size,
+    const n3_host *restrict host
+) {
+    if(client)
+        n3_client_send(net_client, buf, size);
+    else if(server) {
+        if(host)
+            n3_send_to(server, buf, size, host);
+        else
+            n3_broadcast(server, buf, size);
+    }
+}
+
+// TODO: this won't be necessary once the n3 protocol is finished.
+static void notify_connect(void) {
+    uint8_t buf[] = {'c'};
+    send_notification(buf, sizeof(buf), NULL);
+}
+
+static void notify_paused(const n3_host *restrict host) {
+    uint8_t buf[] = {'p', (paused ? '1' : '0')};
+    send_notification(buf, sizeof(buf), host);
+}
+
+static void process_paused(const uint8_t *restrict buf, size_t size) {
+    if(size >= 2)
+        paused = (buf[1] == '0' ? 0 : 1);
+}
+
+static size_t receive_notification(uint8_t *restrict buf, size_t size) {
+    if(client)
+        return n3_client_receive(net_client, buf, size);
+    if(server)
+        return n3_server_receive(server, buf, size, NULL, NULL);
+    return 0;
+}
+
+static void process_notifications(void) {
+    uint8_t buf[N3_SAFE_BUFFER_SIZE];
+    for(
+        size_t received;
+        (received = receive_notification(buf, sizeof(buf))) > 0;
+    ) {
+        switch(buf[0]) {
+        case 'c': /* "Connect"; do nothing. */ break;
+        case 'p': process_paused(buf, received); break;
+        }
+    }
+}
+
 static const char *host_to_string(const n3_host *restrict host) {
     static char string[N3_ADDRESS_SIZE + 10]; // 10 for "UDP |12345".
     char address[N3_ADDRESS_SIZE] = {""};
@@ -144,11 +196,12 @@ static const char *host_to_string(const n3_host *restrict host) {
 }
 
 static _Bool filter_connection(
-    n3_server *server,
-    const n3_host *host,
+    n3_server *restrict server,
+    const n3_host *restrict host,
     void *data
 ) {
     DEBUG_PRINT("%s connected\n", host_to_string(host));
+    notify_paused(host);
     return 1;
 }
 
@@ -162,6 +215,7 @@ static void init_net(void) {
     if(client) {
         net_client = n3_new_client(&host);
         DEBUG_PRINT("Connecting to %s\n", host_to_string(&host));
+        notify_connect();
     }
     else if(serve) {
         server = n3_new_server(&host, filter_connection);
@@ -201,43 +255,6 @@ static void quit_res(void) {
     paused_text = NULL;
 }
 
-static void send_notification(const uint8_t *restrict buf, size_t size) {
-    if(client)
-        n3_client_send(net_client, buf, size);
-    else if(server)
-        n3_broadcast(server, buf, size);
-}
-
-static void notify_paused_changed(void) {
-    uint8_t buf[] = {'p', (paused ? '1' : '0')};
-    send_notification(buf, sizeof(buf));
-}
-
-static void process_paused_changed(const uint8_t *restrict buf, size_t size) {
-    if(size >= 2)
-        paused = (buf[1] == '0' ? 0 : 1);
-}
-
-static size_t receive_notification(uint8_t *restrict buf, size_t size) {
-    if(client)
-        return n3_client_receive(net_client, buf, size);
-    if(server)
-        return n3_server_receive(server, buf, size, NULL, NULL);
-    return 0;
-}
-
-static void process_notifications(void) {
-    uint8_t buf[N3_SAFE_BUFFER_SIZE];
-    for(
-        size_t received;
-        (received = receive_notification(buf, sizeof(buf))) > 0;
-    ) {
-        switch(buf[0]) {
-        case 'p': process_paused_changed(buf, received); break;
-        }
-    }
-}
-
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     l3_level *restrict level = data;
 
@@ -249,7 +266,7 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
         return 1;
     case B3_INPUT_PAUSE:
         paused = !paused;
-        notify_paused_changed();
+        notify_paused(NULL);
         return 0;
     default:
         if(!paused)
