@@ -37,6 +37,7 @@ struct debug_stats {
     int think_count;
     int render_count;
     int skip_count;
+    // TODO: net statistics.
     b3_text *text[5];
     b3_rect text_rect[5];
 };
@@ -57,7 +58,10 @@ static _Bool debug = 0;
 static _Bool serve = 0;
 static _Bool client = 0;
 static const char *hostname = NULL;
-static uint16_t port = DEFAULT_PORT;
+static n3_port port = DEFAULT_PORT;
+
+static n3_server *server = NULL;
+static n3_client *net_client = NULL;
 
 static _Bool paused = 0;
 
@@ -66,10 +70,8 @@ static b3_font *debug_stats_font = NULL;
 static b3_text *paused_text = NULL;
 static b3_rect paused_text_rect = B3_RECT_INIT(0, 0, 0, 0);
 
-static n3_link *link = NULL;
 
-
-static error_t parse_uint16(uint16_t *out, const char *string) {
+static int parse_port(n3_port *out, const char *string) {
     char *endptr;
     errno = 0;
     long l = strtol(string, &endptr, 10);
@@ -79,7 +81,7 @@ static error_t parse_uint16(uint16_t *out, const char *string) {
         return EINVAL;
     if(l < 0 || l > UINT16_MAX)
         return ERANGE;
-    *out = (uint16_t)l;
+    *out = (n3_port)l;
     return 0;
 }
 
@@ -98,7 +100,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         break;
     case 'p':
         {
-            error_t e = parse_uint16(&port, arg);
+            int e = parse_port(&port, arg);
             if(e)
                 b3_fatal("Error parsing port '%s': %s", arg, strerror(e));
             break;
@@ -150,7 +152,31 @@ static _Bool filter_connection(
     return 1;
 }
 
-static void init(void) {
+static void init_net(void) {
+    n3_host host;
+    if(client || (serve && hostname))
+        n3_init_host(&host, hostname, port);
+    else if(serve)
+        n3_init_host_any_local(&host, port);
+
+    if(client) {
+        net_client = n3_new_client(&host);
+        DEBUG_PRINT("Connecting to %s\n", host_to_string(&host));
+    }
+    else if(serve) {
+        server = n3_new_server(&host, filter_connection);
+        DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
+    }
+}
+
+static void quit_net(void) {
+    n3_free_client(net_client);
+    net_client = NULL;
+    n3_free_server(server);
+    server = NULL;
+}
+
+static void init_res(void) {
     debug_stats_font = b3_load_font(12, FONT_FILENAME, 0);
 
     b3_font *paused_font = b3_load_font(64, FONT_FILENAME, 0);
@@ -166,59 +192,50 @@ static void init(void) {
         paused_text_size.height
     );
     b3_free_font(paused_font);
-
-    n3_host host;
-    if(client || (serve && hostname))
-        n3_init_host(&host, hostname, port);
-    else if(serve)
-        n3_init_host_any_local(&host, port);
-
-    if(client || serve) {
-        link = n3_new_link(serve, &host, filter_connection);
-        DEBUG_PRINT(
-            "%s %s\n",
-            (serve ? "Listening at" : "Connecting to"),
-            host_to_string(&host)
-        );
-    }
 }
 
-static void quit(void) {
+static void quit_res(void) {
     b3_free_font(debug_stats_font);
     debug_stats_font = NULL;
     b3_free_text(paused_text);
     paused_text = NULL;
-    n3_free_link(link);
-    link = NULL;
 }
 
-static void send_pause_message(_Bool paused) {
-    if(!link)
-        return;
-
-    n3_send_message(
-        link,
-        &(n3_message){.pause = {N3_MESSAGE_PAUSE, paused}}
-    );
+static void send_notification(const uint8_t *restrict buf, size_t size) {
+    if(client)
+        n3_client_send(net_client, buf, size);
+    else if(server)
+        n3_broadcast(server, buf, size);
 }
 
-static void process_message(const n3_message *restrict message) {
-    switch(message->type) {
-    case N3_MESSAGE_PAUSE:
-        paused = message->pause.paused;
-        break;
-    }
+static void notify_paused_changed(void) {
+    uint8_t buf[] = {'p', (paused ? '1' : '0')};
+    send_notification(buf, sizeof(buf));
 }
 
-static void process_messages(void) {
-    if(!link)
-        return;
+static void process_paused_changed(const uint8_t *restrict buf, size_t size) {
+    if(size >= 2)
+        paused = (buf[1] == '0' ? 0 : 1);
+}
 
+static size_t receive_notification(uint8_t *restrict buf, size_t size) {
+    if(client)
+        return n3_client_receive(net_client, buf, size);
+    if(server)
+        return n3_server_receive(server, buf, size, NULL, NULL);
+    return 0;
+}
+
+static void process_notifications(void) {
+    uint8_t buf[N3_SAFE_BUFFER_SIZE];
     for(
-        n3_message message, *m;
-        (m = n3_receive_message(link, &message, NULL)) != NULL;
-    )
-        process_message(m);
+        size_t received;
+        (received = receive_notification(buf, sizeof(buf))) > 0;
+    ) {
+        switch(buf[0]) {
+        case 'p': process_paused_changed(buf, received); break;
+        }
+    }
 }
 
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
@@ -232,7 +249,7 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
         return 1;
     case B3_INPUT_PAUSE:
         paused = !paused;
-        send_pause_message(paused);
+        notify_paused_changed();
         return 0;
     default:
         if(!paused)
@@ -430,7 +447,7 @@ static void loop(l3_level *restrict level) {
         stats.loop_count++;
         update_debug_stats(&stats, elapsed);
 
-        process_messages();
+        process_notifications();
     } while(!b3_process_events(level));
 
     l3_free_agent(agent3);
@@ -441,12 +458,14 @@ int main(int argc, char *argv[]) {
     parse_args(argc, argv);
 
     atexit(b3_quit);
+    atexit(quit_net);
     atexit(l3_quit);
-    atexit(quit);
+    atexit(quit_res);
 
     b3_init("3omns", &window_size, handle_input);
+    init_net();
     l3_init(RESOURCES, debug);
-    init();
+    init_res();
 
     l3_level level = l3_generate();
 
