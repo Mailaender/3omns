@@ -363,7 +363,7 @@ static void update_debug_stats(
     stats->update_count = 0;
     stats->think_count = 0;
     stats->render_count = 0;
-    stats->skip_count = 0;
+    // Don't reset skip_count.
 }
 
 static void loop(l3_level *restrict level) {
