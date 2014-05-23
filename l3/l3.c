@@ -206,8 +206,9 @@ static l3_level *check_level(lua_State *restrict l, int index) {
 
 static int level_new(lua_State *restrict l) {
     b3_size size = check_size(l, 1);
-    int max_sprites = luaL_checkint(l, 2);
-    int max_entities = luaL_checkint(l, 3);
+    int max_entities = luaL_checkint(l, 2);
+
+    int max_sprites = L3_SPRITE_POOL_SIZE(size);
 
     l3_level *level = lua_newuserdata(l, sizeof(*level));
     luaL_setmetatable(l, LEVEL_METATABLE);

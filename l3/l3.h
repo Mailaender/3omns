@@ -10,6 +10,9 @@ void l3_init(const char *restrict resource_path, _Bool debug);
 void l3_quit(void);
 
 
+#define L3_SPRITE_POOL_SIZE(map_size) \
+        ((map_size).width * (map_size).height * 2)
+
 #define L3_DUDE_COUNT 4
 
 typedef struct l3_level l3_level;

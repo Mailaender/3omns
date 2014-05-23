@@ -4,7 +4,6 @@ local Entities = require("entities")
 
 
 local MAP_SIZE = core.Size(30, 30)
-local MAX_SPRITES = MAP_SIZE.width * MAP_SIZE.height * 2
 local MAX_ENTITIES = MAP_SIZE.width * MAP_SIZE.height + 4
 
 local function generate_spawns(ctx)
@@ -157,7 +156,7 @@ local function fill_crates(ctx)
 end
 
 local function generate()
-  local level = l3.level.new(MAP_SIZE, MAX_SPRITES, MAX_ENTITIES)
+  local level = l3.level.new(MAP_SIZE, MAX_ENTITIES)
   local ctx = {
     level = level,
     entities = Entities(level),
