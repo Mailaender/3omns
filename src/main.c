@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <argp.h>
 
@@ -28,7 +29,7 @@
 #define DEFAULT_PORT 30325
 #define DEFAULT_PORT_STRING B3_STRINGIFY(DEFAULT_PORT)
 
-#define DEBUG_PRINT(...) ((void)(debug && printf(__VA_ARGS__)))
+#define DEBUG_PRINT(...) ((void)(debug && fprintf(debug_file, __VA_ARGS__)))
 
 struct round {
     l3_level level;
@@ -63,7 +64,11 @@ static const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
 static const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
 static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
+static FILE *debug_file;
+static FILE *debug_network_file;
+
 static _Bool debug = 0;
+static _Bool debug_network = 0;
 static _Bool serve = 0;
 static _Bool client = 0;
 static const char *hostname = NULL;
@@ -97,6 +102,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'd':
         debug = 1;
         break;
+    case 'n':
+        debug_network = 1;
+        break;
     case 'c':
         client = 1;
         hostname = arg;
@@ -124,6 +132,7 @@ static void parse_args(int argc, char *argv[]) {
         = {"Old-school arcade-style tile-based bomb-dropping deathmatch jam"};
     static struct argp_option options[] = {
         {"debug", 'd', NULL, 0, "Run in debug mode"},
+        {"debug-network", 'n', NULL, 0, "Print network communication"},
         // TODO: let this be controlled from in-game.
         {NULL, 0, NULL, 0, "Network play options:", 1},
         {"connect", 'c', "server", 0, "Connect to network host", 1},
@@ -141,18 +150,57 @@ static void parse_args(int argc, char *argv[]) {
         b3_fatal("Error parsing arguments: %s", strerror(e));
 }
 
+static const char *host_to_string(const n3_host *restrict host) {
+    static char string[N3_ADDRESS_SIZE + 10]; // 10 for "UDP |12345".
+    char address[N3_ADDRESS_SIZE] = {""};
+    n3_get_host_address(host, address, sizeof(address));
+    n3_port port = n3_get_host_port(host);
+    snprintf(string, sizeof(string), "UDP %s|%"PRIu16, address, port);
+    return string;
+}
+
+static void debug_network_print(
+    const uint8_t *restrict buf,
+    size_t size,
+    const char *restrict format,
+    ...
+) {
+    if(!debug_network)
+        return;
+
+    va_list args;
+    va_start(args, format);
+
+    vfprintf(debug_network_file, format, args);
+    fwrite(buf, 1, size, debug_network_file);
+    fputc('\n', debug_network_file);
+
+    va_end(args);
+}
+
 static void send_notification(
     const uint8_t *restrict buf,
     size_t size,
     const n3_host *restrict host
 ) {
-    if(client)
+    if(client) {
+        debug_network_print(buf, size, "Send: ");
         n3_client_send(net_client, buf, size);
+    }
     else if(server) {
-        if(host)
+        if(host) {
+            debug_network_print(
+                buf,
+                size,
+                "Send to %s: ",
+                host_to_string(host)
+            );
             n3_send_to(server, buf, size, host);
-        else
+        }
+        else {
+            debug_network_print(buf, size, "Broadcast: ");
             n3_broadcast(server, buf, size);
+        }
     }
 }
 
@@ -184,11 +232,25 @@ static size_t receive_notification(
     uint8_t *restrict buf,
     size_t size
 ) {
-    if(client)
-        return n3_client_receive(net_client, buf, size);
-    if(server)
-        return n3_server_receive(server, buf, size, NULL, round);
-    return 0;
+    size_t received = 0;
+    if(client) {
+        received = n3_client_receive(net_client, buf, size);
+        if(received)
+            debug_network_print(buf, received, "Received: ");
+    }
+    else if(server) {
+        n3_host host;
+        received = n3_server_receive(server, buf, size, &host, round);
+        if(received) {
+            debug_network_print(
+                buf,
+                received,
+                "Received from %s: ",
+                host_to_string(&host)
+            );
+        }
+    }
+    return received;
 }
 
 static void process_notifications(struct round *restrict round) {
@@ -202,15 +264,6 @@ static void process_notifications(struct round *restrict round) {
         case 'p': process_paused(round, buf, received); break;
         }
     }
-}
-
-static const char *host_to_string(const n3_host *restrict host) {
-    static char string[N3_ADDRESS_SIZE + 10]; // 10 for "UDP |12345".
-    char address[N3_ADDRESS_SIZE] = {""};
-    n3_get_host_address(host, address, sizeof(address));
-    n3_port port = n3_get_host_port(host);
-    snprintf(string, sizeof(string), "UDP %s|%"PRIu16, address, port);
-    return string;
 }
 
 static _Bool filter_connection(
@@ -502,6 +555,9 @@ static void new_round(struct round *restrict round) {
 }
 
 int main(int argc, char *argv[]) {
+    debug_file = stdout;
+    debug_network_file = stdout;
+
     parse_args(argc, argv);
 
     atexit(b3_quit);
