@@ -32,6 +32,8 @@
 #define DEBUG_PRINT(...) ((void)(debug && fprintf(debug_file, __VA_ARGS__)))
 
 struct round {
+    _Bool initialized;
+
     l3_level level;
     b3_size map_size;
     b3_size tile_size;
@@ -40,7 +42,7 @@ struct round {
 
     _Bool paused;
 };
-#define ROUND_INIT {L3_LEVEL_INIT, {0,0}, {0,0}, {NULL}, 0}
+#define ROUND_INIT {0, L3_LEVEL_INIT, {0,0}, {0,0}, {NULL}, 0}
 
 struct debug_stats {
     b3_ticks reset_time;
@@ -204,6 +206,23 @@ static void send_notification(
     }
 }
 
+static void buffer_print(
+    uint8_t *restrict buf,
+    size_t size,
+    int *restrict pos,
+    const char *restrict format,
+    ...
+) {
+    va_list args;
+    va_start(args, format);
+
+    *pos += vsnprintf((char *)buf + *pos, size - *pos, format, args);
+    if((size_t)*pos > size) // Ignore terminating null.
+        b3_fatal("Send buffer too small");
+
+    va_end(args);
+}
+
 // TODO: this won't be necessary once the n3 protocol is finished.
 static void notify_connect(void) {
     uint8_t buf[] = {'c'};
@@ -225,6 +244,65 @@ static void process_paused(
 ) {
     if(size >= 2)
         round->paused = (buf[1] == '0' ? 0 : 1);
+}
+
+static void notify_map(
+    const struct round *restrict round,
+    const n3_host *restrict host
+) {
+    uint8_t buf[N3_SAFE_BUFFER_SIZE];
+    int pos = 0;
+
+    buffer_print(
+        buf,
+        sizeof(buf),
+        &pos,
+        "m%Xx%X-%X=",
+        round->map_size.width,
+        round->map_size.height,
+        b3_get_entity_pool_size(round->level.entities)
+    );
+
+    b3_tile run_tile = 0;
+    int run_count = 0;
+    for(int y = 0; y < round->map_size.height; y++) {
+        for(int x = 0; x < round->map_size.width; x++) {
+            b3_tile tile = b3_get_map_tile(round->level.map, &(b3_pos){x, y});
+
+            if(tile == run_tile)
+                run_count++;
+            else {
+                if(run_count > 0) {
+                    buffer_print(
+                        buf,
+                        sizeof(buf),
+                        &pos,
+                        "%X:%c;",
+                        run_count,
+                        (int)run_tile
+                    );
+                }
+                run_tile = tile;
+                run_count = 1;
+            }
+        }
+    }
+    buffer_print(buf, sizeof(buf), &pos, "%X:%c", run_count, (int)run_tile);
+
+    send_notification(buf, (size_t)pos, host);
+}
+
+static void process_map(
+    struct round *restrict round,
+    const uint8_t *restrict buf,
+    size_t size
+) {
+    if(round->initialized)
+        return;
+
+    // TODO
+
+    round->initialized = 1;
 }
 
 static size_t receive_notification(
@@ -262,6 +340,7 @@ static void process_notifications(struct round *restrict round) {
         switch(buf[0]) {
         case 'c': /* "Connect"; do nothing. */ break;
         case 'p': process_paused(round, buf, received); break;
+        case 'm': process_map(round, buf, received); break;
         }
     }
 }
@@ -274,7 +353,10 @@ static _Bool filter_connection(
     const struct round *restrict round = data;
 
     DEBUG_PRINT("%s connected\n", host_to_string(host));
+
     notify_paused(round, host);
+    notify_map(round, host);
+
     return 1;
 }
 
@@ -477,7 +559,7 @@ static void loop(struct round *restrict round) {
         ticks = b3_get_tick_count();
         b3_ticks elapsed = ticks - last_ticks;
 
-        if(!round->paused) {
+        if(round->initialized && !round->paused) {
             int i = 0;
             for(
                 game_ticks += elapsed;
@@ -511,12 +593,14 @@ static void loop(struct round *restrict round) {
 
             b3_begin_scene();
 
-            b3_draw_map(round->level.map, l3_tile_images, &game_rect);
-            draw_border(round);
-            b3_draw_entities(round->level.entities, &game_rect);
-            // For now, "sprites" are always on top of the main entities.
-            b3_draw_entities(round->level.sprites, &game_rect);
-            draw_hearts(round);
+            if(round->initialized) {
+                b3_draw_map(round->level.map, l3_tile_images, &game_rect);
+                b3_draw_entities(round->level.entities, &game_rect);
+                // For now, "sprites" are always on top of the main entities.
+                b3_draw_entities(round->level.sprites, &game_rect);
+                draw_border(round);
+                draw_hearts(round);
+            }
 
             if(round->paused)
                 b3_draw_text(paused_text, &paused_text_rect);
@@ -544,13 +628,15 @@ static void free_round(struct round *restrict round) {
 static void new_round(struct round *restrict round) {
     free_round(round);
 
-    round->level = l3_generate();
-    round->map_size = b3_get_map_size(round->level.map);
-    round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
-
     if(!client) {
+        round->level = l3_generate();
+        round->map_size = b3_get_map_size(round->level.map);
+        round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
+
         round->agents[0] = l3_new_agent(&round->level, 2);
         round->agents[1] = l3_new_agent(&round->level, 3);
+
+        round->initialized = 1;
     }
 }
 
