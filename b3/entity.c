@@ -150,6 +150,10 @@ void b3_free_entity_pool(b3_entity_pool *restrict pool) {
     }
 }
 
+int b3_get_entity_pool_size(b3_entity_pool *restrict pool) {
+    return pool->size;
+}
+
 b3_entity *b3_claim_entity(
     b3_entity_pool *restrict pool,
     b3_free_entity_data_callback free_data_callback
