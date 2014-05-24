@@ -208,15 +208,10 @@ static int level_new(lua_State *restrict l) {
     b3_size size = check_size(l, 1);
     int max_entities = luaL_checkint(l, 2);
 
-    int max_sprites = L3_SPRITE_POOL_SIZE(size);
-
     l3_level *level = lua_newuserdata(l, sizeof(*level));
     luaL_setmetatable(l, LEVEL_METATABLE);
 
-    *level = (l3_level)L3_LEVEL_INIT;
-    level->map = b3_new_map(&size);
-    level->sprites = b3_new_entity_pool(max_sprites, level->map);
-    level->entities = b3_new_entity_pool(max_entities, level->map);
+    l3_init_level(level, &size, max_entities);
     return 1;
 }
 

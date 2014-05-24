@@ -10,9 +10,6 @@ void l3_init(const char *restrict resource_path, _Bool debug);
 void l3_quit(void);
 
 
-#define L3_SPRITE_POOL_SIZE(map_size) \
-        ((map_size).width * (map_size).height * 2)
-
 #define L3_DUDE_COUNT 4
 
 typedef struct l3_level l3_level;
@@ -24,6 +21,20 @@ struct l3_level {
 };
 
 #define L3_LEVEL_INIT {NULL, NULL, NULL, {0}}
+
+static inline l3_level *l3_init_level(
+    l3_level *restrict l,
+    const b3_size *restrict map_size,
+    int max_entities
+) {
+    int max_sprites = map_size->width * map_size->height * 2;
+
+    *l = (l3_level)L3_LEVEL_INIT;
+    l->map = b3_new_map(map_size);
+    l->sprites = b3_new_entity_pool(max_sprites, l->map);
+    l->entities = b3_new_entity_pool(max_entities, l->map);
+    return l;
+}
 
 static inline l3_level l3_copy_level(l3_level *restrict l) {
     return (l3_level){

@@ -223,6 +223,44 @@ static void buffer_print(
     va_end(args);
 }
 
+// Assume buf is null-terminated.
+#define buffer_scan(buf, pos, assignments, format, ...) \
+        do { \
+            int consumed = 0; \
+            buffer_scan_( \
+                (buf), \
+                *(pos), \
+                (assignments), \
+                format, \
+                format "%n", \
+                __VA_ARGS__, \
+                &consumed \
+            ); \
+            *(pos) += consumed; \
+        } while(0)
+
+static void buffer_scan_(
+    const uint8_t *restrict buf,
+    int pos,
+    int assignments,
+    const char *restrict parse_format,
+    const char *restrict format,
+    ...
+) {
+    va_list args;
+    va_start(args, format);
+
+    int assigned = vsscanf((char *)buf + pos, format, args);
+    if(assigned < assignments) {
+        b3_fatal(
+            "Error parsing received message; expected scanf-format: %s",
+            parse_format
+        );
+    }
+
+    va_end(args);
+}
+
 // TODO: this won't be necessary once the n3 protocol is finished.
 static void notify_connect(void) {
     uint8_t buf[] = {'c'};
@@ -253,15 +291,17 @@ static void notify_map(
     uint8_t buf[N3_SAFE_BUFFER_SIZE];
     int pos = 0;
 
-    buffer_print(
-        buf,
-        sizeof(buf),
-        &pos,
-        "m%Xx%X-%X=",
+#define MAP_PRINT(...) buffer_print(buf, sizeof(buf), &pos, __VA_ARGS__)
+    MAP_PRINT(
+        "m%Xx%X-%X/",
         round->map_size.width,
         round->map_size.height,
         b3_get_entity_pool_size(round->level.entities)
     );
+
+    for(int i = 0; i < L3_DUDE_COUNT - 1; i++)
+        MAP_PRINT("%X,", round->level.dude_ids[i]);
+    MAP_PRINT("%X|", round->level.dude_ids[L3_DUDE_COUNT - 1]);
 
     b3_tile run_tile = 0;
     int run_count = 0;
@@ -272,22 +312,15 @@ static void notify_map(
             if(tile == run_tile)
                 run_count++;
             else {
-                if(run_count > 0) {
-                    buffer_print(
-                        buf,
-                        sizeof(buf),
-                        &pos,
-                        "%X:%c;",
-                        run_count,
-                        (int)run_tile
-                    );
-                }
+                if(run_count > 0)
+                    MAP_PRINT("%X:%c;", run_count, (int)run_tile);
                 run_tile = tile;
                 run_count = 1;
             }
         }
     }
-    buffer_print(buf, sizeof(buf), &pos, "%X:%c", run_count, (int)run_tile);
+    MAP_PRINT("%X:%c", run_count, (int)run_tile);
+#undef MAP_PRINT
 
     send_notification(buf, (size_t)pos, host);
 }
@@ -300,7 +333,43 @@ static void process_map(
     if(round->initialized)
         return;
 
-    // TODO
+    int pos = 0;
+
+#define MAP_SCAN(...) buffer_scan(buf, &pos, __VA_ARGS__)
+    int width = 0;
+    int height = 0;
+    int max_entities = 0;
+    MAP_SCAN(3, "m%Xx%X-%X/", &width, &height, &max_entities);
+    if(width <= 0 || height <= 0 || max_entities <= 0
+            || width > 10000 || height > 10000 || max_entities > 10000)
+        b3_fatal("Received invalid map data");
+
+    l3_init_level(&round->level, &(b3_size){width, height}, max_entities);
+    round->map_size = b3_get_map_size(round->level.map);
+    round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
+
+    for(int i = 0; i < L3_DUDE_COUNT - 1; i++)
+        MAP_SCAN(1, "%X,", &round->level.dude_ids[i]);
+    MAP_SCAN(1, "%X|", &round->level.dude_ids[L3_DUDE_COUNT - 1]);
+
+    b3_pos map_pos = {0, 0};
+    do {
+        b3_tile run_tile = 0;
+        int run_count = 0;
+        MAP_SCAN(2, "%X:%c", &run_count, &run_tile);
+
+        for(int i = 0; i < run_count; i++) {
+            if(map_pos.y >= height)
+                b3_fatal("Too much data for map");
+
+            b3_set_map_tile(round->level.map, &map_pos, run_tile);
+            if(++(map_pos.x) >= width) {
+                map_pos.x = 0;
+                map_pos.y++;
+            }
+        }
+    } while(buf[pos++] == ';');
+#undef MAP_SCAN
 
     round->initialized = 1;
 }
@@ -332,11 +401,13 @@ static size_t receive_notification(
 }
 
 static void process_notifications(struct round *restrict round) {
-    uint8_t buf[N3_SAFE_BUFFER_SIZE];
+    uint8_t buf[N3_SAFE_BUFFER_SIZE + 1];
     for(
         size_t received;
-        (received = receive_notification(round, buf, sizeof(buf))) > 0;
+        (received = receive_notification(round, buf, sizeof(buf) - 1)) > 0;
     ) {
+        buf[received] = 0; // So we can safely buffer_scan() later.
+
         switch(buf[0]) {
         case 'c': /* "Connect"; do nothing. */ break;
         case 'p': process_paused(round, buf, received); break;
