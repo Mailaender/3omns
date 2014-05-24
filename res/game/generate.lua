@@ -141,17 +141,13 @@ local function spawn_crates(ctx)
 end
 
 local function fill_crates(ctx)
-  local function spawn_super(crate)
-    crate.entities:Super(crate.pos)
-  end
-
   for i = 1, #ctx.spawns do
     local c
     repeat
       c = ctx.crates[math.random(#ctx.crates)]
     until not c:holds()
 
-    c:hold(spawn_super)
+    c:hold(ctx.entities.Super)
   end
 end
 
