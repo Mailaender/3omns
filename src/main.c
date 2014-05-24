@@ -1,13 +1,10 @@
+#include "3omns.h"
 #include "b3/b3.h"
 #include "l3/l3.h"
 #include "n3/n3.h"
 
 #include <errno.h>
-#include <stdint.h>
-#include <inttypes.h>
 #include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
 #include <stdlib.h>
 #include <argp.h>
 
@@ -25,24 +22,6 @@
 #define GAME_HEIGHT WINDOW_HEIGHT
 
 #define HEART_SIZE 16
-
-#define DEFAULT_PORT 30325
-#define DEFAULT_PORT_STRING B3_STRINGIFY(DEFAULT_PORT)
-
-#define DEBUG_PRINT(...) ((void)(debug && fprintf(debug_file, __VA_ARGS__)))
-
-struct round {
-    _Bool initialized;
-
-    l3_level level;
-    b3_size map_size;
-    b3_size tile_size;
-
-    l3_agent *agents[L3_DUDE_COUNT];
-
-    _Bool paused;
-};
-#define ROUND_INIT {0, L3_LEVEL_INIT, {0,0}, {0,0}, {NULL}, 0}
 
 struct debug_stats {
     b3_ticks reset_time;
@@ -62,22 +41,11 @@ struct debug_stats {
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
 
-static const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
-static const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
-static const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
+const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
+const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
+const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-static FILE *debug_file;
-static FILE *debug_network_file;
-
-static _Bool debug = 0;
-static _Bool debug_network = 0;
-static _Bool serve = 0;
-static _Bool client = 0;
-static const char *hostname = NULL;
-static n3_port port = DEFAULT_PORT;
-
-static n3_server *server = NULL;
-static n3_client *net_client = NULL;
+struct args args = ARGS_INIT_DEFAULT;
 
 static b3_font *debug_stats_font = NULL;
 
@@ -100,24 +68,26 @@ static int parse_port(n3_port *out, const char *string) {
 }
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+    struct args *restrict args = state->input;
+
     switch(key) {
     case 'd':
-        debug = 1;
+        args->debug = 1;
         break;
     case 'n':
-        debug_network = 1;
+        args->debug_network = 1;
         break;
     case 'c':
-        client = 1;
-        hostname = arg;
+        args->client = 1;
+        args->hostname = arg;
         break;
     case 's':
-        serve = 1;
-        hostname = arg;
+        args->serve = 1;
+        args->hostname = arg;
         break;
     case 'p':
         {
-            int e = parse_port(&port, arg);
+            int e = parse_port(&args->port, arg);
             if(e)
                 b3_fatal("Error parsing port '%s': %s", arg, strerror(e));
             break;
@@ -142,318 +112,14 @@ static void parse_args(int argc, char *argv[]) {
                 "Host network game, listening on the given address "
                 "(default: the wildcard address)", 1},
         {"port", 'p', "port", 0, "Port for listening or connecting (default: "
-                DEFAULT_PORT_STRING")", 1},
+                B3_STRINGIFY(DEFAULT_PORT)")", 1},
         {0}
     };
     static struct argp argp = {options, parse_opt, NULL, doc};
 
-    error_t e = argp_parse(&argp, argc, argv, 0, NULL, NULL);
+    error_t e = argp_parse(&argp, argc, argv, 0, NULL, &args);
     if(e)
         b3_fatal("Error parsing arguments: %s", strerror(e));
-}
-
-static const char *host_to_string(const n3_host *restrict host) {
-    static char string[N3_ADDRESS_SIZE + 10]; // 10 for "UDP |12345".
-    char address[N3_ADDRESS_SIZE] = {""};
-    n3_get_host_address(host, address, sizeof(address));
-    n3_port port = n3_get_host_port(host);
-    snprintf(string, sizeof(string), "UDP %s|%"PRIu16, address, port);
-    return string;
-}
-
-static void debug_network_print(
-    const uint8_t *restrict buf,
-    size_t size,
-    const char *restrict format,
-    ...
-) {
-    if(!debug_network)
-        return;
-
-    va_list args;
-    va_start(args, format);
-
-    vfprintf(debug_network_file, format, args);
-    fwrite(buf, 1, size, debug_network_file);
-    fputc('\n', debug_network_file);
-
-    va_end(args);
-}
-
-static void send_notification(
-    const uint8_t *restrict buf,
-    size_t size,
-    const n3_host *restrict host
-) {
-    if(client) {
-        debug_network_print(buf, size, "Send: ");
-        n3_client_send(net_client, buf, size);
-    }
-    else if(server) {
-        if(host) {
-            debug_network_print(
-                buf,
-                size,
-                "Send to %s: ",
-                host_to_string(host)
-            );
-            n3_send_to(server, buf, size, host);
-        }
-        else {
-            debug_network_print(buf, size, "Broadcast: ");
-            n3_broadcast(server, buf, size);
-        }
-    }
-}
-
-static void buffer_print(
-    uint8_t *restrict buf,
-    size_t size,
-    int *restrict pos,
-    const char *restrict format,
-    ...
-) {
-    va_list args;
-    va_start(args, format);
-
-    *pos += vsnprintf((char *)buf + *pos, size - *pos, format, args);
-    if((size_t)*pos > size) // Ignore terminating null.
-        b3_fatal("Send buffer too small");
-
-    va_end(args);
-}
-
-// Assume buf is null-terminated.
-#define buffer_scan(buf, pos, assignments, format, ...) \
-        do { \
-            int consumed = 0; \
-            buffer_scan_( \
-                (buf), \
-                *(pos), \
-                (assignments), \
-                format, \
-                format "%n", \
-                __VA_ARGS__, \
-                &consumed \
-            ); \
-            *(pos) += consumed; \
-        } while(0)
-
-static void buffer_scan_(
-    const uint8_t *restrict buf,
-    int pos,
-    int assignments,
-    const char *restrict parse_format,
-    const char *restrict format,
-    ...
-) {
-    va_list args;
-    va_start(args, format);
-
-    int assigned = vsscanf((char *)buf + pos, format, args);
-    if(assigned < assignments) {
-        b3_fatal(
-            "Error parsing received message; expected scanf-format: %s",
-            parse_format
-        );
-    }
-
-    va_end(args);
-}
-
-// TODO: this won't be necessary once the n3 protocol is finished.
-static void notify_connect(void) {
-    uint8_t buf[] = {'c'};
-    send_notification(buf, sizeof(buf), NULL);
-}
-
-static void notify_paused(
-    const struct round *restrict round,
-    const n3_host *restrict host
-) {
-    uint8_t buf[] = {'p', (round->paused ? '1' : '0')};
-    send_notification(buf, sizeof(buf), host);
-}
-
-static void process_paused(
-    struct round *restrict round,
-    const uint8_t *restrict buf,
-    size_t size
-) {
-    if(size >= 2)
-        round->paused = (buf[1] == '0' ? 0 : 1);
-}
-
-static void notify_map(
-    const struct round *restrict round,
-    const n3_host *restrict host
-) {
-    uint8_t buf[N3_SAFE_BUFFER_SIZE];
-    int pos = 0;
-
-#define MAP_PRINT(...) buffer_print(buf, sizeof(buf), &pos, __VA_ARGS__)
-    MAP_PRINT(
-        "m%Xx%X-%X/",
-        round->map_size.width,
-        round->map_size.height,
-        b3_get_entity_pool_size(round->level.entities)
-    );
-
-    for(int i = 0; i < L3_DUDE_COUNT - 1; i++)
-        MAP_PRINT("%X,", round->level.dude_ids[i]);
-    MAP_PRINT("%X|", round->level.dude_ids[L3_DUDE_COUNT - 1]);
-
-    b3_tile run_tile = 0;
-    int run_count = 0;
-    for(int y = 0; y < round->map_size.height; y++) {
-        for(int x = 0; x < round->map_size.width; x++) {
-            b3_tile tile = b3_get_map_tile(round->level.map, &(b3_pos){x, y});
-
-            if(tile == run_tile)
-                run_count++;
-            else {
-                if(run_count > 0)
-                    MAP_PRINT("%X:%c;", run_count, (int)run_tile);
-                run_tile = tile;
-                run_count = 1;
-            }
-        }
-    }
-    MAP_PRINT("%X:%c", run_count, (int)run_tile);
-#undef MAP_PRINT
-
-    send_notification(buf, (size_t)pos, host);
-}
-
-static void process_map(
-    struct round *restrict round,
-    const uint8_t *restrict buf,
-    size_t size
-) {
-    if(round->initialized)
-        return;
-
-    int pos = 0;
-
-#define MAP_SCAN(...) buffer_scan(buf, &pos, __VA_ARGS__)
-    int width = 0;
-    int height = 0;
-    int max_entities = 0;
-    MAP_SCAN(3, "m%Xx%X-%X/", &width, &height, &max_entities);
-    if(width <= 0 || height <= 0 || max_entities <= 0
-            || width > 10000 || height > 10000 || max_entities > 10000)
-        b3_fatal("Received invalid map data");
-
-    l3_init_level(&round->level, &(b3_size){width, height}, max_entities);
-    round->map_size = b3_get_map_size(round->level.map);
-    round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
-
-    for(int i = 0; i < L3_DUDE_COUNT - 1; i++)
-        MAP_SCAN(1, "%X,", &round->level.dude_ids[i]);
-    MAP_SCAN(1, "%X|", &round->level.dude_ids[L3_DUDE_COUNT - 1]);
-
-    b3_pos map_pos = {0, 0};
-    do {
-        b3_tile run_tile = 0;
-        int run_count = 0;
-        MAP_SCAN(2, "%X:%c", &run_count, &run_tile);
-
-        for(int i = 0; i < run_count; i++) {
-            if(map_pos.y >= height)
-                b3_fatal("Too much data for map");
-
-            b3_set_map_tile(round->level.map, &map_pos, run_tile);
-            if(++(map_pos.x) >= width) {
-                map_pos.x = 0;
-                map_pos.y++;
-            }
-        }
-    } while(buf[pos++] == ';');
-#undef MAP_SCAN
-
-    round->initialized = 1;
-}
-
-static size_t receive_notification(
-    struct round *restrict round,
-    uint8_t *restrict buf,
-    size_t size
-) {
-    size_t received = 0;
-    if(client) {
-        received = n3_client_receive(net_client, buf, size);
-        if(received)
-            debug_network_print(buf, received, "Received: ");
-    }
-    else if(server) {
-        n3_host host;
-        received = n3_server_receive(server, buf, size, &host, round);
-        if(received) {
-            debug_network_print(
-                buf,
-                received,
-                "Received from %s: ",
-                host_to_string(&host)
-            );
-        }
-    }
-    return received;
-}
-
-static void process_notifications(struct round *restrict round) {
-    uint8_t buf[N3_SAFE_BUFFER_SIZE + 1];
-    for(
-        size_t received;
-        (received = receive_notification(round, buf, sizeof(buf) - 1)) > 0;
-    ) {
-        buf[received] = 0; // So we can safely buffer_scan() later.
-
-        switch(buf[0]) {
-        case 'c': /* "Connect"; do nothing. */ break;
-        case 'p': process_paused(round, buf, received); break;
-        case 'm': process_map(round, buf, received); break;
-        }
-    }
-}
-
-static _Bool filter_connection(
-    n3_server *restrict server,
-    const n3_host *restrict host,
-    void *data
-) {
-    const struct round *restrict round = data;
-
-    DEBUG_PRINT("%s connected\n", host_to_string(host));
-
-    notify_paused(round, host);
-    notify_map(round, host);
-
-    return 1;
-}
-
-static void init_net(void) {
-    n3_host host;
-    if(client || (serve && hostname))
-        n3_init_host(&host, hostname, port);
-    else if(serve)
-        n3_init_host_any_local(&host, port);
-
-    if(client) {
-        net_client = n3_new_client(&host);
-        DEBUG_PRINT("Connecting to %s\n", host_to_string(&host));
-        notify_connect();
-    }
-    else if(serve) {
-        server = n3_new_server(&host, filter_connection);
-        DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
-    }
-}
-
-static void quit_net(void) {
-    n3_free_client(net_client);
-    net_client = NULL;
-    n3_free_server(server);
-    server = NULL;
 }
 
 static void init_res(void) {
@@ -557,7 +223,7 @@ static void draw_hearts(const struct round *restrict round) {
 }
 
 static void draw_debug_stats(struct debug_stats *restrict stats) {
-    if(!debug)
+    if(!args.debug)
         return;
 
     for(int i = 0; i < 5; i++) {
@@ -645,7 +311,7 @@ static void loop(struct round *restrict round) {
             if(i > 0)
                 stats.skip_count += i - 1;
 
-            if(!client) {
+            if(!args.client) {
                 for(
                     ai_ticks += elapsed;
                     ai_ticks >= think_ticks;
@@ -699,7 +365,7 @@ static void free_round(struct round *restrict round) {
 static void new_round(struct round *restrict round) {
     free_round(round);
 
-    if(!client) {
+    if(!args.client) {
         round->level = l3_generate();
         round->map_size = b3_get_map_size(round->level.map);
         round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
@@ -712,9 +378,6 @@ static void new_round(struct round *restrict round) {
 }
 
 int main(int argc, char *argv[]) {
-    debug_file = stdout;
-    debug_network_file = stdout;
-
     parse_args(argc, argv);
 
     atexit(b3_quit);
@@ -724,7 +387,7 @@ int main(int argc, char *argv[]) {
 
     b3_init("3omns", &window_size, handle_input);
     init_net();
-    l3_init(RESOURCES, debug);
+    l3_init(RESOURCES, args.debug);
     init_res();
 
     struct round round = ROUND_INIT;
