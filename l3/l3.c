@@ -60,6 +60,7 @@ b3_image *l3_border_image = NULL;
 b3_image *l3_heart_images[L3_DUDE_COUNT] = {NULL};
 
 static char *resource_path = NULL;
+static _Bool client = 0;
 static _Bool debug = 0;
 static lua_State *lua = NULL;
 
@@ -551,6 +552,8 @@ static int open_all(lua_State *restrict l) {
 
     lua_pushstring(l, resource_path);
     lua_setfield(l, -2, "RESOURCE_PATH");
+    lua_pushboolean(l, client);
+    lua_setfield(l, -2, "CLIENT");
     lua_pushboolean(l, debug);
     lua_setfield(l, -2, "DEBUG");
 
@@ -640,8 +643,13 @@ static void set_heart_images(lua_State *restrict l) {
     lua_pop(l, 1);
 }
 
-void l3_init(const char *restrict resource_path_, _Bool debug_) {
+void l3_init(
+    const char *restrict resource_path_,
+    _Bool client_,
+    _Bool debug_
+) {
     resource_path = b3_copy_string(resource_path_);
+    client = client_;
     debug = debug_;
 
     lua = new_lua();

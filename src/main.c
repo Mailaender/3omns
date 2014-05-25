@@ -387,7 +387,7 @@ int main(int argc, char *argv[]) {
 
     b3_init("3omns", &window_size, handle_input);
     init_net();
-    l3_init(RESOURCES, args.debug);
+    l3_init(RESOURCES, args.client, args.debug);
     init_res();
 
     struct round round = ROUND_INIT;
