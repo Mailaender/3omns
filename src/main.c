@@ -351,6 +351,7 @@ static void loop(struct round *restrict round) {
         stats.loop_count++;
         update_debug_stats(round, &stats, elapsed);
 
+        // TODO: poll() with an intelligent timeout here.
         process_notifications(round);
     } while(!b3_process_events(round));
 }
