@@ -24,6 +24,7 @@
 
 #define L3_ENTITY_UPDATE_NAME "l3_update"
 #define L3_ENTITY_ACTION_NAME "l3_action"
+#define L3_ENTITY_SERIALIZE_NAME "l3_serialize"
 
 struct l3_agent {
     int ref_count;
@@ -787,6 +788,34 @@ void l3_input(l3_level *restrict level, b3_input input) {
     b3_entity *entity = b3_get_entity(level->entities, level->dude_ids[i]);
     if(entity)
         entity_action(lua, entity, input_to_action(input, i));
+}
+
+char *l3_serialize_entity(b3_entity *restrict entity, size_t *restrict len) {
+    const struct entity_data *entity_data = b3_get_entity_data(entity);
+    lua_State *l = entity_data->l;
+
+    if(entity_data->context_ref < 0 || !b3_get_entity_life(entity))
+        return NULL;
+
+    lua_rawgeti(l, LUA_REGISTRYINDEX, entity_data->context_ref);
+    lua_getfield(l, -1, L3_ENTITY_SERIALIZE_NAME);
+    if(!lua_isfunction(l, -1)) {
+        lua_pop(l, 2);
+        return NULL;
+    }
+
+    lua_insert(l, -2);
+
+    lua_call(l, 1, 1);
+
+    size_t serial_len = 0;
+    const char *serial = lua_tolstring(l, -1, &serial_len);
+    char *r = b3_alloc_copy(serial, serial_len + 1);
+    lua_pop(l, 1);
+
+    if(len)
+        *len = serial_len;
+    return r;
 }
 
 l3_agent *l3_new_agent(l3_level *restrict level, int dude_index) {

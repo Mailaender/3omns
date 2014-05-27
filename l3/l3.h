@@ -60,6 +60,8 @@ l3_level l3_generate(void);
 void l3_update(l3_level *restrict level, b3_ticks elapsed);
 void l3_input(l3_level *restrict level, b3_input input);
 
+char *l3_serialize_entity(b3_entity *restrict entity, size_t *restrict len);
+
 
 typedef struct l3_agent l3_agent;
 
