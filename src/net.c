@@ -42,7 +42,7 @@ static void debug_network_print(
     va_end(args);
 }
 
-static void buffer_print(
+static void print_buffer(
     uint8_t *restrict buf,
     size_t size,
     int *restrict pos,
@@ -60,22 +60,21 @@ static void buffer_print(
 }
 
 // Assume buf is null-terminated.
-#define buffer_scan(buf, pos, assignments, format, ...) \
-        do { \
-            int consumed = 0; \
-            buffer_scan_( \
-                (buf), \
-                *(pos), \
-                (assignments), \
-                format, \
-                format "%n", \
-                __VA_ARGS__, \
-                &consumed \
-            ); \
-            *(pos) += consumed; \
-        } while(0)
+#define scan_buffer(buf, pos, assignments, format, ...) do { \
+    int consumed = 0; \
+    scan_buffer_( \
+        (buf), \
+        *(pos), \
+        (assignments), \
+        format, \
+        format "%n", \
+        __VA_ARGS__, \
+        &consumed \
+    ); \
+    *(pos) += consumed; \
+} while(0)
 
-static void buffer_scan_(
+static void scan_buffer_(
     const uint8_t *restrict buf,
     int pos,
     int assignments,
@@ -155,7 +154,7 @@ static void notify_connect(void) {
     send_notification(buf, sizeof(buf), NULL);
 }
 
-void notify_paused(
+static void notify_paused_state(
     const struct round *restrict round,
     const n3_host *restrict host
 ) {
@@ -163,13 +162,17 @@ void notify_paused(
     send_notification(buf, sizeof(buf), host);
 }
 
-static void process_paused(
+static void process_paused_state(
     struct round *restrict round,
     const uint8_t *restrict buf,
     size_t size
 ) {
     if(size >= 2)
         round->paused = (buf[1] == '0' ? 0 : 1);
+}
+
+void notify_paused_changed(const struct round *restrict round) {
+    notify_paused_state(round, NULL);
 }
 
 static void notify_map(
@@ -179,8 +182,8 @@ static void notify_map(
     uint8_t buf[N3_SAFE_BUFFER_SIZE];
     int pos = 0;
 
-#define MAP_PRINT(...) buffer_print(buf, sizeof(buf), &pos, __VA_ARGS__)
-    MAP_PRINT(
+#define PRINT_MAP(...) print_buffer(buf, sizeof(buf), &pos, __VA_ARGS__)
+    PRINT_MAP(
         "m%Xx%X-%X/",
         round->map_size.width,
         round->map_size.height,
@@ -188,8 +191,8 @@ static void notify_map(
     );
 
     for(int i = 0; i < L3_DUDE_COUNT - 1; i++)
-        MAP_PRINT("%X,", round->level.dude_ids[i]);
-    MAP_PRINT("%X|", round->level.dude_ids[L3_DUDE_COUNT - 1]);
+        PRINT_MAP("%X,", round->level.dude_ids[i]);
+    PRINT_MAP("%X|", round->level.dude_ids[L3_DUDE_COUNT - 1]);
 
     b3_tile run_tile = 0;
     int run_count = 0;
@@ -201,14 +204,14 @@ static void notify_map(
                 run_count++;
             else {
                 if(run_count > 0)
-                    MAP_PRINT("%X:%c;", run_count, (int)run_tile);
+                    PRINT_MAP("%X:%c;", run_count, (int)run_tile);
                 run_tile = tile;
                 run_count = 1;
             }
         }
     }
-    MAP_PRINT("%X:%c", run_count, (int)run_tile);
-#undef MAP_PRINT
+    PRINT_MAP("%X:%c", run_count, (int)run_tile);
+#undef PRINT_MAP
 
     send_notification(buf, (size_t)pos, host);
 }
@@ -223,11 +226,12 @@ static void process_map(
 
     int pos = 0;
 
-#define MAP_SCAN(...) buffer_scan(buf, &pos, __VA_ARGS__)
+#define SCAN_MAP(...) scan_buffer(buf, &pos, __VA_ARGS__)
     int width = 0;
     int height = 0;
     int max_entities = 0;
-    MAP_SCAN(3, "m%Xx%X-%X/", &width, &height, &max_entities);
+    SCAN_MAP(3, "m%Xx%X-%X/", &width, &height, &max_entities);
+    // TODO: these maxima should be a bit more rigorously defined.
     if(width <= 0 || height <= 0 || max_entities <= 0
             || width > 10000 || height > 10000 || max_entities > 10000)
         b3_fatal("Received invalid map data");
@@ -242,14 +246,14 @@ static void process_map(
     round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
 
     for(int i = 0; i < L3_DUDE_COUNT - 1; i++)
-        MAP_SCAN(1, "%X,", &round->level.dude_ids[i]);
-    MAP_SCAN(1, "%X|", &round->level.dude_ids[L3_DUDE_COUNT - 1]);
+        SCAN_MAP(1, "%X,", &round->level.dude_ids[i]);
+    SCAN_MAP(1, "%X|", &round->level.dude_ids[L3_DUDE_COUNT - 1]);
 
     b3_pos map_pos = {0, 0};
     do {
         b3_tile run_tile = 0;
         int run_count = 0;
-        MAP_SCAN(2, "%X:%c", &run_count, &run_tile);
+        SCAN_MAP(2, "%X:%c", &run_count, &run_tile);
 
         for(int i = 0; i < run_count; i++) {
             if(map_pos.y >= height)
@@ -262,7 +266,7 @@ static void process_map(
             }
         }
     } while(buf[pos++] == ';');
-#undef MAP_SCAN
+#undef SCAN_MAP
 
     round->initialized = 1;
 }
@@ -273,11 +277,11 @@ void process_notifications(struct round *restrict round) {
         size_t received;
         (received = receive_notification(round, buf, sizeof(buf) - 1)) > 0;
     ) {
-        buf[received] = 0; // So we can safely buffer_scan() later.
+        buf[received] = 0; // So we can safely scan_buffer() later.
 
         switch(buf[0]) {
         case 'c': /* "Connect"; do nothing. */ break;
-        case 'p': process_paused(round, buf, received); break;
+        case 'p': process_paused_state(round, buf, received); break;
         case 'm': process_map(round, buf, received); break;
         }
     }
@@ -292,7 +296,7 @@ static _Bool filter_connection(
 
     DEBUG_PRINT("%s connected\n", host_to_string(host));
 
-    notify_paused(round, host);
+    notify_paused_state(round, host);
     notify_map(round, host);
 
     return 1;

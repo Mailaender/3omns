@@ -158,7 +158,7 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
         return 1;
     case B3_INPUT_PAUSE:
         round->paused = !round->paused;
-        notify_paused(round, NULL);
+        notify_paused_changed(round);
         return 0;
     default:
         if(!round->paused)

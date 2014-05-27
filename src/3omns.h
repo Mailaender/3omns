@@ -5,6 +5,7 @@
 #include "l3/l3.h"
 #include "n3/n3.h"
 
+#include <stddef.h>
 #include <stdio.h>
 
 
@@ -48,10 +49,7 @@ struct round {
 void init_net(void);
 void quit_net(void);
 
-void notify_paused(
-    const struct round *restrict round,
-    const n3_host *restrict host
-);
+void notify_paused_changed(const struct round *restrict round);
 void process_notifications(struct round *restrict round);
 
 
