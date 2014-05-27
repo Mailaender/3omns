@@ -232,7 +232,12 @@ static void process_map(
             || width > 10000 || height > 10000 || max_entities > 10000)
         b3_fatal("Received invalid map data");
 
-    l3_init_level(&round->level, &(b3_size){width, height}, max_entities);
+    l3_init_level(
+        &round->level,
+        args.client,
+        &(b3_size){width, height},
+        max_entities
+    );
     round->map_size = b3_get_map_size(round->level.map);
     round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
 

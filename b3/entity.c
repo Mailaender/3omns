@@ -35,10 +35,11 @@ struct b3_entity_pool {
     b3_map *map;
     b3_size map_size;
 
+    _Bool generate_ids;
+    b3_entity_id id_generator;
+
     int size;
     int count;
-
-    b3_entity_id id_generator;
 
     struct index_entry *index;
 
@@ -54,10 +55,15 @@ struct b3_entity_pool {
         (sizeof(*(pool)) + (size) * sizeof((pool)->entities[0]))
 
 
-b3_entity_pool *b3_new_entity_pool(int size, b3_map *restrict map) {
+b3_entity_pool *b3_new_entity_pool(
+    _Bool generate_ids,
+    int size,
+    b3_map *restrict map
+) {
     b3_entity_pool *pool = b3_malloc(SIZEOF_ENTITY_POOL(pool, size), 1);
     pool->map = b3_ref_map(map);
     pool->map_size = b3_get_map_size(map);
+    pool->generate_ids = generate_ids;
     pool->size = size;
     pool->index = b3_malloc(size * sizeof(*pool->index), 1);
     pool->inactive_count = size;
@@ -156,14 +162,20 @@ int b3_get_entity_pool_size(b3_entity_pool *restrict pool) {
 
 b3_entity *b3_claim_entity(
     b3_entity_pool *restrict pool,
+    b3_entity_id id,
     b3_free_entity_data_callback free_data_callback
 ) {
     if(!pool->inactive_count)
         b3_fatal("No available entities; need a bigger pool");
+    if((id && pool->generate_ids) || (!id && !pool->generate_ids))
+        b3_fatal("Must only generate entity ids when expected");
+
+    if(!id)
+        id = ++(pool->id_generator);
 
     b3_entity *entity = pool->inactive[--(pool->inactive_count)];
     entity->pool = pool;
-    entity->id = ++(pool->id_generator);
+    entity->id = id;
     entity->free_data = free_data_callback;
     pool->index[pool->count++] = (struct index_entry){entity->id, entity};
     z_list_insert(pool, entity);

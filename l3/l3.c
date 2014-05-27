@@ -212,7 +212,7 @@ static int level_new(lua_State *restrict l) {
     l3_level *level = lua_newuserdata(l, sizeof(*level));
     luaL_setmetatable(l, LEVEL_METATABLE);
 
-    l3_init_level(level, &size, max_entities);
+    l3_init_level(level, client, &size, max_entities);
     return 1;
 }
 
@@ -319,7 +319,7 @@ static int level_new_sprite(lua_State *restrict l) {
     b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
     luaL_setmetatable(l, SPRITE_METATABLE);
 
-    *p_entity = b3_claim_entity(level->sprites, free_entity_data);
+    *p_entity = b3_claim_entity(level->sprites, 0, free_entity_data);
     b3_set_entity_life(*p_entity, 1);
     b3_set_entity_data(*p_entity, new_entity_data(l, -1, 2, level->map));
     return 1;
@@ -407,7 +407,7 @@ static int level_new_entity(lua_State *restrict l) {
     b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
     luaL_setmetatable(l, ENTITY_METATABLE);
 
-    *p_entity = b3_claim_entity(level->entities, free_entity_data);
+    *p_entity = b3_claim_entity(level->entities, 0, free_entity_data);
     b3_set_entity_data(*p_entity, new_entity_data(l, -1, 2, level->map));
     return 1;
 }

@@ -239,7 +239,11 @@ typedef void (*b3_free_entity_data_callback)(
 
 typedef void (*b3_entity_callback)(b3_entity *entity, void *callback_data);
 
-b3_entity_pool *b3_new_entity_pool(int size, b3_map *restrict map);
+b3_entity_pool *b3_new_entity_pool(
+    _Bool generate_ids,
+    int size,
+    b3_map *restrict map
+);
 b3_entity_pool *b3_ref_entity_pool(b3_entity_pool *restrict pool);
 void b3_free_entity_pool(b3_entity_pool *restrict pool);
 
@@ -247,6 +251,7 @@ int b3_get_entity_pool_size(b3_entity_pool *restrict pool);
 
 b3_entity *b3_claim_entity(
     b3_entity_pool *restrict pool,
+    b3_entity_id id,
     b3_free_entity_data_callback free_data_callback
 );
 void b3_release_entity(b3_entity *restrict entity);

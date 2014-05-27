@@ -24,6 +24,7 @@ struct l3_level {
 
 static inline l3_level *l3_init_level(
     l3_level *restrict l,
+    _Bool client,
     const b3_size *restrict map_size,
     int max_entities
 ) {
@@ -31,8 +32,8 @@ static inline l3_level *l3_init_level(
 
     *l = (l3_level)L3_LEVEL_INIT;
     l->map = b3_new_map(map_size);
-    l->sprites = b3_new_entity_pool(max_sprites, l->map);
-    l->entities = b3_new_entity_pool(max_entities, l->map);
+    l->sprites = b3_new_entity_pool(1, max_sprites, l->map);
+    l->entities = b3_new_entity_pool(!client, max_entities, l->map);
     return l;
 }
 
