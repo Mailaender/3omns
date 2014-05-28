@@ -134,7 +134,8 @@ static void send_notification(
 static size_t receive_notification(
     struct round *restrict round,
     uint8_t *restrict buf,
-    size_t size
+    size_t size,
+    n3_host *restrict host
 ) {
     size_t received = 0;
     if(args.client) {
@@ -143,24 +144,19 @@ static size_t receive_notification(
             debug_network_print(buf, received, "Received: ");
     }
     else if(args.serve) {
-        n3_host host;
-        received = n3_server_receive(server, buf, size, &host, round);
+        n3_host received_host;
+        n3_host *restrict r_host = (host ? host : &received_host);
+        received = n3_server_receive(server, buf, size, r_host, round);
         if(received) {
             debug_network_print(
                 buf,
                 received,
                 "Received from %s: ",
-                host_to_string(&host)
+                host_to_string(r_host)
             );
         }
     }
     return received;
-}
-
-// TODO: this won't be necessary once the n3 protocol is finished.
-static void notify_connect(void) {
-    uint8_t buf[] = {'c'};
-    send_notification(buf, sizeof(buf), NULL);
 }
 
 static void notify_paused_state(
@@ -371,19 +367,42 @@ void notify_updates(const struct round *restrict round) {
     // l3_sync method on lua objects.
 }
 
+static void notify_connect(void) {
+    uint8_t buf[] = {'c'};
+    send_notification(buf, sizeof(buf), NULL);
+}
+
+static void process_connect(
+    struct round *restrict round,
+    const uint8_t *restrict buf,
+    size_t size,
+    const n3_host *restrict host
+) {
+    notify_paused_state(round, host);
+    notify_map(round, host);
+    notify_all_entities(round, host);
+}
+
 void process_notifications(struct round *restrict round) {
     uint8_t buf[N3_SAFE_BUFFER_SIZE + 1];
+    n3_host host;
     for(
         size_t received;
-        (received = receive_notification(round, buf, sizeof(buf) - 1)) > 0;
+        (received = receive_notification(
+            round,
+            buf,
+            sizeof(buf) - 1,
+            &host
+        )) > 0;
     ) {
         buf[received] = 0; // So we can safely scan_buffer() later.
 
         switch(buf[0]) {
-        case 'c': /* "Connect"; do nothing. */ break;
+        case 'c': process_connect(round, buf, received, &host); break;
         case 'p': process_paused_state(round, buf, received); break;
         case 'm': process_map(round, buf, received); break;
         case 'e': process_entities(round, buf, received); break;
+        default: b3_fatal("Received invalid notification");
         }
     }
 }
@@ -393,14 +412,9 @@ static _Bool filter_connection(
     const n3_host *restrict host,
     void *data
 ) {
-    const struct round *restrict round = data;
+    // const struct round *restrict round = data;
 
     DEBUG_PRINT("%s connected\n", host_to_string(host));
-
-    notify_paused_state(round, host);
-    notify_map(round, host);
-    notify_all_entities(round, host);
-
     return 1;
 }
 
