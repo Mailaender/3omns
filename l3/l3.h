@@ -37,13 +37,16 @@ static inline l3_level *l3_init_level(
     return l;
 }
 
-static inline l3_level l3_copy_level(l3_level *restrict l) {
-    return (l3_level){
-        b3_ref_map(l->map),
-        b3_ref_entity_pool(l->sprites),
-        b3_ref_entity_pool(l->entities),
-        {l->dude_ids[0], l->dude_ids[1], l->dude_ids[2], l->dude_ids[3]},
-    };
+static inline l3_level *l3_copy_level(
+    l3_level *restrict new,
+    l3_level *restrict old
+) {
+    new->map = b3_ref_map(old->map);
+    new->sprites = b3_ref_entity_pool(old->sprites);
+    new->entities = b3_ref_entity_pool(old->entities);
+    for(int i = 0; i < L3_DUDE_COUNT; i++)
+        new->dude_ids[i] = old->dude_ids[i];
+    return new;
 }
 
 static inline void l3_free_level(l3_level *restrict l) {
@@ -60,7 +63,19 @@ l3_level l3_generate(void);
 void l3_update(l3_level *restrict level, b3_ticks elapsed);
 void l3_input(l3_level *restrict level, b3_input input);
 
+
 char *l3_serialize_entity(b3_entity *restrict entity, size_t *restrict len);
+
+void l3_set_sync_level(l3_level *restrict level);
+l3_level l3_get_sync_level(void);
+
+void l3_sync_entity(
+    b3_entity_id id,
+    const b3_pos *restrict pos,
+    int life,
+    const char *restrict serial,
+    size_t serial_len
+);
 
 
 typedef struct l3_agent l3_agent;

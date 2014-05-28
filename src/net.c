@@ -268,6 +268,8 @@ static void process_map(
     } while(buf[pos++] == ';');
 #undef SCAN_MAP
 
+    l3_set_sync_level(&round->level);
+
     round->initialized = 1;
 }
 
