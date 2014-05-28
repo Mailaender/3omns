@@ -323,6 +323,8 @@ static void loop(struct round *restrict round) {
                     stats.think_count++;
                 }
             }
+
+            notify_updates(round);
         }
 
         if(ticks >= next_draw_ticks) {

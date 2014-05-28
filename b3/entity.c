@@ -13,7 +13,7 @@ struct index_entry {
 struct b3_entity {
     b3_entity_pool *pool;
 
-    b3_entity_id id; // Sync'd with server?
+    b3_entity_id id; // Sync'd with server.
     b3_pos pos; // Sync'd with server.
     int life; // Sync'd with server.
     // TODO: a way for Lua to sync state with server -- something like a

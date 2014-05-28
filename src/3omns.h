@@ -50,6 +50,7 @@ void init_net(void);
 void quit_net(void);
 
 void notify_paused_changed(const struct round *restrict round);
+void notify_updates(const struct round *restrict round);
 void process_notifications(struct round *restrict round);
 
 

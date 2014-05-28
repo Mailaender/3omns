@@ -10,6 +10,15 @@
 #include <stdio.h>
 
 
+struct notify_entity_data {
+    uint8_t *buf;
+    size_t size;
+    int *pos;
+
+    const n3_host *host;
+};
+
+
 static n3_server *server = NULL;
 static n3_client *client = NULL;
 
@@ -231,6 +240,7 @@ static void process_map(
     int height = 0;
     int max_entities = 0;
     SCAN_MAP(3, "m%Xx%X-%X/", &width, &height, &max_entities);
+
     // TODO: these maxima should be a bit more rigorously defined.
     if(width <= 0 || height <= 0 || max_entities <= 0
             || width > 10000 || height > 10000 || max_entities > 10000)
@@ -273,6 +283,94 @@ static void process_map(
     round->initialized = 1;
 }
 
+static void notify_entity(b3_entity *restrict entity, void *callback_data) {
+    struct notify_entity_data *d = callback_data;
+
+    size_t serial_len = 0;
+    char *serial = l3_serialize_entity(entity, &serial_len);
+
+    // TODO: this approximation should be more exact.
+    if((size_t)*(d->pos) + serial_len + 50 > d->size) {
+        send_notification(d->buf, (size_t)*(d->pos), d->host);
+        *(d->pos) = 0;
+    }
+
+#define PRINT_ENTITY(...) print_buffer(d->buf, d->size, d->pos, __VA_ARGS__)
+    if(!*(d->pos))
+        PRINT_ENTITY("e");
+
+    b3_pos entity_pos = b3_get_entity_pos(entity);
+    PRINT_ENTITY(
+        "#%X:%X,%X-%X|%zX:",
+        b3_get_entity_id(entity),
+        entity_pos.x,
+        entity_pos.y,
+        b3_get_entity_life(entity),
+        serial_len
+    );
+    if(serial)
+        PRINT_ENTITY("%*s", (int)serial_len, serial);
+#undef PRINT_ENTITY
+
+    b3_free(serial, 0);
+}
+
+static void notify_all_entities(
+    const struct round *restrict round,
+    const n3_host *restrict host
+) {
+    uint8_t buf[N3_SAFE_BUFFER_SIZE];
+    int pos = 0;
+
+    b3_for_each_entity(
+        round->level.entities,
+        notify_entity,
+        &(struct notify_entity_data){buf, sizeof(buf), &pos, host}
+    );
+
+    if(pos)
+        send_notification(buf, (size_t)pos, host);
+}
+
+static void process_entities(
+    struct round *restrict round,
+    const uint8_t *restrict buf,
+    size_t size
+) {
+    int pos = 1; // Skip initial 'e'.
+
+#define SCAN_ENTITIES(...) scan_buffer(buf, &pos, __VA_ARGS__)
+    while(buf[pos] == '#') {
+        b3_entity_id id = 0;
+        int x = 0;
+        int y = 0;
+        int life = 0;
+        size_t serial_len = 0;
+        SCAN_ENTITIES(5, "#%X:%X,%X-%X|%zX:", &id, &x, &y, &life, &serial_len);
+        const char *serial = (const char *)&buf[pos];
+        pos += (int)serial_len;
+
+        if(x < 0 || y < 0 || life < 0 || serial_len > 10000)
+            b3_fatal("Received invalid entity data");
+
+        l3_sync_entity(
+            id,
+            &(b3_pos){x, y},
+            life,
+            serial,
+            serial_len
+        );
+    }
+#undef SCAN_ENTITIES
+}
+
+void notify_updates(const struct round *restrict round) {
+    // TODO: send out new/modified entities since last run.  Use a flag on each
+    // entity to keep track.  Also send out deleted entities (maybe first).
+    // Also need a way to set the dirty flag from lua.  When received, call an
+    // l3_sync method on lua objects.
+}
+
 void process_notifications(struct round *restrict round) {
     uint8_t buf[N3_SAFE_BUFFER_SIZE + 1];
     for(
@@ -285,6 +383,7 @@ void process_notifications(struct round *restrict round) {
         case 'c': /* "Connect"; do nothing. */ break;
         case 'p': process_paused_state(round, buf, received); break;
         case 'm': process_map(round, buf, received); break;
+        case 'e': process_entities(round, buf, received); break;
         }
     }
 }
@@ -300,6 +399,7 @@ static _Bool filter_connection(
 
     notify_paused_state(round, host);
     notify_map(round, host);
+    notify_all_entities(round, host);
 
     return 1;
 }
