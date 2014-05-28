@@ -20,7 +20,7 @@ function Dude:init(entities, pos, player)
   Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
 
   self.super_time = 0
-  self.bomn = nil
+  self.bomn_id = nil
 end
 
 function Dude:is_super()
@@ -28,7 +28,7 @@ function Dude:is_super()
 end
 
 function Dude:can_fire()
-  return self.bomn == nil
+  return not self.bomn_id
 end
 
 function Dude:superify(backing)
@@ -91,13 +91,14 @@ function Dude:fire()
   -- TODO: when super, fire should trigger a blast immediately, allowable every
   -- one second.
   if self:can_fire() then
-    self.bomn = self.entities:Bomn(self.pos, self)
+    local bomn = self.entities:Bomn(self.pos, self.id)
+    self.bomn_id = bomn.id
   end
 end
 
 function Dude:l3_update(backing, elapsed)
-  if self.bomn and not self.bomn:exists() then
-    self.bomn = nil
+  if self.bomn_id and not self.entities:exists(self.bomn_id) then
+    self.bomn_id = nil
   end
 
   if self:is_super() then

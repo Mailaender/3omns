@@ -36,12 +36,12 @@ Bomn.ANIMATION = {
   {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
 }
 
-function Bomn:init(entities, pos, dude)
+function Bomn:init(entities, pos, dude_id)
   Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME], 2)
 
   self.solid = false
   self.time = Bomn.TIME
-  self.dude = dude
+  self.dude_id = dude_id
 end
 
 function Bomn:animate(backing, old_time)
@@ -88,7 +88,7 @@ function Bomn:explode(backing)
 end
 
 function Bomn:bumped(dude, dude_backing)
-  if self ~= dude.bomn then
+  if self.dude_id ~= dude.id then
     self:kill()
   end
   return true
