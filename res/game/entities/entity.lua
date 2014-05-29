@@ -5,16 +5,17 @@ local obj   = require("object")
 
 local Entity = obj.class()
 
-function Entity:init(entities, pos, life, image, z_order)
+function Entity:init(entities, id, pos, life)
   self.entities = entities
-  self.solid = true -- Whether the entity blocks blasts and player movement.
+  self.solid    = true -- Whether the entity blocks blasts and player movement.
 
   local backing
-  self.id, backing = entities:new_backing(self)
+  self.id, backing = entities:new_backing(self, id)
+
   self:set_pos(pos, backing)
   self:set_life(life, backing)
-  self:set_image(image, backing)
-  self:set_z_order(z_order, backing)
+
+  return backing
 end
 
 function Entity:l3_serialize()

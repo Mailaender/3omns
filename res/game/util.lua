@@ -77,27 +77,26 @@ local function circle_contig(center, radius, callback)
 end
 
 -- Animation helper for sprites or entities.
-local function animate_sprentity(self, backing, time, old_time, animation)
+local function get_animation_frame(animation, time)
   -- Note that time counts down for these objects.  It's more of a "lifetime
-  -- remaining".
+  -- remaining".  The animation frames must be ordered first (biggest time) to
+  -- last (lowest time).
 
-  for _, a in ipairs(animation) do
-    if a.time < time then break end
-
-    if old_time > a.time and time <= a.time then
-      self:set_image(a.image, backing)
-      self:set_z_order(a.z_order, backing)
-      break
+  for i = 1, #animation do
+    if animation[i].time >= time
+        and (not animation[i + 1] or animation[i + 1].time < time) then
+      return animation[i]
     end
   end
+  return nil
 end
 
 
 return {
-  debug_print       = debug_print,
-  resource          = resource,
-  invert_table      = invert_table,
-  line              = line,
-  circle_contig     = circle_contig,
-  animate_sprentity = animate_sprentity,
+  debug_print         = debug_print,
+  resource            = resource,
+  invert_table        = invert_table,
+  line                = line,
+  circle_contig       = circle_contig,
+  get_animation_frame = get_animation_frame,
 }

@@ -1,5 +1,9 @@
+local function create(class)
+  return setmetatable({}, class)
+end
+
 local function new(class, ...)
-  local self = setmetatable({}, class)
+  local self = create(class)
   self:init(...)
   return self
 end
@@ -24,6 +28,7 @@ end
 
 
 return {
+  create   = create,
   get_type = get_type,
   class    = class,
 }

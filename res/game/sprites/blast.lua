@@ -19,25 +19,27 @@ for i, v in ipairs(IMAGES.BLASTS) do
 end
 
 function Blast:init(level, pos)
-  Sprite.init(self, level, pos, IMAGES.BLASTS[1], #IMAGES.BLASTS - 1)
+  local backing = Sprite.init(self, level, pos)
 
   self.time = Blast.TIME
+
+  self:animate(backing)
 end
 
-function Blast:animate(backing, old_time)
-  util.animate_sprentity(self, backing, self.time, old_time, Blast.ANIMATION)
+function Blast:animate(backing)
+  local frame = util.get_animation_frame(Blast.ANIMATION, self.time)
+  self:set_image(frame.image, backing)
+  self:set_z_order(frame.z_order, backing)
 end
 
 function Blast:l3_update(backing, elapsed)
-  local old_time = self.time
-
   self.time = self.time - elapsed
   if self.time <= 0 then
     self:destroy(backing)
     return
   end
 
-  self:animate(backing, old_time)
+  self:animate(backing)
 end
 
 

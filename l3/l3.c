@@ -445,6 +445,8 @@ static int level_get_entity(lua_State *restrict l) {
     return 1;
 }
 
+// TODO: a function that pushes the Lua context object for a given id.
+
 static int level_set_dude(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
     int i = luaL_checkint(l, 2) - 1;

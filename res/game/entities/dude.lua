@@ -15,14 +15,23 @@ Dude.BLAST_DAMAGE = 5
 Dude.AI_ACTION_TIME = 0.2
 
 function Dude:init(entities, pos, player)
-  Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
+  local backing = Entity.init(self, entities, nil, pos, 10)
 
   -- TODO: teams?
   self.player = player
   self.super_time = 0
   self.bomn_id = nil
 
+  self:set_visual(backing)
   self.entities:set_dude(self)
+end
+
+function Dude:init_clone(entities, id, pos, life, serialized, start)
+  local backing = Entity.init(self, entities, id, pos, life)
+
+  self:sync(serialized, start)
+
+  self:set_visual(backing)
 end
 
 function Dude:serialize()
@@ -31,11 +40,19 @@ function Dude:serialize()
       .. serial.serialize_number(self.bomn_id)
 end
 
-function Dude:deserialize(s, start)
-  self.player,     start = serial.deserialize_number(s, start)
-  self.super_time, start = serial.deserialize_number(s, start)
-  self.bomn_id,    start = serial.deserialize_number(s, start)
+function Dude:sync(serialized, start)
+  self.player,     start = serial.deserialize_number(serialized, start)
+  self.super_time, start = serial.deserialize_number(serialized, start)
+  self.bomn_id,    start = serial.deserialize_number(serialized, start)
   return start
+end
+
+function Dude:set_visual(backing)
+  self:set_image(
+    (self:is_super() and IMAGES.SUPER_DUDES or IMAGES.DUDES)[self.player],
+    backing
+  )
+  self:set_z_order(1, backing)
 end
 
 function Dude:is_super()

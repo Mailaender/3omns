@@ -38,11 +38,22 @@ Bomn.ANIMATION = {
 }
 
 function Bomn:init(entities, pos, dude_id)
-  Entity.init(self, entities, pos, 1, IMAGES.BOMNS[Bomn.TIME], 2)
+  local backing = Entity.init(self, entities, nil, pos, 1)
 
   self.solid = false
   self.time = Bomn.TIME
   self.dude_id = dude_id
+
+  self:animate(backing)
+end
+
+function Bomn:init_clone(entities, id, pos, life, serialized, start)
+  local backing = Entity.init(self, entities, id, pos, life)
+
+  self.solid = false -- TODO: avoid this duplication.
+  self:sync(serialized, start)
+
+  self:animate(backing)
 end
 
 function Bomn:serialize()
@@ -50,14 +61,16 @@ function Bomn:serialize()
       .. serial.serialize_number(self.dude_id)
 end
 
-function Bomn:deserialize(s, start)
-  self.time,    start = serial.deserialize_number(s, start)
-  self.dude_id, start = serial.deserialize_number(s, start)
+function Bomn:sync(serialized, start)
+  self.time,    start = serial.deserialize_number(serialized, start)
+  self.dude_id, start = serial.deserialize_number(serialized, start)
   return start
 end
 
-function Bomn:animate(backing, old_time)
-  util.animate_sprentity(self, backing, self.time, old_time, Bomn.ANIMATION)
+function Bomn:animate(backing)
+  local frame = util.get_animation_frame(Bomn.ANIMATION, self.time)
+  self:set_image(frame.image, backing)
+  self:set_z_order(frame.z_order, backing)
 end
 
 function Bomn:explode(backing)
@@ -107,15 +120,13 @@ function Bomn:bumped(dude, dude_backing)
 end
 
 function Bomn:l3_update(backing, elapsed)
-  local old_time = self.time
-
   self.time = self.time - elapsed
   if self.time <= 0 then
     self:explode(backing)
     return
   end
 
-  self:animate(backing, old_time)
+  self:animate(backing)
 end
 
 

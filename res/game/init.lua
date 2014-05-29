@@ -78,3 +78,5 @@ L3_BORDER_IMAGE = IMAGES.WALL
 L3_HEART_IMAGES = IMAGES.HEARTS
 
 l3_generate = require("generate").generate
+
+l3_clone = require("clone").clone

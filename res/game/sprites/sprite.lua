@@ -4,11 +4,12 @@ local obj  = require("object")
 
 local Sprite = obj.class()
 
-function Sprite:init(level, pos, image, z_order)
+function Sprite:init(level, pos)
   local backing = level:new_sprite(self)
+
   self:set_pos(pos, backing)
-  self:set_image(image, backing)
-  self:set_z_order(z_order, backing)
+
+  return backing
 end
 
 Sprite.get_type = obj.get_type
