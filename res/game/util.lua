@@ -11,6 +11,12 @@ local function resource(filename)
   return string.format("%s%s", l3.RESOURCE_PATH, filename)
 end
 
+local function invert_table(t)
+  local r = {}
+  for k, v in pairs(t) do r[v] = k end
+  return r
+end
+
 -- Stolen from the !w Bresenham's line algorithm page.  Goes from a to b (and
 -- beyond, as limited by the callback function returning false), calling the
 -- callback for each pos on the line.
@@ -90,6 +96,7 @@ end
 return {
   debug_print       = debug_print,
   resource          = resource,
+  invert_table      = invert_table,
   line              = line,
   circle_contig     = circle_contig,
   animate_sprentity = animate_sprentity,
