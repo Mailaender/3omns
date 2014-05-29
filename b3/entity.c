@@ -146,7 +146,7 @@ static b3_entity_pool *deactivate_entity(b3_entity *restrict entity) {
 }
 
 void b3_free_entity_pool(b3_entity_pool *restrict pool) {
-    if(pool && !--(pool->ref_count)) {
+    if(pool && !--pool->ref_count) {
         for(int i = 0; i < pool->size; i++)
             deactivate_entity(&pool->entities[i]);
         b3_free(pool->index, 0);
@@ -171,9 +171,9 @@ b3_entity *b3_claim_entity(
         b3_fatal("Must only generate entity ids when expected");
 
     if(!id)
-        id = ++(pool->id_generator);
+        id = ++pool->id_generator;
 
-    b3_entity *entity = pool->inactive[--(pool->inactive_count)];
+    b3_entity *entity = pool->inactive[--pool->inactive_count];
     entity->pool = pool;
     entity->id = id;
     entity->free_data = free_data_callback;
@@ -215,7 +215,7 @@ void b3_release_entity(b3_entity *restrict entity) {
     memmove(
         entry,
         entry + 1,
-        (--(pool->count) - index) * sizeof(*entry)
+        (--pool->count - index) * sizeof(*entry)
     );
 }
 

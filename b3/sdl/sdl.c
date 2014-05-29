@@ -218,7 +218,7 @@ b3_image *b3_ref_image(b3_image *restrict image) {
 }
 
 void b3_free_image(b3_image *restrict image) {
-    if(image && !--(image->ref_count)) {
+    if(image && !--image->ref_count) {
         if(!image->parent)
             SDL_DestroyTexture(image->texture);
         b3_free_image(image->parent);
@@ -256,7 +256,7 @@ b3_font *b3_ref_font(b3_font *restrict font) {
 }
 
 void b3_free_font(b3_font *restrict font) {
-    if(font && !--(font->ref_count)) {
+    if(font && !--font->ref_count) {
         TTF_CloseFont(font->font);
         b3_free(font, sizeof(*font));
     }
@@ -303,7 +303,7 @@ b3_text *b3_ref_text(b3_text *restrict text) {
 }
 
 void b3_free_text(b3_text *restrict text) {
-    if(text && !--(text->ref_count)) {
+    if(text && !--text->ref_count) {
         SDL_DestroyTexture(text->texture);
         b3_free(text, sizeof(*text));
     }

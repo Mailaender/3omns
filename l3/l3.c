@@ -908,7 +908,7 @@ l3_agent *l3_ref_agent(l3_agent *restrict agent) {
 }
 
 void l3_free_agent(l3_agent *restrict agent) {
-    if(agent && !--(agent->ref_count)) {
+    if(agent && !--agent->ref_count) {
         b3_free_entity_pool(agent->entities);
         luaL_unref(lua, LUA_REGISTRYINDEX, agent->thread_ref);
         b3_free(agent, sizeof(*agent));

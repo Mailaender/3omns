@@ -27,7 +27,7 @@ b3_map *b3_ref_map(b3_map *restrict map) {
 }
 
 void b3_free_map(b3_map *restrict map) {
-    if(map && !--(map->ref_count))
+    if(map && !--map->ref_count)
         b3_free(map, SIZEOF_MAP(map, &map->size));
 }
 

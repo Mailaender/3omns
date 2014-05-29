@@ -266,7 +266,7 @@ static void process_map(
                 b3_fatal("Too much data for map");
 
             b3_set_map_tile(round->level.map, &map_pos, run_tile);
-            if(++(map_pos.x) >= width) {
+            if(++map_pos.x >= width) {
                 map_pos.x = 0;
                 map_pos.y++;
             }
@@ -286,13 +286,13 @@ static void notify_entity(b3_entity *restrict entity, void *callback_data) {
     char *serial = l3_serialize_entity(entity, &serial_len);
 
     // TODO: this approximation should be more exact.
-    if((size_t)*(d->pos) + serial_len + 50 > d->size) {
-        send_notification(d->buf, (size_t)*(d->pos), d->host);
-        *(d->pos) = 0;
+    if((size_t)*d->pos + serial_len + 50 > d->size) {
+        send_notification(d->buf, (size_t)*d->pos, d->host);
+        *d->pos = 0;
     }
 
 #define PRINT_ENTITY(...) print_buffer(d->buf, d->size, d->pos, __VA_ARGS__)
-    if(!*(d->pos))
+    if(!*d->pos)
         PRINT_ENTITY("e");
 
     b3_pos entity_pos = b3_get_entity_pos(entity);
