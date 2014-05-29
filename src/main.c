@@ -311,6 +311,9 @@ static void loop(struct round *restrict round) {
             if(i > 0)
                 stats.skip_count += i - 1;
 
+            // TODO: theoretically a client can run an agent.  Agents would
+            // need to be modified to plug into l3_input (and sync'd to the
+            // server) instead of just manipulating the entities inside Lua.
             if(!args.client) {
                 for(
                     ai_ticks += elapsed;
