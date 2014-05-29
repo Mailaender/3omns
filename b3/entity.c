@@ -177,7 +177,21 @@ b3_entity *b3_claim_entity(
     entity->pool = pool;
     entity->id = id;
     entity->free_data = free_data_callback;
-    pool->index[pool->count++] = (struct index_entry){entity->id, entity};
+
+    // This odd-looking index insert is to optimize for the local case where
+    // ids are always increasing.
+    int i;
+    for(i = pool->count - 1; i >= 0 && pool->index[i].id > id; i--)
+        continue;
+    i++;
+    memmove(
+        &pool->index[i + 1],
+        &pool->index[i],
+        (pool->count - i) * sizeof(*pool->index)
+    );
+    pool->index[i] = (struct index_entry){entity->id, entity};
+    pool->count++;
+
     z_list_insert(pool, entity);
     return entity;
 }
