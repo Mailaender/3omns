@@ -16,9 +16,7 @@ struct b3_entity {
     b3_entity_id id; // Sync'd with server.
     b3_pos pos; // Sync'd with server.
     int life; // Sync'd with server.
-    // TODO: a way for Lua to sync state with server -- something like a
-    // generic "property changed" where you send a string name and its numeric
-    // value.  That way Lua-only things like super-status can get propagated.
+    _Bool dirty; // Whether we need to sync.
 
     b3_image *image;
     int z_order;
@@ -176,6 +174,7 @@ b3_entity *b3_claim_entity(
     b3_entity *entity = pool->inactive[--pool->inactive_count];
     entity->pool = pool;
     entity->id = id;
+    entity->dirty = 1;
     entity->free_data = free_data_callback;
 
     // This odd-looking index insert is to optimize for the local case where
@@ -260,6 +259,15 @@ int b3_get_entity_life(b3_entity *restrict entity) {
 
 b3_entity *b3_set_entity_life(b3_entity *restrict entity, int life) {
     entity->life = life;
+    return entity;
+}
+
+_Bool b3_get_entity_dirty(b3_entity *restrict entity) {
+    return entity->dirty;
+}
+
+b3_entity *b3_set_entity_dirty(b3_entity *restrict entity, _Bool dirty) {
+    entity->dirty = dirty;
     return entity;
 }
 

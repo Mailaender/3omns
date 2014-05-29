@@ -265,6 +265,8 @@ b3_entity *b3_set_entity_pos(
 );
 int b3_get_entity_life(b3_entity *restrict entity);
 b3_entity *b3_set_entity_life(b3_entity *restrict entity, int life);
+_Bool b3_get_entity_dirty(b3_entity *restrict entity);
+b3_entity *b3_set_entity_dirty(b3_entity *restrict entity, _Bool dirty);
 b3_entity *b3_set_entity_image(
     b3_entity *restrict entity,
     b3_image *restrict image

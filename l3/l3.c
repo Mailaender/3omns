@@ -490,6 +490,15 @@ static int entity_set_life(lua_State *restrict l) {
     return 1;
 }
 
+static int entity_set_dirty(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+
+    b3_set_entity_dirty(entity, 1);
+
+    lua_pushvalue(l, 1);
+    return 1;
+}
+
 static int open_level(lua_State *restrict l) {
     static const luaL_Reg functions[] = {
         {"new", level_new},
@@ -519,6 +528,7 @@ static int open_level(lua_State *restrict l) {
         {"set_pos", sprentity_set_pos},
         {"get_life", entity_get_life},
         {"set_life", entity_set_life},
+        {"set_dirty", entity_set_dirty},
         {"set_image", sprentity_set_image},
         {"set_z_order", sprentity_set_z_order},
         {NULL, NULL}
