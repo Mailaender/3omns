@@ -161,8 +161,11 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
         notify_paused_changed(round);
         return 0;
     default:
-        if(!round->paused)
+        if(!round->paused) {
+            if(args.client)
+                notify_input(round, input);
             l3_input(&round->level, input);
+        }
         return 0;
     }
 }

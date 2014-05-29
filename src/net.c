@@ -180,6 +180,41 @@ void notify_paused_changed(const struct round *restrict round) {
     notify_paused_state(round, NULL);
 }
 
+void notify_input(const struct round *restrict round, b3_input input) {
+    int player = B3_INPUT_PLAYER(input);
+    int button;
+    if(input == B3_INPUT_UP(player)) button = 'u';
+    else if(input == B3_INPUT_DOWN(player)) button = 'd';
+    else if(input == B3_INPUT_LEFT(player)) button = 'l';
+    else if(input == B3_INPUT_RIGHT(player)) button = 'r';
+    else button = 'f';
+
+    uint8_t buf[] = {'i', player + '0', button};
+    send_notification(buf, sizeof(buf), NULL);
+}
+
+static void process_input(
+    struct round *restrict round,
+    const uint8_t *restrict buf,
+    size_t size
+) {
+    if(size >= 3) {
+        int player = buf[1] - '0';
+        if(player < 0 || player > 3)
+            b3_fatal("Received invalid input event");
+        // TODO: map the remote player to an appropriate local one.
+
+        b3_input input;
+        if(buf[2] == 'u') input = B3_INPUT_UP(player);
+        else if(buf[2] == 'd') input = B3_INPUT_DOWN(player);
+        else if(buf[2] == 'l') input = B3_INPUT_LEFT(player);
+        else if(buf[2] == 'r') input = B3_INPUT_RIGHT(player);
+        else input = B3_INPUT_FIRE(player);
+
+        l3_input(&round->level, input);
+    }
+}
+
 static void notify_map(
     const struct round *restrict round,
     const n3_host *restrict host
@@ -400,6 +435,7 @@ void process_notifications(struct round *restrict round) {
         switch(buf[0]) {
         case 'c': process_connect(round, buf, received, &host); break;
         case 'p': process_paused_state(round, buf, received); break;
+        case 'i': process_input(round, buf, received); break;
         case 'm': process_map(round, buf, received); break;
         case 'e': process_entities(round, buf, received); break;
         default: b3_fatal("Received invalid notification");
