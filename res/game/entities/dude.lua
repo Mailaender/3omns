@@ -15,13 +15,14 @@ Dude.BLAST_DAMAGE = 5
 Dude.AI_ACTION_TIME = 0.2
 
 function Dude:init(entities, pos, player)
-  -- TODO: teams?
-  self.player = player -- Must come before init, for Entities.new_backing.
-
   Entity.init(self, entities, pos, 10, IMAGES.DUDES[player], 1)
 
+  -- TODO: teams?
+  self.player = player
   self.super_time = 0
   self.bomn_id = nil
+
+  self.entities:set_dude(self)
 end
 
 function Dude:serialize()

@@ -1,14 +1,18 @@
-local core = require("core")
-local obj  = require("object")
-local Dude = require("entities.dude")
+local core  = require("core")
+local util  = require("util")
+local obj   = require("object")
+local Super = require("entities.super")
+local Crate = require("entities.crate")
+local Bomn  = require("entities.bomn")
+local Dude  = require("entities.dude")
 
 
 local Entities = obj.class()
 
 local public = {
-  Super = require("entities.super"),
-  Crate = require("entities.crate"),
-  Bomn  = require("entities.bomn"),
+  Super = Super,
+  Crate = Crate,
+  Bomn  = Bomn,
   Dude  = Dude,
 }
 
@@ -30,9 +34,9 @@ end
 -- Backings should never be stored except as a temporary local.  If you store
 -- the Lua entity, use Entity:exists() to double check the backing hasn't been
 -- destroyed in C while your back was turned.
-function Entities:new_backing(entity)
-  local backing = self.level:new_entity(entity)
-  local id = backing:get_id()
+function Entities:new_backing(entity, id)
+  local backing = self.level:new_entity(entity, id)
+  if not id then id = backing:get_id() end
 
   -- We also use this as a hook to set up anything we need to keep track of
   -- about the new entity (except its pos, because that isn't set yet).
@@ -42,11 +46,11 @@ function Entities:new_backing(entity)
   end
   self.type_index[type][id] = entity
 
-  if type == Dude then
-    self.level:set_dude(entity.player, id)
-  end
-
   return id, backing
+end
+
+function Entities:set_dude(dude)
+  self.level:set_dude(dude.player, dude.id)
 end
 
 function Entities:get_backing(id)
