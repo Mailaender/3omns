@@ -1,5 +1,6 @@
 local core   = require("core")
 local util   = require("util")
+local serial = require("serial")
 local obj    = require("object")
 local Entity = require("entities.entity")
 local Bomn   = require("entities.bomn")
@@ -21,6 +22,19 @@ function Dude:init(entities, pos, player)
 
   self.super_time = 0
   self.bomn_id = nil
+end
+
+function Dude:serialize()
+  return serial.serialize_number(self.player)
+      .. serial.serialize_number(self.super_time)
+      .. serial.serialize_number(self.bomn_id)
+end
+
+function Dude:deserialize(s, start)
+  self.player,     start = serial.deserialize_number(s, start)
+  self.super_time, start = serial.deserialize_number(s, start)
+  self.bomn_id,    start = serial.deserialize_number(s, start)
+  return start
 end
 
 function Dude:is_super()

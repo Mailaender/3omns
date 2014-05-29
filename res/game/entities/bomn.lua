@@ -1,5 +1,6 @@
 local core   = require("core")
 local util   = require("util")
+local serial = require("serial")
 local obj    = require("object")
 local Entity = require("entities.entity")
 local Blast  = require("sprites.blast")
@@ -42,6 +43,17 @@ function Bomn:init(entities, pos, dude_id)
   self.solid = false
   self.time = Bomn.TIME
   self.dude_id = dude_id
+end
+
+function Bomn:serialize()
+  return serial.serialize_number(self.time)
+      .. serial.serialize_number(self.dude_id)
+end
+
+function Bomn:deserialize(s, start)
+  self.time,    start = serial.deserialize_number(s, start)
+  self.dude_id, start = serial.deserialize_number(s, start)
+  return start
 end
 
 function Bomn:animate(backing, old_time)

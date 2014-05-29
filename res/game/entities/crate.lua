@@ -1,16 +1,26 @@
+local serial = require("serial")
 local obj    = require("object")
 local Entity = require("entities.entity")
 
 
 local Crate = obj.class(Entity)
 
-function Crate:init(entities, pos, held_type)
+function Crate:init(entities, pos)
   Entity.init(self, entities, pos, 1, IMAGES.CRATE, 0)
 
   -- "Held" in the sense that when the crate is destroyed, an instance of the
   -- given entity type is called with this crate's pos in the constructor and
   -- nothing after it.
-  self.held_type = held_type
+  self.held_type = nil
+end
+
+function Crate:serialize()
+  return serial.serialize_type(self.held_type)
+end
+
+function Crate:deserialize(s, start)
+  self.held_type, start = serial.deserialize_type(s, start)
+  return start
 end
 
 function Crate:hold(type)

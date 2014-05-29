@@ -1,5 +1,6 @@
-local core = require("core")
-local obj  = require("object")
+local core  = require("core")
+local clone = require("clone")
+local obj   = require("object")
 
 
 local Entity = obj.class()
@@ -14,6 +15,10 @@ function Entity:init(entities, pos, life, image, z_order)
   self:set_life(life, backing)
   self:set_image(image, backing)
   self:set_z_order(z_order, backing)
+end
+
+function Entity:l3_serialize()
+  return clone.serialize(self)
 end
 
 Entity.get_type = obj.get_type

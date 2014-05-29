@@ -10,6 +10,14 @@ function Super:init(entities, pos)
   self.solid = false
 end
 
+function Super:serialize()
+  return ""
+end
+
+function Super:deserialize(s, start)
+  return start
+end
+
 function Super:bumped(dude, dude_backing)
   self:kill()
   dude:superify(dude_backing)
