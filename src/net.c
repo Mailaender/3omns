@@ -172,8 +172,12 @@ static void process_paused_state(
     const uint8_t *restrict buf,
     size_t size
 ) {
-    if(size >= 2)
-        round->paused = (buf[1] == '0' ? 0 : 1);
+    _Bool p = (buf[1] == '0' ? 0 : 1);
+    if(round->paused != p) {
+        round->paused = p;
+        if(args.serve)
+            notify_paused_state(round, NULL);
+    }
 }
 
 void notify_paused_changed(const struct round *restrict round) {
@@ -198,21 +202,20 @@ static void process_input(
     const uint8_t *restrict buf,
     size_t size
 ) {
-    if(size >= 3) {
-        int player = buf[1] - '0';
-        if(player < 0 || player > 3)
-            b3_fatal("Received invalid input event");
-        // TODO: map the remote player to an appropriate local one.
+    int player = buf[1] - '0';
+    if(size < 3 || player < 0 || player > 3)
+        b3_fatal("Received invalid input event");
 
-        b3_input input;
-        if(buf[2] == 'u') input = B3_INPUT_UP(player);
-        else if(buf[2] == 'd') input = B3_INPUT_DOWN(player);
-        else if(buf[2] == 'l') input = B3_INPUT_LEFT(player);
-        else if(buf[2] == 'r') input = B3_INPUT_RIGHT(player);
-        else input = B3_INPUT_FIRE(player);
+    // TODO: map the remote player to an appropriate local one.
 
-        l3_input(&round->level, input);
-    }
+    b3_input input;
+    if(buf[2] == 'u') input = B3_INPUT_UP(player);
+    else if(buf[2] == 'd') input = B3_INPUT_DOWN(player);
+    else if(buf[2] == 'l') input = B3_INPUT_LEFT(player);
+    else if(buf[2] == 'r') input = B3_INPUT_RIGHT(player);
+    else input = B3_INPUT_FIRE(player);
+
+    l3_input(&round->level, input);
 }
 
 static void notify_map(
@@ -298,7 +301,7 @@ static void process_map(
 
         for(int i = 0; i < run_count; i++) {
             if(map_pos.y >= height)
-                b3_fatal("Too much data for map");
+                b3_fatal("Received too much data for map");
 
             b3_set_map_tile(round->level.map, &map_pos, run_tile);
             if(++map_pos.x >= width) {
@@ -438,7 +441,7 @@ void process_notifications(struct round *restrict round) {
         case 'i': process_input(round, buf, received); break;
         case 'm': process_map(round, buf, received); break;
         case 'e': process_entities(round, buf, received); break;
-        default: b3_fatal("Received invalid notification");
+        default: b3_fatal("Received unknown notification");
         }
     }
 }
