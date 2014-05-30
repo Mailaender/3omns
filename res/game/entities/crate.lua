@@ -40,6 +40,8 @@ end
 
 function Crate:hold(type)
   self.held_type = type
+
+  self:set_dirty()
 end
 
 function Crate:holds()

@@ -66,11 +66,16 @@ end
 function Dude:superify(backing)
   self:set_image(IMAGES.SUPER_DUDES[self.player], backing)
   self.super_time = Dude.SUPER_TIME
+
+  self:set_dirty(backing)
 end
 
 function Dude:unsuperify(backing)
   self:set_image(IMAGES.DUDES[self.player], backing)
   self.super_time = 0
+
+  -- If we ever call unsuperify before the time is actually out, we'll also
+  -- need a self:set_dirty(backing) call here.
 end
 
 function Dude:bumped(other_dude, other_dude_backing)
@@ -119,12 +124,14 @@ function Dude:move(action, backing)
   until not other:bumped(self, backing)
 end
 
-function Dude:fire()
+function Dude:fire(backing)
   -- TODO: when super, fire should trigger a blast immediately, allowable every
   -- one second.
   if self:can_fire() then
     local bomn = self.entities:Bomn(self.pos, self.id)
     self.bomn_id = bomn.id
+
+    self:set_dirty(backing)
   end
 end
 
@@ -143,7 +150,7 @@ end
 
 function Dude:l3_action(backing, action)
   if action == "f" then
-    self:fire()
+    self:fire(backing)
   else
     self:move(action, backing)
   end
@@ -261,7 +268,7 @@ function Dude:ai_move_to(pos, ctx, interrupt)
 end
 
 function Dude:ai_fire(ctx)
-  self:fire()
+  self:fire(ctx.backing)
 
   ai_wait(Dude.AI_ACTION_TIME, ctx, 0)
 end

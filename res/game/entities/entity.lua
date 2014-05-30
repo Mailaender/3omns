@@ -70,6 +70,13 @@ function Entity:set_life(life, backing)
   return self
 end
 
+function Entity:set_dirty(backing)
+  backing = backing or self:get_backing()
+
+  backing:set_dirty()
+  return self
+end
+
 function Entity:set_image(image, backing)
   if image ~= self.image then
     backing = backing or self:get_backing()
