@@ -710,6 +710,10 @@ void l3_quit(void) {
     resource_path = NULL;
 }
 
+static void clean_entity(b3_entity *restrict entity, void *callback_data) {
+    b3_set_entity_dirty(entity, 0);
+}
+
 l3_level l3_generate(void) {
     lua_getglobal(lua, L3_GENERATE_NAME);
     if(!lua_isfunction(lua, -1))
@@ -722,8 +726,11 @@ l3_level l3_generate(void) {
         b3_fatal("%s didn't return a level", L3_GENERATE_NAME);
     if(!level->dude_ids[0])
         b3_fatal("%s didn't fill in at least one dude id", L3_GENERATE_NAME);
+
+    b3_for_each_entity(level->entities, clean_entity, NULL);
     l3_level copy;
     l3_copy_level(&copy, level);
+
     lua_pop(lua, 1);
 
     return copy;
