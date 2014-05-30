@@ -313,8 +313,12 @@ void b3_for_each_entity(
     b3_entity_callback callback,
     void *callback_data
 ) {
-    const b3_entity *end = pool->entities + pool->size;
-    for(b3_entity *e = pool->entities; e < end; e++) {
+    // Iterate backwards to optimize for the initial case where all entities
+    // have been added in reverse id order, so we're actually iterating over
+    // them in id order.  This makes transferring the state over the network
+    // quicker, and doesn't hurt anything else.
+    b3_entity *first = pool->entities;
+    for(b3_entity *e = first + pool->size - 1; e >= first; e--) {
         if(e->id)
             callback(e, callback_data);
     }
