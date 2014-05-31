@@ -9,6 +9,8 @@ Blast.TIME = 1
 
 Blast.ANIMATION = {}
 -- TODO: run this inside of a "module init" function?
+-- TODO: add some variance here, so the blasts aren't quite so uniform, but
+-- speckle a bit as they dissipate.
 local blast_frame_duration = Blast.TIME / #IMAGES.BLASTS
 for i, v in ipairs(IMAGES.BLASTS) do
   Blast.ANIMATION[i] = {
