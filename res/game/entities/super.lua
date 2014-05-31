@@ -2,7 +2,7 @@ local obj    = require("object")
 local Entity = require("entities.entity")
 
 
-local Super = obj.class(Entity)
+local Super = obj.class("Super", Entity)
 
 function Super:init(entities, pos)
   local backing = Entity.init(self, entities, nil, pos, 1)

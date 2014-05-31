@@ -14,9 +14,10 @@ end
 
 -- TODO: an is_a function that handles inheritance.
 
-local function class(parent)
+local function class(name, parent)
   local c = {}
   c.__index = c
+  c.class_name = name
 
   setmetatable(c, {
     __index = parent,

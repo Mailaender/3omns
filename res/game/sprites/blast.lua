@@ -3,7 +3,7 @@ local obj    = require("object")
 local Sprite = require("sprites.sprite")
 
 
-local Blast = obj.class(Sprite)
+local Blast = obj.class("Blast", Sprite)
 
 Blast.TIME = 1
 

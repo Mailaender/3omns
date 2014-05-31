@@ -6,7 +6,7 @@ local Entity = require("entities.entity")
 local Bomn   = require("entities.bomn")
 
 
-local Dude = obj.class(Entity)
+local Dude = obj.class("Dude", Entity)
 
 Dude.SUPER_TIME = 10
 Dude.BUMP_DAMAGE = 1

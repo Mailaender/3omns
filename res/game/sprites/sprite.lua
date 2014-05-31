@@ -2,7 +2,7 @@ local core = require("core")
 local obj  = require("object")
 
 
-local Sprite = obj.class()
+local Sprite = obj.class("Sprite")
 
 function Sprite:init(level, pos)
   local backing = level:new_sprite(self)

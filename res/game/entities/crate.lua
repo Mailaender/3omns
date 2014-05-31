@@ -3,7 +3,7 @@ local obj    = require("object")
 local Entity = require("entities.entity")
 
 
-local Crate = obj.class(Entity)
+local Crate = obj.class("Crate", Entity)
 
 function Crate:init(entities, pos)
   local backing = Entity.init(self, entities, nil, pos, 1)

@@ -3,7 +3,7 @@ local clone = require("clone")
 local obj   = require("object")
 
 
-local Entity = obj.class()
+local Entity = obj.class("Entity")
 
 function Entity:init(entities, id, pos, life)
   self.entities = entities

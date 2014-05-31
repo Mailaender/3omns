@@ -6,7 +6,7 @@ local Entity = require("entities.entity")
 local Blast  = require("sprites.blast")
 
 
-local Bomn = obj.class(Entity)
+local Bomn = obj.class("Bomn", Entity)
 
 Bomn.TIME = 3
 Bomn.RADIUS = 8

@@ -7,7 +7,7 @@ local Bomn  = require("entities.bomn")
 local Dude  = require("entities.dude")
 
 
-local Entities = obj.class()
+local Entities = obj.class("Entities")
 
 local public = {
   Super = Super,
