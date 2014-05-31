@@ -236,6 +236,11 @@ static void draw_hearts(const struct round *restrict round) {
     }
 }
 
+static void free_debug_stats(struct debug_stats *restrict stats) {
+    for(int i = 0; i < 5; i++)
+        b3_free_text(stats->text[i]);
+}
+
 static void draw_debug_stats(struct debug_stats *restrict stats) {
     if(!args.debug)
         return;
@@ -257,8 +262,7 @@ static void update_debug_stats(
 
     stats->reset_time = b3_tick_frequency;
 
-    for(int i = 0; i < 5; i++)
-        b3_free_text(stats->text[i]);
+    free_debug_stats(stats);
 
     stats->text[0]
             = b3_new_text(debug_stats_font, "Loops: %d", stats->loop_count);
@@ -376,6 +380,8 @@ static void loop(struct round *restrict round) {
         // TODO: poll() with an intelligent timeout here.
         process_notifications(round);
     } while(!b3_process_events(round));
+
+    free_debug_stats(&stats);
 }
 
 static void free_round(struct round *restrict round) {

@@ -305,6 +305,7 @@ b3_text *b3_ref_text(b3_text *restrict text) {
 
 void b3_free_text(b3_text *restrict text) {
     if(text && !--text->ref_count) {
+        b3_free(text->string, 0);
         SDL_DestroyTexture(text->texture);
         b3_free(text, sizeof(*text));
     }

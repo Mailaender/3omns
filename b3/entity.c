@@ -151,9 +151,10 @@ void b3_free_entity_pool(b3_entity_pool *restrict pool) {
     if(pool && !--pool->ref_count) {
         for(int i = 0; i < pool->size; i++)
             deactivate_entity(&pool->entities[i]);
+        b3_free_map(pool->map);
         b3_free(pool->index, 0);
         b3_free(pool->inactive, 0);
-        b3_free_map(pool->map);
+        b3_free(pool->released_ids, 0);
         b3_free(pool, SIZEOF_ENTITY_POOL(pool, pool->size));
     }
 }
