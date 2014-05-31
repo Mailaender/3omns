@@ -109,17 +109,18 @@ static int keysym_to_input(const SDL_Keysym *restrict keysym) {
     }
 
     switch(keysym->scancode) {
-        case SDL_SCANCODE_UP: return B3_INPUT_UP_0;
-        case SDL_SCANCODE_DOWN: return B3_INPUT_DOWN_0;
-        case SDL_SCANCODE_LEFT: return B3_INPUT_LEFT_0;
-        case SDL_SCANCODE_RIGHT: return B3_INPUT_RIGHT_0;
-        case SDL_SCANCODE_RCTRL: return B3_INPUT_FIRE_0;
-        case SDL_SCANCODE_W: return B3_INPUT_UP_1;
-        case SDL_SCANCODE_S: return B3_INPUT_DOWN_1;
-        case SDL_SCANCODE_A: return B3_INPUT_LEFT_1;
-        case SDL_SCANCODE_D: return B3_INPUT_RIGHT_1;
-        case SDL_SCANCODE_LCTRL: return B3_INPUT_FIRE_1;
-        default: break;
+    case SDL_SCANCODE_GRAVE: return B3_INPUT_DEBUG;
+    case SDL_SCANCODE_UP: return B3_INPUT_UP_0;
+    case SDL_SCANCODE_DOWN: return B3_INPUT_DOWN_0;
+    case SDL_SCANCODE_LEFT: return B3_INPUT_LEFT_0;
+    case SDL_SCANCODE_RIGHT: return B3_INPUT_RIGHT_0;
+    case SDL_SCANCODE_RCTRL: return B3_INPUT_FIRE_0;
+    case SDL_SCANCODE_W: return B3_INPUT_UP_1;
+    case SDL_SCANCODE_S: return B3_INPUT_DOWN_1;
+    case SDL_SCANCODE_A: return B3_INPUT_LEFT_1;
+    case SDL_SCANCODE_D: return B3_INPUT_RIGHT_1;
+    case SDL_SCANCODE_LCTRL: return B3_INPUT_FIRE_1;
+    default: break;
     }
 
     // These may not be desirable, depending on the layout.  A quick glance at

@@ -35,8 +35,6 @@ struct debug_stats {
     b3_rect text_rect[5];
 };
 
-// TODO: a Lua debug console directly tied into the Lua environment.
-
 
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
@@ -147,6 +145,13 @@ static void quit_res(void) {
     paused_text = NULL;
 }
 
+static void pause(struct round *restrict round, _Bool p) {
+    if(round->paused != p) {
+        round->paused = p;
+        notify_paused_changed(round);
+    }
+}
+
 static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     struct round *restrict round = data;
 
@@ -157,8 +162,13 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
     case B3_INPUT_BACK:
         return 1;
     case B3_INPUT_PAUSE:
-        round->paused = !round->paused;
-        notify_paused_changed(round);
+        pause(round, !round->paused);
+        return 0;
+    case B3_INPUT_DEBUG:
+        if(args.debug) {
+            pause(round, 1);
+            l3_enter_debugger();
+        }
         return 0;
     default:
         if(!round->paused) {

@@ -70,6 +70,7 @@ typedef enum b3_input b3_input;
 enum b3_input {
     B3_INPUT_BACK,
     B3_INPUT_PAUSE,
+    B3_INPUT_DEBUG,
     B3_INPUT_UP_0,
     B3_INPUT_UP_1,
     B3_INPUT_UP_2,

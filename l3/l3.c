@@ -2,6 +2,7 @@
 #include "b3/b3.h"
 
 #include <stddef.h>
+#include <stdio.h>
 #include <lua5.2/lua.h>
 #include <lua5.2/lauxlib.h>
 #include <lua5.2/lualib.h>
@@ -708,6 +709,14 @@ void l3_quit(void) {
     }
     b3_free(resource_path, 0);
     resource_path = NULL;
+}
+
+void l3_enter_debugger(void) {
+    puts("Entering Lua debugging session; enter cont to resume");
+    lua_getglobal(lua, "debug");
+    lua_getfield(lua, -1, "debug");
+    lua_call(lua, 0, 0);
+    lua_pop(lua, 1);
 }
 
 static void clean_entity(b3_entity *restrict entity, void *callback_data) {
