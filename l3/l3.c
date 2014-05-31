@@ -848,7 +848,10 @@ char *l3_serialize_entity(b3_entity *restrict entity, size_t *restrict len) {
 
     size_t serial_len = 0;
     const char *serial = lua_tolstring(l, -1, &serial_len);
-    char *r = b3_alloc_copy(serial, serial_len + 1);
+    char *r = NULL;
+    if(serial)
+        r = b3_alloc_copy(serial, serial_len + 1);
+
     lua_pop(l, 1);
 
     if(len)
