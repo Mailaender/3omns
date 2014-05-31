@@ -11,6 +11,8 @@
 
 
 struct notify_entity_data {
+    _Bool dirty_only;
+
     uint8_t *buf;
     size_t size;
     int *pos;
@@ -185,6 +187,9 @@ void notify_paused_changed(const struct round *restrict round) {
 }
 
 void notify_input(const struct round *restrict round, b3_input input) {
+    if(!args.client)
+        return;
+
     int player = B3_INPUT_PLAYER(input);
     int button;
     if(input == B3_INPUT_UP(player)) button = 'u';
@@ -320,6 +325,9 @@ static void process_map(
 static void notify_entity(b3_entity *restrict entity, void *callback_data) {
     struct notify_entity_data *d = callback_data;
 
+    if(d->dirty_only && !b3_get_entity_dirty(entity))
+        return;
+
     size_t serial_len = 0;
     char *serial = l3_serialize_entity(entity, &serial_len);
 
@@ -346,10 +354,13 @@ static void notify_entity(b3_entity *restrict entity, void *callback_data) {
         PRINT_ENTITY("%*s", (int)serial_len, serial);
 #undef PRINT_ENTITY
 
+    if(d->dirty_only)
+        b3_set_entity_dirty(entity, 0);
     b3_free(serial, 0);
 }
 
-static void notify_all_entities(
+static void notify_entities(
+    _Bool dirty_only,
     const struct round *restrict round,
     const n3_host *restrict host
 ) {
@@ -359,7 +370,7 @@ static void notify_all_entities(
     b3_for_each_entity(
         round->level.entities,
         notify_entity,
-        &(struct notify_entity_data){buf, sizeof(buf), &pos, host}
+        &(struct notify_entity_data){dirty_only, buf, sizeof(buf), &pos, host}
     );
 
     if(pos)
@@ -398,11 +409,54 @@ static void process_entities(
 #undef SCAN_ENTITIES
 }
 
+static void notify_deleted_entities(const struct round *restrict round) {
+    int count = 0;
+    const b3_entity_id *ids = b3_get_released_ids(
+        round->level.entities,
+        &count
+    );
+    if(!count)
+        return;
+
+    uint8_t buf[N3_SAFE_BUFFER_SIZE];
+    int pos = 0;
+
+#define PRINT_DELETED(...) print_buffer(buf, sizeof(buf), &pos, __VA_ARGS__)
+    PRINT_DELETED("d");
+
+    for(int i = 0; i < count; i++)
+        PRINT_DELETED("#%X", ids[i]);
+#undef PRINT_DELETED
+
+    send_notification(buf, (size_t)pos, NULL);
+
+    b3_clear_released_ids(round->level.entities);
+}
+
+static void process_deleted_entities(
+    struct round *restrict round,
+    const uint8_t *restrict buf,
+    size_t size
+) {
+    int pos = 1; // Skip initial 'd'.
+
+#define SCAN_DELETED(...) scan_buffer(buf, &pos, __VA_ARGS__)
+    while(buf[pos] == '#') {
+        b3_entity_id id = 0;
+        SCAN_DELETED(1, "#%X", &id);
+
+        b3_entity *entity = b3_get_entity(round->level.entities, id);
+        b3_release_entity(entity);
+    }
+#undef SCAN_DELETED
+}
+
 void notify_updates(const struct round *restrict round) {
-    // TODO: send out new/modified entities since last run.  Use a flag on each
-    // entity to keep track.  Also send out deleted entities (maybe first).
-    // Also need a way to set the dirty flag from lua.  When received, call an
-    // l3_sync method on lua objects.
+    if(!args.serve)
+        return;
+
+    notify_deleted_entities(round);
+    notify_entities(1, round, NULL);
 }
 
 static void notify_connect(void) {
@@ -418,7 +472,7 @@ static void process_connect(
 ) {
     notify_paused_state(round, host);
     notify_map(round, host);
-    notify_all_entities(round, host);
+    notify_entities(0, round, host);
 }
 
 void process_notifications(struct round *restrict round) {
@@ -441,6 +495,7 @@ void process_notifications(struct round *restrict round) {
         case 'i': process_input(round, buf, received); break;
         case 'm': process_map(round, buf, received); break;
         case 'e': process_entities(round, buf, received); break;
+        case 'd': process_deleted_entities(round, buf, received); break;
         default: b3_fatal("Received unknown notification");
         }
     }

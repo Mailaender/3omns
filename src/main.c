@@ -171,11 +171,12 @@ static _Bool handle_input(b3_input input, _Bool pressed, void *data) {
         }
         return 0;
     default:
-        if(!round->paused) {
-            if(args.client)
-                notify_input(round, input);
+        notify_input(round, input);
+        // TODO: it would be nice to be able to keep the client-side code
+        // running as normal, in anticipation of server updates.  That might
+        // require a bit more sophisticated syncing.
+        if(!round->paused && !args.client)
             l3_input(&round->level, input);
-        }
         return 0;
     }
 }
@@ -340,6 +341,9 @@ static void loop(struct round *restrict round) {
                 }
             }
 
+            // Technically updates can happen at other times (i.e. input, which
+            // comes in during b3_process_events() below), but batching all
+            // prior updates here is perfectly sufficient, and easy.
             notify_updates(round);
         }
 
