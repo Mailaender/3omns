@@ -226,7 +226,7 @@ static struct index_entry *search_index(
         &(struct index_entry){id},
         pool->index,
         pool->count,
-        sizeof(pool->index[0]),
+        sizeof(*pool->index),
         compare_index_entries
     );
 }

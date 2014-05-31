@@ -203,7 +203,7 @@ static struct connection *search_connections(
         host,
         server->connections,
         server->connection_count,
-        sizeof(server->connections[0]),
+        sizeof(*server->connections),
         compare_connections
     );
 }
