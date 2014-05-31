@@ -46,6 +46,9 @@ struct b3_entity_pool {
 
     b3_entity *z_first;
 
+    b3_entity_id *released_ids;
+    int released_id_count;
+
     b3_entity entities[];
 };
 
@@ -68,6 +71,7 @@ b3_entity_pool *b3_new_entity_pool(
     pool->inactive = b3_malloc(size * sizeof(*pool->inactive), 1);
     for(int i = 0; i < size; i++)
         pool->inactive[i] = &pool->entities[i];
+    pool->released_ids = b3_malloc(size * sizeof(*pool->released_ids), 1);
     return b3_ref_entity_pool(pool);
 }
 
@@ -158,6 +162,18 @@ int b3_get_entity_pool_size(b3_entity_pool *restrict pool) {
     return pool->size;
 }
 
+const b3_entity_id *b3_get_released_ids(
+    b3_entity_pool *restrict pool,
+    int *restrict count
+) {
+    *count = pool->released_id_count;
+    return pool->released_ids;
+}
+
+void b3_clear_released_ids(b3_entity_pool *restrict pool) {
+    pool->released_id_count = 0;
+}
+
 b3_entity *b3_claim_entity(
     b3_entity_pool *restrict pool,
     b3_entity_id id,
@@ -230,6 +246,8 @@ void b3_release_entity(b3_entity *restrict entity) {
         entry + 1,
         (--pool->count - index) * sizeof(*entry)
     );
+    if(pool->released_id_count < pool->size)
+        pool->released_ids[pool->released_id_count++] = id;
 }
 
 b3_entity *b3_get_entity(b3_entity_pool *restrict pool, b3_entity_id id) {
