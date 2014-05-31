@@ -1,12 +1,14 @@
-local core   = require("core")
-local util   = require("util")
-local serial = require("serial")
 local obj    = require("object")
 local Entity = require("entities.entity")
-local Bomn   = require("entities.bomn")
-
 
 local Dude = obj.class("Dude", Entity)
+package.loaded[...] = Dude
+
+local core     = require("core")
+local util     = require("util")
+local serial   = require("serial")
+local Entities = require("entities")
+
 
 Dude.SUPER_TIME = 10
 Dude.BUMP_DAMAGE = 1
@@ -278,8 +280,8 @@ function Dude:ai_get_danger(ctx, pos)
 
   if self:is_super() then return nil end
 
-  for _, b in ipairs(self:get_nearest(Bomn, pos)) do
-    if core.blast_dist(pos, b.entity.pos) <= Bomn.RADIUS then
+  for _, b in ipairs(self:get_nearest(Entities.Bomn, pos)) do
+    if core.blast_dist(pos, b.entity.pos) <= Entities.Bomn.RADIUS then
       return b.entity
     end
   end
@@ -379,7 +381,8 @@ function Dude:ai_hunt(ctx)
 
       for _, c in ipairs(corners) do
         local dist = core.blast_dist(self.pos, c)
-        if dist <= Bomn.RADIUS and core.blast_dist(target.pos, c) < dist then
+        if dist <= Entities.Bomn.RADIUS
+            and core.blast_dist(target.pos, c) < dist then
           target_cornered = true
           break
         end
@@ -415,6 +418,3 @@ function Dude:l3_think(backing, yield_time)
 
   return self:ai_hunt(ctx)
 end
-
-
-return Dude

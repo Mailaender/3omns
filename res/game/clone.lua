@@ -1,4 +1,3 @@
--- Set this up first, to avoid mutually recursive requirements.
 local clone = {}
 package.loaded[...] = clone
 
@@ -34,6 +33,3 @@ function clone.clone(level, id, pos, life, serialized)
   local entity = obj.create(type)
   entity:init_clone(entities, id, pos, life, serialized, start)
 end
-
-
-return clone

@@ -1,8 +1,9 @@
 local obj    = require("object")
 local Entity = require("entities.entity")
 
-
 local Super = obj.class("Super", Entity)
+package.loaded[...] = Super
+
 
 function Super:init(entities, pos)
   local backing = Entity.init(self, entities, nil, pos, 1)
@@ -39,6 +40,3 @@ function Super:bumped(dude, dude_backing)
   dude:superify(dude_backing)
   return true
 end
-
-
-return Super

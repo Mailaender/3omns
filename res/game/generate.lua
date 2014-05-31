@@ -1,3 +1,6 @@
+local gen = {}
+package.loaded[...] = gen
+
 local core     = require("core")
 local util     = require("util")
 local Entities = require("entities")
@@ -151,7 +154,7 @@ local function fill_crates(ctx)
   end
 end
 
-local function generate()
+function gen.generate()
   local level = l3.level.new(MAP_SIZE, MAX_ENTITIES)
   local ctx = {
     level = level,
@@ -170,8 +173,3 @@ local function generate()
 
   return level
 end
-
-
-return {
-  generate = generate,
-}

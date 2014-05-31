@@ -1,9 +1,11 @@
-local util   = require("util")
 local obj    = require("object")
 local Sprite = require("sprites.sprite")
 
-
 local Blast = obj.class("Blast", Sprite)
+package.loaded[...] = Blast
+
+local util   = require("util")
+
 
 Blast.TIME = 1
 
@@ -43,6 +45,3 @@ function Blast:l3_update(backing, elapsed)
 
   self:animate(backing)
 end
-
-
-return Blast

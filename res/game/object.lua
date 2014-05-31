@@ -1,20 +1,24 @@
-local function create(class)
+local obj = {}
+package.loaded[...] = obj
+
+
+function obj.create(class)
   return setmetatable({}, class)
 end
 
 local function new(class, ...)
-  local self = create(class)
+  local self = obj.create(class)
   self:init(...)
   return self
 end
 
-local function get_type(object)
+function obj.get_type(object)
   return getmetatable(object)
 end
 
 -- TODO: an is_a function that handles inheritance.
 
-local function class(name, parent)
+function obj.class(name, parent)
   local c = {}
   c.__index = c
   c.class_name = name
@@ -26,10 +30,3 @@ local function class(name, parent)
 
   return c
 end
-
-
-return {
-  create   = create,
-  get_type = get_type,
-  class    = class,
-}

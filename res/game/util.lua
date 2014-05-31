@@ -1,17 +1,20 @@
+local util = {}
+package.loaded[...] = util
+
 local core = require("core")
 
 
-local function debug_print(string)
+function util.debug_print(string)
   if l3.DEBUG then
     print(string)
   end
 end
 
-local function resource(filename)
+function util.resource(filename)
   return string.format("%s%s", l3.RESOURCE_PATH, filename)
 end
 
-local function invert_table(t)
+function util.invert_table(t)
   local r = {}
   for k, v in pairs(t) do r[v] = k end
   return r
@@ -20,7 +23,7 @@ end
 -- Stolen from the !w Bresenham's line algorithm page.  Goes from a to b (and
 -- beyond, as limited by the callback function returning false), calling the
 -- callback for each pos on the line.
-local function line(a, b, callback)
+function util.line(a, b, callback)
   local dx = math.abs(b.x - a.x)
   local dy = math.abs(b.y - a.y)
   local sx = a.x < b.x and 1 or -1
@@ -45,7 +48,7 @@ end
 -- Stolen/modified from the !w midpoint circle algorithm page.  This selects
 -- some extra points to make sure every point is adjacent (not just diagonally)
 -- to another, i.e. the line is thicker on the jagged bits.
-local function circle_contig(center, radius, callback)
+function util.circle_contig(center, radius, callback)
   local function octants(x, y)
     callback(core.Pos(center.x + x, center.y + y))
     callback(core.Pos(center.x + y, center.y + x))
@@ -77,7 +80,7 @@ local function circle_contig(center, radius, callback)
 end
 
 -- Animation helper for sprites or entities.
-local function get_animation_frame(animation, time)
+function util.get_animation_frame(animation, time)
   -- Note that time counts down for these objects.  It's more of a "lifetime
   -- remaining".  The animation frames must be ordered first (biggest time) to
   -- last (lowest time).
@@ -90,13 +93,3 @@ local function get_animation_frame(animation, time)
   end
   return nil
 end
-
-
-return {
-  debug_print         = debug_print,
-  resource            = resource,
-  invert_table        = invert_table,
-  line                = line,
-  circle_contig       = circle_contig,
-  get_animation_frame = get_animation_frame,
-}

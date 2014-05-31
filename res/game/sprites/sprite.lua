@@ -1,8 +1,10 @@
-local core = require("core")
-local obj  = require("object")
-
+local obj = require("object")
 
 local Sprite = obj.class("Sprite")
+package.loaded[...] = Sprite
+
+local core = require("core")
+
 
 function Sprite:init(level, pos)
   local backing = level:new_sprite(self)
@@ -44,6 +46,3 @@ end
 function Sprite:destroy(backing)
   backing:destroy()
 end
-
-
-return Sprite

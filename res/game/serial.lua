@@ -1,19 +1,15 @@
--- Set this up first, to avoid mutually recursive requirements.
 local serial = {}
 package.loaded[...] = serial
 
-local util  = require("util")
-local Super = require("entities.super")
-local Crate = require("entities.crate")
-local Bomn  = require("entities.bomn")
-local Dude  = require("entities.dude")
+local util     = require("util")
+local Entities = require("entities")
 
 
 local deserialize_map = {
-  S = Super,
-  C = Crate,
-  B = Bomn,
-  D = Dude,
+  S = Entities.Super,
+  C = Entities.Crate,
+  B = Entities.Bomn,
+  D = Entities.Dude,
 }
 local serialize_map = util.invert_table(deserialize_map)
 
@@ -38,6 +34,3 @@ function serial.deserialize_number(s, start)
   assert(n, "Couldn't match a number")
   return tonumber(n), start + string.len(n) + 2
 end
-
-
-return serial

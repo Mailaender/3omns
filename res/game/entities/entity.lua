@@ -1,9 +1,11 @@
-local core  = require("core")
-local clone = require("clone")
-local obj   = require("object")
-
+local obj = require("object")
 
 local Entity = obj.class("Entity")
+package.loaded[...] = Entity
+
+local core  = require("core")
+local clone = require("clone")
+
 
 function Entity:init(entities, id, pos, life)
   self.entities = entities
@@ -117,6 +119,3 @@ function Entity:blasted(bomn, bomn_backing)
     self:kill()
   end
 end
-
-
-return Entity

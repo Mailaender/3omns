@@ -1,12 +1,14 @@
+local obj    = require("object")
+local Entity = require("entities.entity")
+
+local Bomn = obj.class("Bomn", Entity)
+package.loaded[...] = Bomn
+
 local core   = require("core")
 local util   = require("util")
 local serial = require("serial")
-local obj    = require("object")
-local Entity = require("entities.entity")
 local Blast  = require("sprites.blast")
 
-
-local Bomn = obj.class("Bomn", Entity)
 
 Bomn.TIME = 3
 Bomn.RADIUS = 8
@@ -128,6 +130,3 @@ function Bomn:l3_update(backing, elapsed)
 
   self:animate(backing)
 end
-
-
-return Bomn

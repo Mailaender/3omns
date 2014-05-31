@@ -1,13 +1,15 @@
+local obj = require("object")
+
+local Entities = obj.class("Entities")
+package.loaded[...] = Entities
+
 local core  = require("core")
 local util  = require("util")
-local obj   = require("object")
 local Super = require("entities.super")
 local Crate = require("entities.crate")
 local Bomn  = require("entities.bomn")
 local Dude  = require("entities.dude")
 
-
-local Entities = obj.class("Entities")
 
 local public = {
   Super = Super,
@@ -107,6 +109,3 @@ function Entities:get_nearest(type, pos)
   table.sort(a, function(a, b) return a.dist < b.dist end)
   return a
 end
-
-
-return Entities

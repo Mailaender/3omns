@@ -1,9 +1,11 @@
-local serial = require("serial")
 local obj    = require("object")
 local Entity = require("entities.entity")
 
-
 local Crate = obj.class("Crate", Entity)
+package.loaded[...] = Crate
+
+local serial = require("serial")
+
 
 function Crate:init(entities, pos)
   local backing = Entity.init(self, entities, nil, pos, 1)
@@ -58,6 +60,3 @@ function Crate:bumped(dude, dude_backing)
   self:kill()
   return dude:is_super()
 end
-
-
-return Crate
