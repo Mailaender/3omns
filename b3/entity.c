@@ -268,6 +268,7 @@ b3_entity *b3_set_entity_pos(
     const b3_pos *restrict pos
 ) {
     entity->pos = *pos;
+    entity->dirty = 1;
     return entity;
 }
 
@@ -277,6 +278,7 @@ int b3_get_entity_life(b3_entity *restrict entity) {
 
 b3_entity *b3_set_entity_life(b3_entity *restrict entity, int life) {
     entity->life = life;
+    entity->dirty = 1;
     return entity;
 }
 
