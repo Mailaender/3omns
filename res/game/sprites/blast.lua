@@ -9,17 +9,23 @@ local util   = require("util")
 
 Blast.TIME = 1
 
-Blast.ANIMATION = {}
--- TODO: run this inside of a "module init" function?
 -- TODO: add some variance here, so the blasts aren't quite so uniform, but
 -- speckle a bit as they dissipate.
-local blast_frame_duration = Blast.TIME / #IMAGES.BLASTS
-for i, v in ipairs(IMAGES.BLASTS) do
-  Blast.ANIMATION[i] = {
-    time = Blast.TIME - (i - 1) * blast_frame_duration,
-    image = v,
-    z_order = #IMAGES.BLASTS - i,
-  }
+local function get_animation()
+  if not Blast.ANIMATION then
+    Blast.ANIMATION = {}
+
+    local blast_frame_duration = Blast.TIME / #IMAGES.BLASTS
+    for i, v in ipairs(IMAGES.BLASTS) do
+      Blast.ANIMATION[i] = {
+        time = Blast.TIME - (i - 1) * blast_frame_duration,
+        image = v,
+        z_order = #IMAGES.BLASTS - i,
+      }
+    end
+  end
+
+  return Blast.ANIMATION
 end
 
 function Blast:init(level, pos)
@@ -31,7 +37,7 @@ function Blast:init(level, pos)
 end
 
 function Blast:animate(backing)
-  local frame = util.get_animation_frame(Blast.ANIMATION, self.time)
+  local frame = util.get_animation_frame(get_animation(), self.time)
   self:set_image(frame.image, backing)
   self:set_z_order(frame.z_order, backing)
 end

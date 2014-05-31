@@ -3,25 +3,19 @@ local obj = require("object")
 local Entities = obj.class("Entities")
 package.loaded[...] = Entities
 
-local core  = require("core")
-local util  = require("util")
+local core = require("core")
+local util = require("util")
+
 local Super = require("entities.super")
 local Crate = require("entities.crate")
 local Bomn  = require("entities.bomn")
 local Dude  = require("entities.dude")
 
 
-local public = {
-  Super = Super,
-  Crate = Crate,
-  Bomn  = Bomn,
-  Dude  = Dude,
-}
-
-for name, constructor in pairs(public) do
-  Entities[name] = constructor
-end
-
+Entities.Super = Super
+Entities.Crate = Crate
+Entities.Bomn  = Bomn
+Entities.Dude  = Dude
 
 function Entities:init(level)
   self.level = level
