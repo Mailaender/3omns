@@ -20,9 +20,7 @@ function Entity:init(entities, id, pos, life)
   return backing
 end
 
-function Entity:l3_serialize()
-  return clone.serialize(self)
-end
+Entity.l3_serialize = clone.serialize
 
 Entity.get_type = obj.get_type
 

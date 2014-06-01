@@ -34,8 +34,6 @@ function Entities:new_backing(entity, id)
   local backing = self.level:new_entity(entity, id)
   if not id then id = backing:get_id() end
 
-  -- We also use this as a hook to set up anything we need to keep track of
-  -- about the new entity (except its pos, because that isn't set yet).
   local type = entity:get_type()
   if not self.type_index[type] then
     self.type_index[type] = {}

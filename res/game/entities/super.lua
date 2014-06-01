@@ -33,6 +33,7 @@ end
 function Super:set_visual(backing)
   self:set_image(IMAGES.SUPER, backing)
   self:set_z_order(0, backing)
+  return self
 end
 
 function Super:bumped(dude, dude_backing)

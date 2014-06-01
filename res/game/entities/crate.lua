@@ -38,6 +38,7 @@ end
 function Crate:set_visual(backing)
   self:set_image(IMAGES.CRATE, backing)
   self:set_z_order(0, backing)
+  return self
 end
 
 function Crate:hold(type)

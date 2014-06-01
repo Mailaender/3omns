@@ -55,6 +55,7 @@ function Dude:set_visual(backing)
     backing
   )
   self:set_z_order(1, backing)
+  return self
 end
 
 function Dude:is_super()
