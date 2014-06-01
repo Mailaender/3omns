@@ -341,6 +341,7 @@ static void notify_entity(b3_entity *restrict entity, void *callback_data) {
     if(!*d->pos)
         PRINT_ENTITY("e");
 
+    // TODO: only transmit the delta, instead of the full line.
     b3_pos entity_pos = b3_get_entity_pos(entity);
     PRINT_ENTITY(
         "#%X:%X,%X-%X|%zX:",
