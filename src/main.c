@@ -344,12 +344,9 @@ static void loop(struct round *restrict round) {
                     stats.think_count++;
                 }
             }
-
-            // Technically updates can happen at other times (i.e. input, which
-            // comes in during b3_process_events() below), but batching all
-            // prior updates here is perfectly sufficient, and easy.
-            notify_updates(round);
         }
+
+        notify_updates(round);
 
         if(ticks >= next_draw_ticks) {
             next_draw_ticks = ticks + draw_ticks;
