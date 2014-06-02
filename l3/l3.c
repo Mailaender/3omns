@@ -8,6 +8,8 @@
 #include <lua5.2/lualib.h>
 
 
+// TODO: split this file up.  It's getting a bit unwieldy.
+
 #define L3_NAME "l3"
 #define IMAGE_NAME "image"
 #define LEVEL_NAME "level"
@@ -18,7 +20,7 @@
 #define ENTITY_METATABLE L3_NAME ".entity"
 
 #define L3_GENERATE_NAME "l3_generate"
-#define L3_CLONE_NAME "l3_clone"
+#define L3_SYNC_NAME "l3_sync"
 
 #define L3_TILE_IMAGES_NAME "L3_TILE_IMAGES"
 #define L3_BORDER_IMAGE_NAME "L3_BORDER_IMAGE"
@@ -211,7 +213,7 @@ static l3_level *check_level(lua_State *restrict l, int index) {
     return luaL_checkudata(l, index, LEVEL_METATABLE);
 }
 
-static l3_level *push_level(lua_State *restrict l) {
+static l3_level *push_new_level(lua_State *restrict l) {
     l3_level *level = lua_newuserdata(l, sizeof(*level));
     luaL_setmetatable(l, LEVEL_METATABLE);
 
@@ -222,7 +224,7 @@ static int level_new(lua_State *restrict l) {
     b3_size size = check_size(l, 1);
     int max_entities = luaL_checkint(l, 2);
 
-    l3_level *level = push_level(l);
+    l3_level *level = push_new_level(l);
 
     l3_init_level(level, client, &size, max_entities);
     return 1;
@@ -282,7 +284,6 @@ static int level_set_tile(lua_State *restrict l) {
 static struct entity_data *new_entity_data(
     lua_State *restrict l,
     int entity_index,
-    int context_index,
     b3_map *restrict map
 ) {
     struct entity_data *entity_data = b3_malloc(sizeof(*entity_data), 1);
@@ -293,19 +294,28 @@ static struct entity_data *new_entity_data(
     // l3.level.new_sprite/_entity).  There may be a more elegant way to go
     // about this, but this seemed pretty simple and I couldn't see any major
     // problems, so I went with it.
-    entity_data->entity_ref = LUA_NOREF;
+    lua_pushvalue(l, entity_index);
+    entity_data->entity_ref = luaL_ref(l, LUA_REGISTRYINDEX);
     entity_data->context_ref = LUA_NOREF;
-    lua_pushvalue(l, context_index);
-    if(lua_istable(l, -1)) {
-        entity_data->context_ref = luaL_ref(l, LUA_REGISTRYINDEX);
 
-        lua_pushvalue(l, entity_index);
-        entity_data->entity_ref = luaL_ref(l, LUA_REGISTRYINDEX);
-    }
+    entity_data->map = b3_ref_map(map);
+    return entity_data;
+}
+
+static struct entity_data *ref_entity_context(
+    lua_State *restrict l,
+    struct entity_data *entity_data,
+    int context_index
+) {
+    luaL_unref(l, LUA_REGISTRYINDEX, entity_data->context_ref);
+    entity_data->context_ref = LUA_NOREF;
+
+    lua_pushvalue(l, context_index);
+    if(lua_istable(l, -1))
+        entity_data->context_ref = luaL_ref(l, LUA_REGISTRYINDEX);
     else
         lua_pop(l, 1);
 
-    entity_data->map = b3_ref_map(map);
     return entity_data;
 }
 
@@ -325,7 +335,7 @@ static b3_entity *check_sprite(lua_State *restrict l, int index) {
 
 static int level_new_sprite(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
-    // Index 2 is the Lua sprite object, passed to new_entity_data() below.
+    // Index 2 is the Lua sprite object, passed to ref_entity_context() below.
 
     // "Sprites" are actually entities, but that don't have life in Lua, nor
     // are they sync'd to the server.
@@ -334,7 +344,8 @@ static int level_new_sprite(lua_State *restrict l) {
 
     *p_entity = b3_claim_entity(level->sprites, 0, free_entity_data);
     b3_set_entity_life(*p_entity, 1);
-    b3_set_entity_data(*p_entity, new_entity_data(l, -1, 2, level->map));
+    struct entity_data *entity_data = new_entity_data(l, -1, level->map);
+    b3_set_entity_data(*p_entity, ref_entity_context(l, entity_data, 2));
     return 1;
 }
 
@@ -414,19 +425,21 @@ static b3_entity *check_entity(lua_State *restrict l, int index) {
     return *(b3_entity **)luaL_checkudata(l, index, ENTITY_METATABLE);
 }
 
-static int level_new_entity(lua_State *restrict l) {
-    l3_level *level = check_level(l, 1);
-    // Index 2 is the Lua entity object, passed to new_entity_data() below.
-    b3_entity_id id = 0;
-    int id_type = lua_type(l, 3);
-    if(id_type != LUA_TNONE && id_type != LUA_TNIL)
-        id = (b3_entity_id)luaL_checkunsigned(l, 3);
-
+static b3_entity **push_new_entity(lua_State *restrict l) {
     b3_entity **p_entity = lua_newuserdata(l, sizeof(*p_entity));
     luaL_setmetatable(l, ENTITY_METATABLE);
 
-    *p_entity = b3_claim_entity(level->entities, id, free_entity_data);
-    b3_set_entity_data(*p_entity, new_entity_data(l, -1, 2, level->map));
+    return p_entity;
+}
+
+static int level_new_entity(lua_State *restrict l) {
+    l3_level *level = check_level(l, 1);
+    // Index 2 is the Lua entity object, passed to ref_entity_context() below.
+
+    b3_entity **p_entity = push_new_entity(l);
+    *p_entity = b3_claim_entity(level->entities, 0, free_entity_data);
+    struct entity_data *entity_data = new_entity_data(l, -1, level->map);
+    b3_set_entity_data(*p_entity, ref_entity_context(l, entity_data, 2));
     return 1;
 }
 
@@ -470,6 +483,22 @@ static int entity_get_id(lua_State *restrict l) {
 
     b3_entity_id id = b3_get_entity_id(entity);
     lua_pushunsigned(l, (lua_Unsigned)id);
+    return 1;
+}
+
+static int entity_get_context(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+
+    const struct entity_data *entity_data = b3_get_entity_data(entity);
+    lua_rawgeti(l, LUA_REGISTRYINDEX, entity_data->context_ref);
+    return 1;
+}
+
+static int entity_set_context(lua_State *restrict l) {
+    b3_entity *entity = check_entity(l, 1);
+    ref_entity_context(l, b3_get_entity_data(entity), 2);
+
+    lua_pushvalue(l, 1);
     return 1;
 }
 
@@ -525,6 +554,8 @@ static int open_level(lua_State *restrict l) {
     };
     static const luaL_Reg entity_methods[] = {
         {"get_id", entity_get_id},
+        {"get_context", entity_get_context},
+        {"set_context", entity_set_context},
         {"get_pos", sprentity_get_pos},
         {"set_pos", sprentity_set_pos},
         {"get_life", entity_get_life},
@@ -874,42 +905,25 @@ char *l3_serialize_entity(b3_entity *restrict entity, size_t *restrict len) {
 void l3_set_sync_level(l3_level *restrict level) {
     luaL_unref(lua, LUA_REGISTRYINDEX, sync_level_ref);
 
-    l3_level *lua_level = push_level(lua);
+    l3_level *lua_level = push_new_level(lua);
     l3_copy_level(lua_level, level);
     sync_level_ref = luaL_ref(lua, LUA_REGISTRYINDEX);
 }
 
-l3_level l3_get_sync_level(void) {
-    lua_rawgeti(lua, LUA_REGISTRYINDEX, sync_level_ref);
-    l3_level *level = luaL_testudata(lua, -1, LEVEL_METATABLE);
+static l3_level *push_sync_level(lua_State *restrict l) {
+    lua_rawgeti(l, LUA_REGISTRYINDEX, sync_level_ref);
+    l3_level *level = luaL_testudata(l, -1, LEVEL_METATABLE);
     if(!level)
         b3_fatal("Sync level not set");
+    return level;
+}
+
+l3_level l3_get_sync_level(void) {
     l3_level copy;
-    l3_copy_level(&copy, level);
+    l3_copy_level(&copy, push_sync_level(lua));
     lua_pop(lua, 1);
 
     return copy;
-}
-
-static void clone_entity(
-    lua_State *restrict l,
-    b3_entity_id id,
-    const b3_pos *restrict pos,
-    int life,
-    const char *restrict serial,
-    size_t serial_len
-) {
-    lua_getglobal(l, L3_CLONE_NAME);
-    if(!lua_isfunction(l, -1))
-        b3_fatal("Missing global function %s", L3_CLONE_NAME);
-
-    lua_rawgeti(l, LUA_REGISTRYINDEX, sync_level_ref);
-    lua_pushunsigned(l, (lua_Unsigned)id);
-    push_pos(l, pos);
-    lua_pushnumber(l, (lua_Number)life);
-    lua_pushlstring(l, serial, serial_len);
-
-    lua_call(l, 5, 0);
 }
 
 void l3_sync_entity(
@@ -919,8 +933,30 @@ void l3_sync_entity(
     const char *restrict serial,
     size_t serial_len
 ) {
-    // TODO: check for entity already existing, call l3_sync on it if so.
-    clone_entity(lua, id, pos, life, serial, serial_len);
+    lua_getglobal(lua, L3_SYNC_NAME);
+    if(!lua_isfunction(lua, -1))
+        b3_fatal("Missing global function %s", L3_SYNC_NAME);
+
+    l3_level *level = push_sync_level(lua);
+    b3_entity *entity = b3_get_entity(level->entities, id);
+
+    if(entity) {
+        const struct entity_data *entity_data = b3_get_entity_data(entity);
+        lua_rawgeti(lua, LUA_REGISTRYINDEX, entity_data->entity_ref);
+    }
+    else {
+        b3_entity **p_entity = push_new_entity(lua);
+        *p_entity = b3_claim_entity(level->entities, id, free_entity_data);
+        b3_set_entity_data(*p_entity, new_entity_data(lua, -1, level->map));
+        entity = *p_entity;
+    }
+
+    b3_set_entity_pos(entity, pos);
+    b3_set_entity_life(entity, life);
+
+    lua_pushlstring(lua, serial, serial_len);
+
+    lua_call(lua, 3, 0);
 }
 
 l3_agent *l3_new_agent(l3_level *restrict level, int dude_index) {
