@@ -635,7 +635,13 @@ static void *lalloc(
 }
 
 _Noreturn static int panic(lua_State *restrict l) {
-    b3_fatal("Lua error: %s", lua_tostring(l, -1));
+    if(debug) {
+        fprintf(stderr, "Lua error: %s\n", lua_tostring(l, -1));
+        l3_enter_debugger();
+        b3_fatal("Terminating");
+    }
+    else
+        b3_fatal("Lua error: %s", lua_tostring(l, -1));
 }
 
 static lua_State *new_lua(void) {
