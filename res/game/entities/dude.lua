@@ -16,22 +16,20 @@ Dude.BLAST_DAMAGE = 5
 
 Dude.AI_ACTION_TIME = 0.2
 
-function Dude:init(entities, pos, player)
-  local backing = Entity.init(self, entities, nil, pos, 10)
+function Dude:init_base(entities, backing)
+  Entity.init_base(self, entities, backing)
 
   -- TODO: teams?
-  self.player = player
+  self.player     = nil
   self.super_time = 0
-  self.bomn_id = nil
-
-  self:set_visual(backing)
-  self.entities:set_dude(self)
+  self.bomn_id    = nil
 end
 
-function Dude:init_clone(entities, id, pos, life, serialized, start)
-  local backing = Entity.init(self, entities, id, pos, life)
+function Dude:init(entities, pos, player)
+  Entity.init(self, entities, pos, 10)
 
-  self:sync(serialized, start)
+  self.player = player
+  entities:set_dude(self)
 
   self:set_visual(backing)
 end
@@ -42,10 +40,16 @@ function Dude:serialize()
       .. serial.serialize_number(self.bomn_id)
 end
 
-function Dude:sync(serialized, start)
+function Dude:sync(serialized, start, backing)
   self.player,     start = serial.deserialize_number(serialized, start)
   self.super_time, start = serial.deserialize_number(serialized, start)
   self.bomn_id,    start = serial.deserialize_number(serialized, start)
+
+  -- Don't worry about set_dude()-ing here -- the level already knows what dude
+  -- is what, since it was sync'd with the map data.
+
+  self:set_visual(backing)
+
   return start
 end
 
@@ -67,18 +71,18 @@ function Dude:can_fire()
 end
 
 function Dude:superify(backing)
-  self:set_image(IMAGES.SUPER_DUDES[self.player], backing)
   self.super_time = Dude.SUPER_TIME
 
   self:set_dirty(backing)
+  self:set_visual(backing)
 end
 
 function Dude:unsuperify(backing)
-  self:set_image(IMAGES.DUDES[self.player], backing)
   self.super_time = 0
 
   -- If we ever call unsuperify before the time is actually out, we'll also
   -- need a self:set_dirty(backing) call here.
+  self:set_visual(backing)
 end
 
 function Dude:bumped(other_dude, other_dude_backing)

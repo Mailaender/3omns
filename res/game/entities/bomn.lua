@@ -39,23 +39,20 @@ Bomn.ANIMATION = {
   {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
 }
 
-function Bomn:init(entities, pos, dude_id)
-  local backing = Entity.init(self, entities, nil, pos, 1)
+function Bomn:init_base(entities, backing)
+  Entity.init_base(self, entities, backing)
 
-  self.solid = false
-  self.time = Bomn.TIME
-  self.dude_id = dude_id
+  self.solid   = false
+  self.time    = Bomn.TIME
+  self.dude_id = nil
 
   self:animate(backing)
 end
 
-function Bomn:init_clone(entities, id, pos, life, serialized, start)
-  local backing = Entity.init(self, entities, id, pos, life)
+function Bomn:init(entities, pos, dude_id)
+  Entity.init(self, entities, pos, 1)
 
-  self.solid = false -- TODO: avoid this duplication.
-  self:sync(serialized, start)
-
-  self:animate(backing)
+  self.dude_id = dude_id
 end
 
 function Bomn:serialize()
@@ -63,7 +60,7 @@ function Bomn:serialize()
       .. serial.serialize_number(self.dude_id)
 end
 
-function Bomn:sync(serialized, start)
+function Bomn:sync(serialized, start, backing)
   self.time,    start = serial.deserialize_number(serialized, start)
   self.dude_id, start = serial.deserialize_number(serialized, start)
   return start

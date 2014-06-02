@@ -17,7 +17,7 @@ end
 Sprite.get_type = obj.get_type
 
 function Sprite:set_pos(pos, backing)
-  if self.pos == nil or not core.pos_equal(pos, self.pos) then
+  if not self.pos or not core.pos_equal(pos, self.pos) then
     self.pos = pos
     backing:set_pos(pos)
   end

@@ -3,24 +3,42 @@ local obj = require("object")
 local Entity = obj.class("Entity")
 package.loaded[...] = Entity
 
-local core  = require("core")
-local clone = require("clone")
+local core = require("core")
+local sync = require("sync")
 
 
-function Entity:init(entities, id, pos, life)
+function Entity:init_base(entities, backing)
   self.entities = entities
+  self.id       = backing:get_id()
   self.solid    = true -- Whether the entity blocks blasts and player movement.
 
-  local backing
-  self.id, backing = entities:new_backing(self, id)
+  entities:add(self)
+end
+
+function Entity:init(entities, pos, life)
+  local backing = entities:new_backing(self)
+  self:init_base(entities, backing)
 
   self:set_pos(pos, backing)
   self:set_life(life, backing)
-
-  return backing
 end
 
-Entity.l3_serialize = clone.serialize
+function Entity:sync_base(entities, backing)
+  if not self.id then
+    self:init_base(entities, backing)
+  end
+
+  -- TODO: need to delete deleted entities from entities.
+  local pos = backing:get_pos()
+  if self.pos == nil or not core.pos_equal(pos, self.pos) then
+    local old = self.pos
+    self.pos = pos
+    self.entities:move(self, old)
+  end
+  self.life = backing:get_life()
+end
+
+Entity.l3_serialize = sync.serialize
 
 Entity.get_type = obj.get_type
 
@@ -39,7 +57,9 @@ function Entity:get_nearest(type, pos)
 end
 
 function Entity:set_pos(pos, backing)
-  if self.pos == nil or not core.pos_equal(pos, self.pos) then
+  assert(not l3.CLIENT, "Clients can't set backed entity state")
+
+  if not self.pos or not core.pos_equal(pos, self.pos) then
     backing = backing or self:get_backing()
     local old = self.pos
 
@@ -53,6 +73,8 @@ function Entity:set_pos(pos, backing)
 end
 
 function Entity:set_life(life, backing)
+  assert(not l3.CLIENT, "Clients can't set backed entity state")
+
   if life ~= self.life then
     backing = backing or self:get_backing()
 

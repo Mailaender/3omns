@@ -1,5 +1,5 @@
-local clone = {}
-package.loaded[...] = clone
+local sync = {}
+package.loaded[...] = sync
 
 local serial   = require("serial")
 local obj      = require("object")
@@ -10,7 +10,7 @@ local Entities = require("entities")
 -- similar, if not identical, code.  This might be a good idea for the Lua
 -- files themselves, not just for the data string.
 
-function clone.serialize(entity)
+function sync.serialize(entity)
   return serial.serialize_type(entity:get_type()) .. entity:serialize()
 end
 
@@ -24,12 +24,18 @@ local function get_entities(level)
   return entities_cache[level]
 end
 
-function clone.clone(level, id, pos, life, serialized)
+function sync.sync(level, backing, serialized)
   local entities = get_entities(level)
 
   local type, start = serial.deserialize_type(serialized)
   assert(type, "Invalid serialized string")
 
-  local entity = obj.create(type)
-  entity:init_clone(entities, id, pos, life, serialized, start)
+  local entity = backing:get_context()
+  if not entity then
+    entity = obj.create(type)
+    backing:set_context(entity)
+  end
+
+  entity:sync_base(entities, backing)
+  entity:sync(serialized, start, backing)
 end

@@ -30,17 +30,29 @@ end
 -- Backings should never be stored except as a temporary local.  If you store
 -- the Lua entity, use Entity:exists() to double check the backing hasn't been
 -- destroyed in C while your back was turned.
-function Entities:new_backing(entity, id)
-  local backing = self.level:new_entity(entity, id)
-  if not id then id = backing:get_id() end
+function Entities:new_backing(entity)
+  assert(not l3.CLIENT, "Clients can't create new entities")
+
+  return self.level:new_entity(entity)
+end
+
+function Entities:add(entity)
+  -- It would be nice to handle *all* index entries we need here, e.g. what
+  -- happens in set_dude() and move(), but this is called before any of the
+  -- entity's fields are filled in, other than what's in the base Entity class.
+  -- So, we have to provide some separate methods to call when everything's all
+  -- filled out.
 
   local type = entity:get_type()
   if not self.type_index[type] then
     self.type_index[type] = {}
   end
-  self.type_index[type][id] = entity
+  self.type_index[type][entity.id] = entity
+end
 
-  return id, backing
+function Entities:remove(entity)
+  self.type_index[entity:get_type()][entity.id] = nil
+  self.pos_index[core.pos_key(entity.pos)] = nil
 end
 
 function Entities:set_dude(dude)
@@ -86,11 +98,6 @@ function Entities:move(entity, old_pos)
   local key = core.pos_key(entity.pos)
   assert(not self.pos_index[key], "Two entities can't occupy the same space")
   self.pos_index[key] = entity
-end
-
-function Entities:remove(entity)
-  self.type_index[entity:get_type()][entity.id] = nil
-  self.pos_index[core.pos_key(entity.pos)] = nil
 end
 
 function Entities:get_nearest(type, pos)

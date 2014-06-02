@@ -7,38 +7,31 @@ package.loaded[...] = Crate
 local serial = require("serial")
 
 
-function Crate:init(entities, pos)
-  local backing = Entity.init(self, entities, nil, pos, 1)
+function Crate:init_base(entities, backing)
+  Entity.init_base(self, entities, backing)
 
   -- "Held" in the sense that when the crate is destroyed, an instance of the
   -- given entity type is called with this crate's pos in the constructor and
   -- nothing after it.
   self.held_type = nil
 
-  self:set_visual(backing)
+  self:set_image(IMAGES.CRATE, backing)
+  self:set_z_order(0, backing)
 end
 
-function Crate:init_clone(entities, id, pos, life, serialized, start)
-  local backing = Entity.init(self, entities, id, pos, life)
+function Crate:init(entities, pos, held_type)
+  Entity.init(self, entities, pos, 1)
 
-  self:sync(serialized, start)
-
-  self:set_visual(backing)
+  self.held_type = held_type
 end
 
 function Crate:serialize()
   return serial.serialize_type(self.held_type)
 end
 
-function Crate:sync(serialized, start)
+function Crate:sync(serialized, start, backing)
   self.held_type, start = serial.deserialize_type(serialized, start)
   return start
-end
-
-function Crate:set_visual(backing)
-  self:set_image(IMAGES.CRATE, backing)
-  self:set_z_order(0, backing)
-  return self
 end
 
 function Crate:hold(type)
