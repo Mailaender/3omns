@@ -325,7 +325,8 @@ static void process_map(
 static void notify_entity(b3_entity *restrict entity, void *callback_data) {
     struct notify_entity_data *d = callback_data;
 
-    if(d->dirty_only && !b3_get_entity_dirty(entity))
+    if(!b3_get_entity_life(entity)
+            || (d->dirty_only && !b3_get_entity_dirty(entity)))
         return;
 
     size_t serial_len = 0;
