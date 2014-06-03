@@ -78,6 +78,7 @@ void l3_sync_entity(
     const char *restrict serial,
     size_t serial_len
 );
+void l3_sync_deleted(b3_entity_id ids[], int count);
 
 
 typedef struct l3_agent l3_agent;

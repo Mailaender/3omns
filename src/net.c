@@ -442,15 +442,26 @@ static void process_deleted_entities(
 ) {
     int pos = 1; // Skip initial 'd'.
 
+    // size/2 should be a safe maximum number of ids, since the minimum size of
+    // an id is one digit, and each one is separated by one '#'.
+    b3_entity_id ids[size / 2];
+    int id_count = 0;
+
 #define SCAN_DELETED(...) scan_buffer(buf, &pos, __VA_ARGS__)
     while(buf[pos] == '#') {
         b3_entity_id id = 0;
         SCAN_DELETED(1, "#%X", &id);
 
-        b3_entity *entity = b3_get_entity(round->level.entities, id);
-        b3_release_entity(entity);
+        ids[id_count++] = id;
     }
 #undef SCAN_DELETED
+
+    l3_sync_deleted(ids, id_count);
+
+    for(int i = 0; i < id_count; i++) {
+        b3_entity *entity = b3_get_entity(round->level.entities, ids[i]);
+        b3_release_entity(entity);
+    }
 }
 
 void notify_updates(const struct round *restrict round) {

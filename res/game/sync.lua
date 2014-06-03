@@ -39,3 +39,14 @@ function sync.sync(level, backing, serialized)
   entity:sync_base(entities, backing)
   entity:sync(serialized, start, backing)
 end
+
+function sync.sync_deleted(level, deleted)
+  local entities = get_entities(level)
+
+  for _, id in ipairs(deleted) do
+    local backing = entities:get_backing(id)
+    if backing then
+      entities:remove(backing:get_context())
+    end
+  end
+end

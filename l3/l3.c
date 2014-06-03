@@ -21,6 +21,7 @@
 
 #define L3_GENERATE_NAME "l3_generate"
 #define L3_SYNC_NAME "l3_sync"
+#define L3_SYNC_DELETED_NAME "l3_sync_deleted"
 
 #define L3_TILE_IMAGES_NAME "L3_TILE_IMAGES"
 #define L3_BORDER_IMAGE_NAME "L3_BORDER_IMAGE"
@@ -963,6 +964,22 @@ void l3_sync_entity(
     lua_pushlstring(lua, serial, serial_len);
 
     lua_call(lua, 3, 0);
+}
+
+void l3_sync_deleted(b3_entity_id ids[], int count) {
+    lua_getglobal(lua, L3_SYNC_DELETED_NAME);
+    if(!lua_isfunction(lua, -1))
+        b3_fatal("Missing global function %s", L3_SYNC_DELETED_NAME);
+
+    push_sync_level(lua);
+    lua_createtable(lua, count, 0);
+    for(int i = 0; i < count; i++) {
+        lua_pushinteger(lua, (lua_Integer)(i + 1));
+        lua_pushunsigned(lua, (lua_Unsigned)ids[i]);
+        lua_settable(lua, -3);
+    }
+
+    lua_call(lua, 2, 0);
 }
 
 l3_agent *l3_new_agent(l3_level *restrict level, int dude_index) {

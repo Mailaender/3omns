@@ -79,4 +79,6 @@ L3_HEART_IMAGES = IMAGES.HEARTS
 
 l3_generate = require("generate").generate
 
-l3_sync = require("sync").sync
+local sync = require("sync")
+l3_sync = sync.sync
+l3_sync_deleted = sync.sync_deleted

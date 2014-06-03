@@ -28,7 +28,6 @@ function Entity:sync_base(entities, backing)
     self:init_base(entities, backing)
   end
 
-  -- TODO: need to delete deleted entities from entities.
   local pos = backing:get_pos()
   if self.pos == nil or not core.pos_equal(pos, self.pos) then
     local old = self.pos
