@@ -418,6 +418,11 @@ static void notify_deleted_entities(const struct round *restrict round) {
     );
     if(!count)
         return;
+    // Note that it's possible for an entity to have been created and destroyed
+    // before we ever sent out a notification about its existence.  We still
+    // get that id from b3_get_released_ids(), so in that case, it'll look to
+    // the client like we're notifying about a nonexistent entity being
+    // deleted.  It shouldn't matter, it's just an odd case.
 
     uint8_t buf[N3_SAFE_BUFFER_SIZE];
     int pos = 0;

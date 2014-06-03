@@ -347,6 +347,8 @@ static void loop(struct round *restrict round) {
         }
 
         if(round->initialized) {
+            // TODO: only cull when something has happened.  Maybe the level
+            // itself needs a dirty flag?
             l3_cull(&round->level);
 
             notify_updates(round);

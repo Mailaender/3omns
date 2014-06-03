@@ -73,6 +73,9 @@ function Bomn:animate(backing)
   self:set_z_order(frame.z_order, backing)
 end
 
+-- TODO: if the server deletes this entity before it explodes, we get no
+-- explosion locally (though the effect is exactly the same, since it does
+-- happen on the server).
 function Bomn:explode(backing)
   self:kill(backing)
 
