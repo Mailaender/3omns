@@ -63,6 +63,7 @@ static inline void l3_free_level(l3_level *restrict l) {
 l3_level l3_generate(void);
 
 void l3_update(l3_level *restrict level, b3_ticks elapsed);
+void l3_cull(l3_level *restrict level);
 void l3_input(l3_level *restrict level, b3_input input);
 
 

@@ -346,7 +346,11 @@ static void loop(struct round *restrict round) {
             }
         }
 
-        notify_updates(round);
+        if(round->initialized) {
+            l3_cull(&round->level);
+
+            notify_updates(round);
+        }
 
         if(ticks >= next_draw_ticks) {
             next_draw_ticks = ticks + draw_ticks;

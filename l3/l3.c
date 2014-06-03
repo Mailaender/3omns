@@ -806,20 +806,22 @@ static void update_entity(b3_entity *restrict entity, void *callback_data) {
     lua_call(l, 3, 0);
 }
 
-static void cull_entity(b3_entity *restrict entity, void *callback_data) {
-    if(!b3_get_entity_life(entity))
-        b3_release_entity(entity);
-}
-
 void l3_update(l3_level *restrict level, b3_ticks elapsed) {
     struct update_entity_data update_data = {
         (lua_Number)b3_ticks_to_secs(elapsed),
     };
 
     b3_for_each_entity(level->sprites, update_entity, &update_data);
-    b3_for_each_entity(level->sprites, cull_entity, NULL);
-
     b3_for_each_entity(level->entities, update_entity, &update_data);
+}
+
+static void cull_entity(b3_entity *restrict entity, void *callback_data) {
+    if(!b3_get_entity_life(entity))
+        b3_release_entity(entity);
+}
+
+void l3_cull(l3_level *restrict level) {
+    b3_for_each_entity(level->sprites, cull_entity, NULL);
     b3_for_each_entity(level->entities, cull_entity, NULL);
 }
 
