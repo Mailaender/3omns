@@ -249,6 +249,11 @@ b3_entity_pool *b3_ref_entity_pool(b3_entity_pool *restrict pool);
 void b3_free_entity_pool(b3_entity_pool *restrict pool);
 
 int b3_get_entity_pool_size(b3_entity_pool *restrict pool);
+_Bool b3_get_entity_pool_dirty(b3_entity_pool *restrict pool);
+b3_entity_pool *b3_set_entity_pool_dirty(
+    b3_entity_pool *restrict pool,
+    _Bool dirty
+);
 
 const b3_entity_id *b3_get_released_ids(
     b3_entity_pool *restrict pool,

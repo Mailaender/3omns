@@ -214,7 +214,10 @@ l3_level l3_generate(void) {
     if(!level->dude_ids[0])
         b3_fatal("%s didn't fill in at least one dude id", L3_GENERATE_NAME);
 
+    l3_cull(level);
     b3_for_each_entity(level->entities, clean_entity, NULL);
+    b3_set_entity_pool_dirty(level->entities, 0);
+
     l3_level copy;
     l3_copy_level(&copy, level);
 

@@ -49,6 +49,8 @@ struct b3_entity_pool {
     b3_entity_id *released_ids;
     int released_id_count;
 
+    _Bool dirty; // Whether any entities are dirty or have been deleted.
+
     b3_entity entities[];
 };
 
@@ -163,6 +165,18 @@ int b3_get_entity_pool_size(b3_entity_pool *restrict pool) {
     return pool->size;
 }
 
+_Bool b3_get_entity_pool_dirty(b3_entity_pool *restrict pool) {
+    return pool->dirty;
+}
+
+b3_entity_pool *b3_set_entity_pool_dirty(
+    b3_entity_pool *restrict pool,
+    _Bool dirty
+) {
+    pool->dirty = dirty;
+    return pool;
+}
+
 const b3_entity_id *b3_get_released_ids(
     b3_entity_pool *restrict pool,
     int *restrict count
@@ -192,6 +206,7 @@ b3_entity *b3_claim_entity(
     entity->pool = pool;
     entity->id = id;
     entity->dirty = 1;
+    pool->dirty = 1;
     entity->free_data = free_data_callback;
 
     // This odd-looking index insert is to optimize for the local case where
@@ -249,6 +264,7 @@ void b3_release_entity(b3_entity *restrict entity) {
     );
     if(pool->released_id_count < pool->size)
         pool->released_ids[pool->released_id_count++] = id;
+    pool->dirty = 1;
 }
 
 b3_entity *b3_get_entity(b3_entity_pool *restrict pool, b3_entity_id id) {
@@ -269,8 +285,7 @@ b3_entity *b3_set_entity_pos(
     const b3_pos *restrict pos
 ) {
     entity->pos = *pos;
-    entity->dirty = 1;
-    return entity;
+    return b3_set_entity_dirty(entity, 1);
 }
 
 int b3_get_entity_life(b3_entity *restrict entity) {
@@ -279,8 +294,7 @@ int b3_get_entity_life(b3_entity *restrict entity) {
 
 b3_entity *b3_set_entity_life(b3_entity *restrict entity, int life) {
     entity->life = life;
-    entity->dirty = 1;
-    return entity;
+    return b3_set_entity_dirty(entity, 1);
 }
 
 _Bool b3_get_entity_dirty(b3_entity *restrict entity) {
@@ -289,6 +303,8 @@ _Bool b3_get_entity_dirty(b3_entity *restrict entity) {
 
 b3_entity *b3_set_entity_dirty(b3_entity *restrict entity, _Bool dirty) {
     entity->dirty = dirty;
+    if(dirty)
+        entity->pool->dirty = dirty;
     return entity;
 }
 

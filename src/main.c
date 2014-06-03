@@ -353,12 +353,13 @@ static void loop(struct round *restrict round) {
             }
         }
 
-        if(round->initialized) {
-            // TODO: only cull when something has happened.  Maybe the level
-            // itself needs a dirty flag?
+        if(round->initialized
+                && b3_get_entity_pool_dirty(round->level.entities)) {
             l3_cull(&round->level);
 
             notify_updates(round);
+
+            b3_set_entity_pool_dirty(round->level.entities, 0);
         }
 
         if(ticks >= next_draw_ticks) {
