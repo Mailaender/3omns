@@ -13,34 +13,41 @@ local Blast  = require("sprites.blast")
 Bomn.TIME = 3
 Bomn.RADIUS = 8
 
--- TODO: move this into an init function.
-Bomn.ANIMATION = {
-  {time = 5.0,  image = IMAGES.BOMNS[5],             z_order = 2},
-  {time = 4.75, image = nil,                         z_order = 2},
-  {time = 4.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-  {time = 4.25, image = nil,                         z_order = 2},
-  {time = 4.0,  image = IMAGES.BOMNS[4],             z_order = 2},
-  {time = 3.75, image = nil,                         z_order = 2},
-  {time = 3.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-  {time = 3.25, image = nil,                         z_order = 2},
-  {time = 3.0,  image = IMAGES.BOMNS[3],             z_order = 2},
-  {time = 2.75, image = nil,                         z_order = 2},
-  {time = 2.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-  {time = 2.25, image = nil,                         z_order = 2},
-  {time = 2.0,  image = IMAGES.BOMNS[2],             z_order = 2},
-  {time = 1.75, image = nil,                         z_order = 2},
-  {time = 1.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-  {time = 1.25, image = nil,                         z_order = 2},
-  {time = 1.0,  image = IMAGES.BOMNS[1],             z_order = 2},
-  {time = 0.75, image = nil,                         z_order = 2},
-  {time = 0.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-  {time = 0.4,  image = nil,                         z_order = 2},
-  {time = 0.3,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-  {time = 0.2,  image = nil,                         z_order = 2},
-  {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-}
+Bomn.ANIMATION = nil
+
+local function init_animation()
+  if Bomn.ANIMATION then return end
+
+  Bomn.ANIMATION = {
+    {time = 5.0,  image = IMAGES.BOMNS[5],             z_order = 2},
+    {time = 4.75, image = nil,                         z_order = 2},
+    {time = 4.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+    {time = 4.25, image = nil,                         z_order = 2},
+    {time = 4.0,  image = IMAGES.BOMNS[4],             z_order = 2},
+    {time = 3.75, image = nil,                         z_order = 2},
+    {time = 3.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+    {time = 3.25, image = nil,                         z_order = 2},
+    {time = 3.0,  image = IMAGES.BOMNS[3],             z_order = 2},
+    {time = 2.75, image = nil,                         z_order = 2},
+    {time = 2.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+    {time = 2.25, image = nil,                         z_order = 2},
+    {time = 2.0,  image = IMAGES.BOMNS[2],             z_order = 2},
+    {time = 1.75, image = nil,                         z_order = 2},
+    {time = 1.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+    {time = 1.25, image = nil,                         z_order = 2},
+    {time = 1.0,  image = IMAGES.BOMNS[1],             z_order = 2},
+    {time = 0.75, image = nil,                         z_order = 2},
+    {time = 0.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+    {time = 0.4,  image = nil,                         z_order = 2},
+    {time = 0.3,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+    {time = 0.2,  image = nil,                         z_order = 2},
+    {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+  }
+end
 
 function Bomn:init_base(entities, backing)
+  init_animation()
+
   Entity.init_base(self, entities, backing)
 
   self.solid   = false
