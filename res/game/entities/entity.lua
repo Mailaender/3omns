@@ -56,9 +56,7 @@ function Entity:get_nearest(type, pos)
 end
 
 function Entity:set_pos(pos, backing)
-  assert(not l3.CLIENT, "Clients can't set backed entity state")
-
-  if not self.pos or not core.pos_equal(pos, self.pos) then
+  if not l3.CLIENT and (not self.pos or not core.pos_equal(pos, self.pos)) then
     backing = backing or self:get_backing()
     local old = self.pos
 
@@ -72,9 +70,7 @@ function Entity:set_pos(pos, backing)
 end
 
 function Entity:set_life(life, backing)
-  assert(not l3.CLIENT, "Clients can't set backed entity state")
-
-  if life ~= self.life then
+  if not l3.CLIENT and life ~= self.life then
     backing = backing or self:get_backing()
 
     self.life = life
