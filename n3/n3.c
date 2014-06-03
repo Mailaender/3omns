@@ -107,6 +107,10 @@ void n3_free_client(n3_client *restrict client) {
     }
 }
 
+int n3_get_client_fd(n3_client *restrict client) {
+    return client->socket_fd;
+}
+
 void n3_client_send(
     n3_client *restrict client,
     const void *restrict buf,
@@ -158,6 +162,10 @@ void n3_free_server(n3_server *restrict server) {
         destroy_server(server);
         b3_free(server, 0);
     }
+}
+
+int n3_get_server_fd(n3_server *restrict server) {
+    return server->socket_fd;
 }
 
 void n3_for_each_connection(

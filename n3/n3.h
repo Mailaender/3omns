@@ -71,7 +71,8 @@ typedef struct n3_client n3_client;
 n3_client *n3_new_client(const n3_host *restrict remote);
 void n3_free_client(n3_client *restrict client);
 
-// TODO: getters: socket_fd, local n3_host.
+int n3_get_client_fd(n3_client *restrict client);
+// TODO: getter for local n3_host.
 
 void n3_client_send(
     n3_client *restrict client,
@@ -99,7 +100,7 @@ n3_server *n3_new_server(
 );
 void n3_free_server(n3_server *restrict server);
 
-// TODO: getters: socket_fd.
+int n3_get_server_fd(n3_server *restrict server);
 
 void n3_for_each_connection(
     n3_server *restrict server,
