@@ -232,7 +232,7 @@ static struct index_entry *search_index(
 }
 
 void b3_release_entity(b3_entity *restrict entity) {
-    b3_entity_id id = entity->id;
+    b3_entity_id id = (entity ? entity->id : 0);
     b3_entity_pool *pool = deactivate_entity(entity);
     if(!pool)
         return;
