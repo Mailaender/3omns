@@ -9,10 +9,12 @@
 #include <stdio.h>
 
 
+#define DEFAULT_GAME "base"
 #define DEFAULT_PORT 30325
 
 
 struct args {
+    const char *game;
     _Bool debug;
     _Bool debug_network;
     _Bool serve;
@@ -20,7 +22,7 @@ struct args {
     const char *hostname;
     n3_port port;
 };
-#define ARGS_INIT_DEFAULT {0, 0, 0, 0, NULL, DEFAULT_PORT}
+#define ARGS_INIT_DEFAULT {DEFAULT_GAME, 0, 0, 0, 0, NULL, DEFAULT_PORT}
 
 extern struct args args;
 

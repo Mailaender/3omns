@@ -69,6 +69,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     struct args *restrict args = state->input;
 
     switch(key) {
+    case 'g':
+        args->game = arg;
+        break;
     case 'd':
         args->debug = 1;
         break;
@@ -101,16 +104,20 @@ static void parse_args(int argc, char *argv[]) {
     static const char doc[]
         = {"Old-school arcade-style tile-based bomb-dropping deathmatch jam"};
     static struct argp_option options[] = {
-        {"debug", 'd', NULL, 0, "Run in debug mode"},
-        {"debug-network", 'n', NULL, 0, "Print network communication"},
         // TODO: let this be controlled from in-game.
-        {NULL, 0, NULL, 0, "Network play options:", 1},
-        {"connect", 'c', "server", 0, "Connect to network host", 1},
+        {"game", 'g', "mod", 0, "Run Lua game code from mod (default: "
+                DEFAULT_GAME")"},
+        {NULL, 0, NULL, 0, "Debug options:", 1},
+        {"debug", 'd', NULL, 0, "Run in debug mode", 1},
+        {"debug-network", 'n', NULL, 0, "Print network communication", 1},
+        // TODO: let this be controlled from in-game.
+        {NULL, 0, NULL, 0, "Network play options:", 2},
+        {"connect", 'c', "server", 0, "Connect to network host", 2},
         {"serve", 's', "from", OPTION_ARG_OPTIONAL,
                 "Host network game, listening on the given address "
-                "(default: the wildcard address)", 1},
+                "(default: the wildcard address)", 2},
         {"port", 'p', "port", 0, "Port for listening or connecting (default: "
-                B3_STRINGIFY(DEFAULT_PORT)")", 1},
+                B3_STRINGIFY(DEFAULT_PORT)")", 2},
         {0}
     };
     static struct argp argp = {options, parse_opt, NULL, doc};
@@ -419,7 +426,7 @@ int main(int argc, char *argv[]) {
 
     b3_init("3omns", &window_size, handle_input);
     init_net();
-    l3_init(RESOURCES, args.client, args.debug);
+    l3_init(RESOURCES, args.game, args.client, args.debug);
     init_res();
 
     struct round round = ROUND_INIT;

@@ -1,7 +1,9 @@
 package.path = string.format(
-  "%s/game/?.lua;%s/game/?/?.lua;%s",
+  "%s/%s/?.lua;%s/%s/?/?.lua;%s",
   l3.RESOURCE_PATH,
+  l3.GAME,
   l3.RESOURCE_PATH,
+  l3.GAME,
   package.path
 )
 

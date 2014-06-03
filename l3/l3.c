@@ -27,6 +27,7 @@ b3_image *l3_border_image = NULL;
 b3_image *l3_heart_images[L3_DUDE_COUNT] = {NULL};
 
 char *resource_path = NULL;
+char *game = NULL;
 _Bool client = 0;
 _Bool debug = 0;
 lua_State *lua = NULL;
@@ -47,6 +48,8 @@ static int open_all(lua_State *restrict l) {
 
     lua_pushstring(l, resource_path);
     lua_setfield(l, -2, "RESOURCE_PATH");
+    lua_pushstring(l, game);
+    lua_setfield(l, -2, "GAME");
     lua_pushboolean(l, client);
     lua_setfield(l, -2, "CLIENT");
     lua_pushboolean(l, debug);
@@ -93,7 +96,7 @@ static lua_State *new_lua(void) {
 }
 
 static void run_game_file(lua_State *restrict l, const char *restrict base) {
-    char *filename = b3_copy_format("%s/game/%s.lua", resource_path, base);
+    char *filename = b3_copy_format("%s/%s/%s.lua", resource_path, game, base);
     if(luaL_dofile(l, filename))
         b3_fatal("Error running game file %s: %s", base, lua_tostring(l, -1));
     b3_free(filename, 0);
@@ -146,10 +149,12 @@ static void set_heart_images(lua_State *restrict l) {
 
 void l3_init(
     const char *restrict resource_path_,
+    const char *restrict game_,
     _Bool client_,
     _Bool debug_
 ) {
     resource_path = b3_copy_string(resource_path_);
+    game = b3_copy_string(game_);
     client = client_;
     debug = debug_;
 
@@ -180,6 +185,8 @@ void l3_quit(void) {
     }
     b3_free(resource_path, 0);
     resource_path = NULL;
+    b3_free(game, 0);
+    game = NULL;
 }
 
 void l3_enter_debugger(void) {

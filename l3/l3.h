@@ -6,7 +6,12 @@
 #include <stddef.h>
 
 
-void l3_init(const char *restrict resource_path, _Bool client, _Bool debug);
+void l3_init(
+    const char *restrict resource_path,
+    const char *restrict game,
+    _Bool client,
+    _Bool debug
+);
 void l3_quit(void);
 
 void l3_enter_debugger(void);
