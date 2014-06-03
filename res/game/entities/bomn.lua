@@ -13,6 +13,7 @@ local Blast  = require("sprites.blast")
 Bomn.TIME = 3
 Bomn.RADIUS = 8
 
+-- TODO: move this into an init function.
 Bomn.ANIMATION = {
   {time = 5.0,  image = IMAGES.BOMNS[5],             z_order = 2},
   {time = 4.75, image = nil,                         z_order = 2},
