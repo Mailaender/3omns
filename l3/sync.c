@@ -1,3 +1,9 @@
+/*
+    3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
+    l3 - Lua interface library for 3omns
+    Copyright 2014 Charles Lindsay <chaz@chazomatic.us>
+*/
+
 #include "l3.h"
 #include "internal.h"
 #include "b3/b3.h"

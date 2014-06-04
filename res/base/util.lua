@@ -1,3 +1,9 @@
+--[[
+  3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
+  base - base game logic for 3omns
+  Copyright 2014 Charles Lindsay <chaz@chazomatic.us>
+]]
+
 local util = {}
 package.loaded[...] = util
 

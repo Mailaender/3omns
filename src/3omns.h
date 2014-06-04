@@ -1,3 +1,8 @@
+/*
+    3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
+    Copyright 2014 Charles Lindsay <chaz@chazomatic.us>
+*/
+
 #ifndef __3omns_h__
 #define __3omns_h__
 

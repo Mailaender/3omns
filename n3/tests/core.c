@@ -1,3 +1,9 @@
+/*
+    3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
+    n3 - net communication library for 3omns
+    Copyright 2014 Charles Lindsay <chaz@chazomatic.us>
+*/
+
 #include "b3/b3.h"
 #include "n3/n3.h"
 #include "tests/test.h"

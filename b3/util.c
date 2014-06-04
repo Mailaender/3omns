@@ -1,3 +1,9 @@
+/*
+    3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
+    b3 - base library for 3omns
+    Copyright 2014 Charles Lindsay <chaz@chazomatic.us>
+*/
+
 #include "b3.h"
 
 #include <errno.h>

@@ -1,3 +1,8 @@
+/*
+    3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
+    Copyright 2014 Charles Lindsay <chaz@chazomatic.us>
+*/
+
 #include "3omns.h"
 #include "b3/b3.h"
 #include "l3/l3.h"
