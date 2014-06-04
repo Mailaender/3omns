@@ -11,9 +11,7 @@
 
 #define _ // TODO: gettext i18n.
 
-#define RESOURCES "res" // TODO: installed path?
-
-#define FONT_FILENAME RESOURCES "/ttf/Vera.ttf"
+#define FONT_FILENAME "/ttf/Vera.ttf"
 
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 480
@@ -57,6 +55,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     struct args *restrict args = state->input;
 
     switch(key) {
+    case 'r':
+        args->resources = arg;
+        break;
     case 'g':
         args->game = arg;
         break;
@@ -92,13 +93,15 @@ static void parse_args(int argc, char *argv[]) {
     static const char doc[]
         = {"Old-school arcade-style tile-based bomb-dropping deathmatch jam"};
     static struct argp_option options[] = {
+        {"resources", 'r', "dir", 0, "Location of game resources (default: "
+                DEFAULT_RESOURCES")"},
         // TODO: let this be controlled from in-game.
         {"game", 'g', "mod", 0, "Run Lua game code from mod (default: "
                 DEFAULT_GAME")"},
         {NULL, 0, NULL, 0, "Debug options:", 1},
         {"debug", 'd', NULL, 0, "Run in debug mode", 1},
         {"debug-network", 'n', NULL, 0, "Print network communication", 1},
-        // TODO: let this be controlled from in-game.
+        // TODO: let these be controlled from in-game.
         {NULL, 0, NULL, 0, "Network play options:", 2},
         {"connect", 'c', "server", 0, "Connect to network host", 2},
         {"serve", 's', "from", OPTION_ARG_OPTIONAL,
@@ -115,10 +118,17 @@ static void parse_args(int argc, char *argv[]) {
         b3_fatal("Error parsing arguments: %s", strerror(e));
 }
 
-static void init_res(void) {
-    debug_stats_font = b3_load_font(12, FONT_FILENAME, 0);
+static char *resource(const char *restrict filename) {
+    return b3_copy_format("%s%s", args.resources, filename);
+}
 
-    b3_font *paused_font = b3_load_font(64, FONT_FILENAME, 0);
+static void init_res(void) {
+    char *font_filename = resource(FONT_FILENAME);
+
+    debug_stats_font = b3_load_font(12, font_filename, 0);
+    b3_font *paused_font = b3_load_font(64, font_filename, 0);
+
+    b3_free(font_filename, 0);
 
     paused_text = b3_new_text(paused_font, "%s", _("P A U S E D"));
     b3_set_text_color(paused_text, 0xbbddcc66);
@@ -424,7 +434,7 @@ int main(int argc, char *argv[]) {
 
     b3_init("3omns", &window_size, handle_input);
     init_net();
-    l3_init(RESOURCES, args.game, args.client, args.debug);
+    l3_init(args.resources, args.game, args.client, args.debug);
     init_res();
 
     struct round round = ROUND_INIT;
