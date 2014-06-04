@@ -13,12 +13,11 @@
 #define LOCAL_RESOURCES "./res"
 #define INSTALLED_RESOURCES DATADIR
 
+#define LOCAL_CHECK_FILE LOCAL_RESOURCES"/"DEFAULT_GAME"/init.lua"
+
 
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
-
-static const char *const local_check_file
-        = LOCAL_RESOURCES"/"DEFAULT_GAME"/init.lua";
 
 
 static int parse_port(n3_port *out, const char *string) {
@@ -73,7 +72,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 }
 
 static const char *find_default_resources(void) {
-    if(!access(local_check_file, R_OK))
+    if(!access(LOCAL_CHECK_FILE, R_OK))
         return LOCAL_RESOURCES;
     return INSTALLED_RESOURCES;
 }
@@ -82,9 +81,9 @@ void parse_args(struct args *restrict args, int argc, char *argv[]) {
     args->resources = find_default_resources();
 
     // TODO: I guess argp handles gettext-ing these itself?
-    static const char doc[]
-        = {"Old-school arcade-style tile-based bomb-dropping deathmatch jam"};
-    static struct argp_option options[] = {
+    const char *const doc
+        = "Old-school arcade-style tile-based bomb-dropping deathmatch jam";
+    struct argp_option options[] = {
         {"resources", 'r', "RES", 0, "Location of game resources (default: "
                 "'"LOCAL_RESOURCES"' if valid, or "
                 "'"INSTALLED_RESOURCES"')"},
@@ -103,7 +102,7 @@ void parse_args(struct args *restrict args, int argc, char *argv[]) {
                 B3_STRINGIFY(DEFAULT_PORT)")", 2},
         {0}
     };
-    static struct argp argp = {options, parse_opt, NULL, doc};
+    struct argp argp = {options, parse_opt, NULL, doc};
 
     error_t e = argp_parse(&argp, argc, argv, 0, NULL, args);
     if(e)

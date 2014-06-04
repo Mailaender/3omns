@@ -34,7 +34,7 @@ lua_State *lua = NULL;
 
 
 static int open_all(lua_State *restrict l) {
-    static const luaL_Reg submodules[] = {
+    const luaL_Reg submodules[] = {
         {IMAGE_NAME, open_image},
         {LEVEL_NAME, open_level},
         {NULL, NULL}

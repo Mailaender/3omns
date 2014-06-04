@@ -21,6 +21,7 @@
 const b3_size window_size = {WINDOW_WIDTH, WINDOW_HEIGHT};
 const b3_size game_size = {GAME_WIDTH, GAME_HEIGHT};
 const b3_rect game_rect = B3_RECT_INIT(0, 0, GAME_WIDTH, GAME_HEIGHT);
+const b3_size heart_size = {HEART_SIZE, HEART_SIZE};
 
 struct args args = ARGS_INIT_DEFAULT;
 
@@ -120,18 +121,18 @@ static void draw_hearts(const struct round *restrict round) {
         window_size.width
                 - game_size.width
                 - round->tile_size.width // For border.
-                - columns * HEART_SIZE
+                - columns * heart_size.width
     ) / 2;
     b3_rect rect = B3_RECT_INIT(
         game_size.width + round->tile_size.width + padding,
         0,
-        HEART_SIZE,
-        HEART_SIZE
+        heart_size.width,
+        heart_size.height
     );
 
     for(int i = 0; i < L3_DUDE_COUNT; i++) {
         if(i > 0)
-            rect.x += HEART_SIZE * 2;
+            rect.x += heart_size.width * 2;
 
         if(!l3_heart_images[i])
             continue;
@@ -143,12 +144,12 @@ static void draw_hearts(const struct round *restrict round) {
         if(!dude)
             continue;
 
-        rect.y = window_size.height - padding - HEART_SIZE;
+        rect.y = window_size.height - padding - heart_size.height;
 
         int life = b3_get_entity_life(dude);
         for(int l = 0; l < life; l++) {
             b3_draw_image(l3_heart_images[i], &rect);
-            rect.y -= HEART_SIZE;
+            rect.y -= heart_size.height;
         }
     }
 }

@@ -326,11 +326,11 @@ static int entity_set_dirty(lua_State *restrict l) {
 }
 
 int open_level(lua_State *restrict l) {
-    static const luaL_Reg functions[] = {
+    const luaL_Reg functions[] = {
         {"new", level_new},
         {NULL, NULL}
     };
-    static const luaL_Reg level_methods[] = {
+    const luaL_Reg level_methods[] = {
         {"get_size", level_get_size},
         {"get_tile", level_get_tile},
         {"set_tile", level_set_tile},
@@ -340,7 +340,7 @@ int open_level(lua_State *restrict l) {
         {"set_dude", level_set_dude},
         {NULL, NULL}
     };
-    static const luaL_Reg sprite_methods[] = {
+    const luaL_Reg sprite_methods[] = {
         {"destroy", sprite_destroy},
         {"get_pos", sprentity_get_pos},
         {"set_pos", sprentity_set_pos},
@@ -348,7 +348,7 @@ int open_level(lua_State *restrict l) {
         {"set_z_order", sprentity_set_z_order},
         {NULL, NULL}
     };
-    static const luaL_Reg entity_methods[] = {
+    const luaL_Reg entity_methods[] = {
         {"get_id", entity_get_id},
         {"get_context", entity_get_context},
         {"set_context", entity_set_context},

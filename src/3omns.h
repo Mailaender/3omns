@@ -77,6 +77,7 @@ void get_net_debug_stats(struct debug_stats *restrict debug_stats);
 extern const b3_size window_size;
 extern const b3_size game_size;
 extern const b3_rect game_rect;
+extern const b3_size heart_size;
 
 
 #endif

@@ -42,11 +42,11 @@ static int image_sub(lua_State *restrict l) {
 }
 
 int open_image(lua_State *restrict l) {
-    static const luaL_Reg functions[] = {
+    const luaL_Reg functions[] = {
         {"load", image_load},
         {NULL, NULL}
     };
-    static const luaL_Reg methods[] = {
+    const luaL_Reg methods[] = {
         {"sub", image_sub},
         {NULL, NULL}
     };
