@@ -5,11 +5,10 @@
 #include <stdlib.h>
 
 
-#define test_assert(x, n) \
-        do { \
-            if(!(x)) \
-                test_assert_failed(__FILE__, __LINE__, __func__, #x, n); \
-        } while(0) \
+#define test_assert(x, n) do { \
+    if(!(x)) \
+        test_assert_failed(__FILE__, __LINE__, __func__, #x, n); \
+} while(0)
 
 static inline void test_assert_failed(
     const char *restrict file,
