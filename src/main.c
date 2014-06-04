@@ -11,8 +11,6 @@
 
 #define _ // TODO: gettext i18n.
 
-#define FONT_FILENAME "/ttf/Vera.ttf"
-
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 480
 
@@ -122,7 +120,7 @@ static char *resource(const char *restrict filename) {
 }
 
 static void init_res(void) {
-    char *font_filename = resource(FONT_FILENAME);
+    char *font_filename = resource("/ttf/Vera.ttf");
 
     debug_stats_font = b3_load_font(12, font_filename, 0);
     b3_font *paused_font = b3_load_font(64, font_filename, 0);
