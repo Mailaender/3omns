@@ -93,21 +93,20 @@ static void parse_args(int argc, char *argv[]) {
     static const char doc[]
         = {"Old-school arcade-style tile-based bomb-dropping deathmatch jam"};
     static struct argp_option options[] = {
-        {"resources", 'r', "dir", 0, "Location of game resources (default: "
+        {"resources", 'r', "RES", 0, "Location of game resources (default: "
                 DEFAULT_RESOURCES")"},
         // TODO: let this be controlled from in-game.
-        {"game", 'g', "mod", 0, "Run Lua game code from mod (default: "
+        {"game", 'g', "MOD", 0, "Run Lua game code from MOD (default: "
                 DEFAULT_GAME")"},
         {NULL, 0, NULL, 0, "Debug options:", 1},
         {"debug", 'd', NULL, 0, "Run in debug mode", 1},
         {"debug-network", 'n', NULL, 0, "Print network communication", 1},
         // TODO: let these be controlled from in-game.
         {NULL, 0, NULL, 0, "Network play options:", 2},
-        {"connect", 'c', "server", 0, "Connect to network host", 2},
-        {"serve", 's', "from", OPTION_ARG_OPTIONAL,
-                "Host network game, listening on the given address "
-                "(default: the wildcard address)", 2},
-        {"port", 'p', "port", 0, "Port for listening or connecting (default: "
+        {"connect", 'c', "SERVER", 0, "Connect to network host", 2},
+        {"serve", 's', "LISTEN", OPTION_ARG_OPTIONAL, "Host network game on "
+                "the given address (default: *)", 2},
+        {"port", 'p', "PORT", 0, "Port for serving or connecting (default: "
                 B3_STRINGIFY(DEFAULT_PORT)")", 2},
         {0}
     };
