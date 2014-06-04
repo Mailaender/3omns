@@ -9,10 +9,8 @@
 #include <stdio.h>
 
 
-#define DEFAULT_RESOURCES "res" // TODO: use the installed path here.
 #define DEFAULT_GAME "base"
 #define DEFAULT_PORT 30325
-
 
 struct args {
     const char *resources;
@@ -24,8 +22,9 @@ struct args {
     const char *hostname;
     n3_port port;
 };
-#define ARGS_INIT_DEFAULT \
-        {DEFAULT_RESOURCES, DEFAULT_GAME, 0, 0, 0, 0, NULL, DEFAULT_PORT}
+#define ARGS_INIT_DEFAULT {NULL, DEFAULT_GAME, 0, 0, 0, 0, NULL, DEFAULT_PORT}
+
+void parse_args(struct args *restrict args, int argc, char *argv[]);
 
 extern struct args args;
 
