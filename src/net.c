@@ -24,6 +24,9 @@ struct notify_entity_data {
 static n3_server *server = NULL;
 static n3_client *client = NULL;
 
+static int sent_packets = 0;
+static int received_packets = 0;
+
 
 static const char *host_to_string(const n3_host *restrict host) {
     static char string[N3_ADDRESS_SIZE + 10]; // 10 for "UDP |12345".
@@ -115,6 +118,7 @@ static void send_notification(
     if(args.client) {
         debug_network_print(buf, size, "Send: ");
         n3_client_send(client, buf, size);
+        sent_packets++;
     }
     else if(args.serve) {
         if(host) {
@@ -130,6 +134,7 @@ static void send_notification(
             debug_network_print(buf, size, "Broadcast: ");
             n3_broadcast(server, buf, size);
         }
+        sent_packets++;
     }
 }
 
@@ -142,14 +147,17 @@ static size_t receive_notification(
     size_t received = 0;
     if(args.client) {
         received = n3_client_receive(client, buf, size);
-        if(received)
+        if(received) {
+            received_packets++;
             debug_network_print(buf, received, "Received: ");
+        }
     }
     else if(args.serve) {
         n3_host received_host;
         n3_host *restrict r_host = (host ? host : &received_host);
         received = n3_server_receive(server, buf, size, r_host, round);
         if(received) {
+            received_packets++;
             debug_network_print(
                 buf,
                 received,
@@ -516,6 +524,11 @@ void process_notifications(struct round *restrict round) {
         default: b3_fatal("Received unknown notification");
         }
     }
+}
+
+void get_net_debug_stats(struct debug_stats *restrict debug_stats) {
+    debug_stats->sent_packets = sent_packets;
+    debug_stats->received_packets = received_packets;
 }
 
 static _Bool filter_connection(

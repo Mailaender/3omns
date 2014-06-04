@@ -23,18 +23,6 @@
 
 #define HEART_SIZE 16
 
-struct debug_stats {
-    b3_ticks reset_time;
-    int loop_count;
-    int update_count;
-    int think_count;
-    int render_count;
-    int skip_count;
-    // TODO: net statistics.
-    b3_text *text[5];
-    b3_rect text_rect[5];
-};
-
 
 const char *argp_program_version = PACKAGE_STRING;
 const char *argp_program_bug_address = PACKAGE_BUGREPORT;
@@ -244,7 +232,7 @@ static void draw_hearts(const struct round *restrict round) {
 }
 
 static void free_debug_stats(struct debug_stats *restrict stats) {
-    for(int i = 0; i < 5; i++)
+    for(int i = 0; i < B3_STATIC_ARRAY_COUNT(stats->text); i++)
         b3_free_text(stats->text[i]);
 }
 
@@ -252,7 +240,7 @@ static void draw_debug_stats(struct debug_stats *restrict stats) {
     if(!args.debug)
         return;
 
-    for(int i = 0; i < 5; i++) {
+    for(int i = 0; i < B3_STATIC_ARRAY_COUNT(stats->text); i++) {
         if(stats->text[i])
             b3_draw_text(stats->text[i], &stats->text_rect[i]);
     }
@@ -269,6 +257,8 @@ static void update_debug_stats(
 
     stats->reset_time = b3_tick_frequency;
 
+    get_net_debug_stats(stats);
+
     free_debug_stats(stats);
 
     stats->text[0]
@@ -281,12 +271,19 @@ static void update_debug_stats(
             = b3_new_text(debug_stats_font, "Draws: %d", stats->render_count);
     stats->text[4]
             = b3_new_text(debug_stats_font, "SKIPS: %d", stats->skip_count);
+    stats->text[5]
+            = b3_new_text(debug_stats_font, "Sent: %d", stats->sent_packets);
+    stats->text[6] = b3_new_text(
+        debug_stats_font,
+        "Rec'd: %d",
+        stats->received_packets
+    );
 
-    for(int i = 0; i < 5; i++)
+    for(int i = 0; i < B3_STATIC_ARRAY_COUNT(stats->text); i++)
         b3_set_text_color(stats->text[i], 0xbbffffff);
 
     int y = 0;
-    for(int i = 0; i < 5; i++) {
+    for(int i = 0; i < B3_STATIC_ARRAY_COUNT(stats->text); i++) {
         b3_size text_size = b3_get_text_size(stats->text[i]);
         stats->text_rect[i] = B3_RECT(
             game_size.width + round->tile_size.width,

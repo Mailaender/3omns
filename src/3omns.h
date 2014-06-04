@@ -33,6 +33,19 @@ extern struct args args;
 #define DEBUG_PRINT(...) \
         ((void)(args.debug && fprintf(DEBUG_FILE, __VA_ARGS__)))
 
+struct debug_stats {
+    b3_ticks reset_time;
+    int loop_count;
+    int update_count;
+    int think_count;
+    int render_count;
+    int skip_count;
+    int sent_packets;
+    int received_packets;
+    b3_text *text[7];
+    b3_rect text_rect[7];
+};
+
 
 struct round {
     _Bool initialized;
@@ -55,6 +68,8 @@ void notify_paused_changed(const struct round *restrict round);
 void notify_input(const struct round *restrict round, b3_input input);
 void notify_updates(const struct round *restrict round);
 void process_notifications(struct round *restrict round);
+
+void get_net_debug_stats(struct debug_stats *restrict debug_stats);
 
 
 extern const b3_size window_size;
