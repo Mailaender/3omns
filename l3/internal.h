@@ -11,10 +11,10 @@
 #define IMAGE_NAME "image"
 #define LEVEL_NAME "level"
 
-#define IMAGE_METATABLE L3_NAME "." IMAGE_NAME
-#define LEVEL_METATABLE L3_NAME "." LEVEL_NAME
-#define SPRITE_METATABLE L3_NAME ".sprite"
-#define ENTITY_METATABLE L3_NAME ".entity"
+#define IMAGE_METATABLE L3_NAME"."IMAGE_NAME
+#define LEVEL_METATABLE L3_NAME"."LEVEL_NAME
+#define SPRITE_METATABLE L3_NAME".sprite"
+#define ENTITY_METATABLE L3_NAME".entity"
 
 #define L3_GENERATE_NAME "l3_generate"
 #define L3_SYNC_NAME "l3_sync"
