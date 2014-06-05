@@ -17,4 +17,7 @@ Makefile.in
 /depcomp
 /install-sh
 /missing
+/n3/test-suite.log
+/n3/tests/core.log
+/n3/tests/core.trs
 /test-driver
