@@ -1,0 +1,18 @@
+Building and Installing 3omns
+=============================
+
+3omns uses the standard Autotools build sequence:
+
+    ./configure
+    make
+
+See './configure --help' for build options.
+
+Once 3omns is built, you can run it directly out of the build directory without
+installing:
+
+    ./3omns
+
+To install, run something like:
+
+    sudo make install
