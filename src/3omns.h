@@ -1,5 +1,6 @@
 /*
     3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
+            <http://chazomaticus.github.io/3omns/>
     Copyright 2014 Charles Lindsay <chaz@chazomatic.us>
 
     3omns is free software: you can redistribute it and/or modify it under the
