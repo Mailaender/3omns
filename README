@@ -20,7 +20,7 @@ How to Play
 
 See the INSTALL file for building and installation instructions.
 
-Once 3omns is installed, run '3omns' to play.  See also '3omns --help' for
+Once 3omns is installed, run `3omns` to play.  See also `3omns --help` for
 options, including how to play over the LAN.
 
 The red player uses the arrow keys to move and R-Ctrl to drop bombs.  The blue
