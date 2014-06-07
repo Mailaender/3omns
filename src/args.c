@@ -111,16 +111,16 @@ void parse_args(struct args *restrict args, int argc, char *argv[]) {
         // TODO: let this be controlled from in-game.
         {"game", 'g', "MOD", 0, "Run Lua game code from MOD (default: "
                 "'"DEFAULT_GAME"')"},
-        {NULL, 0, NULL, 0, "Debug options:", 1},
-        {"debug", 'd', NULL, 0, "Run in debug mode", 1},
-        {"debug-network", 'n', NULL, 0, "Print network communication", 1},
         // TODO: let these be controlled from in-game.
-        {NULL, 0, NULL, 0, "Network play options:", 2},
-        {"connect", 'c', "SERVER", 0, "Connect to network host", 2},
+        {NULL, 0, NULL, 0, "Network play options:", 1},
+        {"connect", 'c', "SERVER", 0, "Connect to network host", 1},
         {"serve", 's', "LISTEN", OPTION_ARG_OPTIONAL, "Host network game on "
-                "the given address (default: *)", 2},
+                "the given address (default: *)", 1},
         {"port", 'p', "PORT", 0, "Port for serving or connecting (default: "
-                B3_STRINGIFY(DEFAULT_PORT)")", 2},
+                B3_STRINGIFY(DEFAULT_PORT)")", 1},
+        {NULL, 0, NULL, 0, "Debug options:", 2},
+        {"debug", 'd', NULL, 0, "Run in debug mode", 2},
+        {"debug-network", 'n', NULL, 0, "Print network communication", 2},
         {0}
     };
     struct argp argp = {options, parse_opt, NULL, doc};
