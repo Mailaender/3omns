@@ -36,7 +36,7 @@
 
 
 const char *argp_program_version = PACKAGE_STRING;
-const char *argp_program_bug_address = PACKAGE_BUGREPORT;
+const char *argp_program_bug_address = "<"PACKAGE_BUGREPORT">";
 
 
 static int parse_port(n3_port *out, const char *string) {
@@ -101,7 +101,9 @@ void parse_args(struct args *restrict args, int argc, char *argv[]) {
 
     // TODO: I guess argp handles gettext-ing these itself?
     const char *const doc
-        = "Old-school arcade-style tile-based bomb-dropping deathmatch jam";
+            = "Old-school arcade-style tile-based bomb-dropping deathmatch jam"
+            "\vSee <"PACKAGE_URL"> for more information.";
+
     struct argp_option options[] = {
         {"resources", 'r', "RES", 0, "Location of game resources (default: "
                 "'"LOCAL_RESOURCES"' if valid, or "

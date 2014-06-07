@@ -1,5 +1,6 @@
 AC_PREREQ([2.68])
-AC_INIT([3omns], [0.0.0+git], [chaz@chazomatic.us])
+AC_INIT([3omns], [0.0.0+git], [chaz@chazomatic.us], [],
+		[http://chazomaticus.github.io/3omns/])
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip])
 
 AC_CONFIG_FILES([
