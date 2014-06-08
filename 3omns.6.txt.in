@@ -1,0 +1,105 @@
+3OMNS(6)
+========
+Charles Lindsay <@PACKAGE_BUGREPORT@>
+@PACKAGE_VERSION@, 2014-06-07
+:doctype: manpage
+
+NAME
+----
+3omns - simple tile-based bomb-dropping deathmatch game
+
+////
+After running ./configure, process this file with 'a2x -f manpage 3omns.6.txt'
+to create the manpage.  For HTML documentation, run 'asciidoc 3omns.6.txt'.
+////
+
+SYNOPSIS
+--------
+*3omns* ['OPTIONS...']
+
+DESCRIPTION
+-----------
+3omns is an old-school arcade-style tile-based bomb-dropping deathmatch game.
+The name is a bastardization of the word Bombs (and you should pronounce it
+however you want).
+
+The red player uses the arrow keys to move and R-Ctrl to drop bombs.  The blue
+player uses WASD to move and L-Ctrl to drop bombs.  Damage players (and destroy
+crates) by catching them in a bomb blast or ``punching'' them by walking into
+them.  You can disarm opponent bombs by walking over them.  A few crates
+contain powerups that briefly make you invulnerable.
+
+3omns supports play over a LAN using the *--serve* or *--connect* options (see
+<<net-options,Network Play Options>> below).
+
+OPTIONS
+-------
+*-g*, *--game*='MOD'::
+    Normally, 3omns looks for game logic Lua code in *'RES'/base*.  Specify an
+    alternative to *base* in 'MOD' to run different game logic (a mod, if you
+    will).  The mod must provide the file *'RES'/'MOD'/init.lua*.
+
+////
+TODO: figure out how to coerce autoconf into letting us use @pkgdatadir@ or
+something similar below, instead of referring the user to '3omns --help'.  See
+the autoconf manual section 4.8.2 "Installation Directory Variables".
+////
+
+*-r*, *--resources*='RES'::
+    Normally, 3omns looks for its resources somewhere like */usr/share/3omns*
+    (see *3omns --help* for the actual location).  Specify an alternative in
+    'RES'.
+
+[[net-options]]
+=== Network Play Options
+*-c*, *--connect*='SERVER'::
+    Run as a client and connect to the hosting 'SERVER'.
+
+*-p*, *--port*='PORT'::
+    Port to use when serving or connecting.  Unless specified, 3omns uses port
+    30325 (which looks kind of like 3OMNS if you tilt your head).
+
+*-s*, *--serve*[='LISTEN']::
+    Run as a host and listen on the given 'LISTEN' address.  If not specified,
+    'LISTEN' defaults to the wildcard address.
+
+=== Debug Options
+*-d*, *--debug*::
+    Some useful diagnostic information is printed as 3omns runs, and if a Lua
+    error is encountered, you are dropped into a Lua debug session.  You can
+    also enter a Lua debug session at any time by pressing the *`* (grave
+    accent/tilde) key.
+
+*-n*, *--debug-network*::
+    Print all network communication as it happens.
+
+BUGS
+----
+3omns is still in alpha.  These are some of the major deficiencies in the
+current version:
+
+* Limited to 2 human players and 2 bots
+* Bot AI isn't very good
+* In LAN play, all connected computers can control both human players
+* Net play is entirely unreliable outside of the LAN
+* Sometimes in LAN play clients won't see bomb explosions
+
+RESOURCES
+---------
+See <@PACKAGE_URL@> for more information.
+
+COPYRIGHT
+---------
+Copyright 2014 {author} <{email}>
+
+3omns is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+3omns is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+3omns.  If not, see <http://www.gnu.org/licenses/>.

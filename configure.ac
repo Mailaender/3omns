@@ -4,6 +4,7 @@ AC_INIT([3omns], [0.0.0+git], [chaz@chazomatic.us], [],
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip])
 
 AC_CONFIG_FILES([
+	3omns.6.txt
 	Makefile
 	b3/Makefile
 	l3/Makefile
