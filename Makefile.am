@@ -1,3 +1,14 @@
 SUBDIRS = b3 l3 n3 res src
 
 dist_doc_DATA = COPYING COPYING.font README
+
+
+if GENERATE_MANPAGES
+GENERATED_MANPAGES = 3omns.6
+endif
+
+$(GENERATED_MANPAGES): %: %.txt
+	$(A2X_BIN) --format manpage $<
+
+man_MANS = $(GENERATED_MANPAGES)
+CLEANFILES = $(GENERATED_MANPAGES)
