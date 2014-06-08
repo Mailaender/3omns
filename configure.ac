@@ -46,37 +46,18 @@ AC_ARG_ENABLE([manpages],
 	[AS_HELP_STRING([--disable-manpages], [disable manpage generation])],
 	[generate_manpages=$enableval]
 )
-
-AC_ARG_WITH([a2x],
-	[AS_HELP_STRING([--with-a2x=ARG], [specify the location of the a2x
-			binary, used to generate manpages])],
-	[
-		if test "$withval" = yes -o "$withval" = no; then
-			AC_MSG_ERROR([you must specify the location of a2x in --with-a2x])
-		else
-			A2X_BIN=$with_a2x
-			dnl We could also test that $A2X_BIN is a valid binary,
-			dnl but setting up the proper test seemed like a bit
-			dnl much work.  Instead, we just trust the user.
-		fi
-	]
-)
 AS_IF([test "$generate_manpages" != no], [
 	AC_CHECK_PROG([A2X_BIN], [a2x], [a2x])
 ])
 
-no_a2x_msg=`echo "cannot find the a2x binary needed to generate manpages; try
-installing AsciiDoc in a standard location or specifying the path to a2x in
---with-a2x" | tr '\n' ' '`
 if test "$generate_manpages" = yes -a -z "$A2X_BIN"; then
 	# They've requested manpage generation, but we can't find a2x.
-	AC_MSG_ERROR([$no_a2x_msg])
+	AC_MSG_ERROR([cannot find the AsciiDoc a2x binary needed to generate manpages])
 elif test "$generate_manpages" != no; then
 	generate_manpages=yes
 	if test -z "$A2X_BIN"; then
 		# They haven't specified and we can't find a2x.
-		AC_MSG_NOTICE([$no_a2x_msg])
-		AC_MSG_WARN([disabling manpage generation])
+		AC_MSG_WARN([disabling manpage generation because the AsciiDoc a2x binary is not in your PATH])
 		generate_manpages=no
 	fi
 fi
@@ -94,7 +75,8 @@ AC_OUTPUT
 echo "
 Successfully configured $PACKAGE_STRING
 
-Compiler: $CC $CPPFLAGS $CFLAGS
+Compiler         : $CC $CPPFLAGS $CFLAGS
+Generate manpages: $generate_manpages
 
 Installation directories:
   prefix     : $prefix
@@ -103,8 +85,4 @@ Installation directories:
   datarootdir: $datarootdir
   datadir    : $datadir
   appicondir : $appicondir
-
-Manpage generation options:
-  Generate? : $generate_manpages
-  a2x binary: $A2X_BIN
 "
