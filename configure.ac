@@ -23,23 +23,22 @@ AC_CHECK_HEADERS([argp.h], [],
 )
 
 
-appicondir='${datarootdir}/icons/hicolor/scalable/apps'
+iconthemedir='${datarootdir}/icons/hicolor'
 
-dnl TODO: this shouldn't be a --with arg, it should be just --appicondir.  How?
-AC_ARG_WITH([appicondir],
-	[AS_HELP_STRING([--with-appicondir=ARG], [set directory to install app
-			icons (default:
-			${datarootdir}/icons/hicolor/scalable/apps)])],
+dnl TODO: this shouldn't be a --with arg, it should be just --iconthemedir.
+AC_ARG_WITH([iconthemedir],
+	[AS_HELP_STRING([--with-iconthemedir=ARG], [set icon theme directory
+			(default: ${datarootdir}/icons/hicolor)])],
 	[
 		if test "$withval" = yes -o "$withval" = no; then
-			AC_MSG_ERROR([you must specify the app icon directory in --with-appicondir])
+			AC_MSG_ERROR([you must specify the icon theme directory in --with-iconthemedir])
 		else
-			appicondir=$with_appicondir
+			iconthemedir=$with_iconthemedir
 		fi
 	]
 )
 
-AC_SUBST(appicondir)
+AC_SUBST(iconthemedir)
 
 
 AC_ARG_ENABLE([manpages],
@@ -79,10 +78,10 @@ Compiler         : $CC $CPPFLAGS $CFLAGS
 Generate manpages: $generate_manpages
 
 Installation directories:
-  prefix     : $prefix
-  exec_prefix: $exec_prefix
-  bindir     : $bindir
-  datarootdir: $datarootdir
-  datadir    : $datadir
-  appicondir : $appicondir
+  prefix      : $prefix
+  exec_prefix : $exec_prefix
+  bindir      : $bindir
+  datarootdir : $datarootdir
+  datadir     : $datadir
+  iconthemedir: $iconthemedir
 "
