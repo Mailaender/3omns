@@ -6,11 +6,20 @@ dist_doc_DATA = COPYING COPYING.font README
 appicondir = $(iconthemedir)/scalable/apps
 
 dist_appicon_DATA = 3omns.svg
+dist_desktop_DATA = 3omns.desktop
 
-install-data-hook:
+install-data-hook: update-caches
+uninstall-hook: update-caches
+
+update-caches:
 	@echo "Attempting to update GTK icon cache..."
 	@gtk-update-icon-cache -f -t $(iconthemedir) || true
 	@echo "Done updating GTK icon cache"
+	@echo "Attempting to update desktop file database..."
+	@update-desktop-database $(desktopdir) || true
+	@echo "Done updating desktop file database"
+
+.PHONY: update-caches
 
 
 if GENERATE_MANPAGES

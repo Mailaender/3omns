@@ -41,6 +41,24 @@ AC_ARG_WITH([iconthemedir],
 AC_SUBST(iconthemedir)
 
 
+desktopdir='${datarootdir}/applications'
+
+dnl TODO: this too should be just --desktopdir, not --with.
+AC_ARG_WITH([desktopdir],
+	[AS_HELP_STRING([--with-desktopdir=ARG], [set desktop directory
+			(default: ${datarootdir}/applications)])],
+	[
+		if test "$withval" = yes -o "$withval" = no; then
+			AC_MSG_ERROR([you must specify the desktop directory in --with-desktopdir])
+		else
+			desktopdir=$with_desktopdir
+		fi
+	]
+)
+
+AC_SUBST(desktopdir)
+
+
 AC_ARG_ENABLE([manpages],
 	[AS_HELP_STRING([--disable-manpages], [disable manpage generation])],
 	[generate_manpages=$enableval]
@@ -84,4 +102,5 @@ Installation directories:
   datarootdir : $datarootdir
   datadir     : $datadir
   iconthemedir: $iconthemedir
+  desktopdir  : $desktopdir
 "
