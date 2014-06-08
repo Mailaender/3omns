@@ -23,10 +23,30 @@ AC_CHECK_HEADERS([argp.h], [],
 )
 
 
+appicondir='${datarootdir}/icons/hicolor/scalable/apps'
+
+dnl TODO: this shouldn't be a --with arg, it should be just --appicondir.  How?
+AC_ARG_WITH([appicondir],
+	[AS_HELP_STRING([--with-appicondir=ARG], [set directory to install app
+			icons (default:
+			${datarootdir}/icons/hicolor/scalable/apps)])],
+	[
+		if test "$withval" = yes -o "$withval" = no; then
+			AC_MSG_ERROR([you must specify the app icon directory in --with-appicondir])
+		else
+			appicondir=$with_appicondir
+		fi
+	]
+)
+
+AC_SUBST(appicondir)
+
+
 AC_ARG_ENABLE([manpages],
 	[AS_HELP_STRING([--disable-manpages], [disable manpage generation])],
 	[generate_manpages=$enableval]
 )
+
 AC_ARG_WITH([a2x],
 	[AS_HELP_STRING([--with-a2x=ARG], [specify the location of the a2x
 			binary, used to generate manpages])],
@@ -74,8 +94,15 @@ AC_OUTPUT
 echo "
 Successfully configured $PACKAGE_STRING
 
-Prefix  : $prefix
 Compiler: $CC $CPPFLAGS $CFLAGS
+
+Installation directories:
+  prefix     : $prefix
+  exec_prefix: $exec_prefix
+  bindir     : $bindir
+  datarootdir: $datarootdir
+  datadir    : $datadir
+  appicondir : $appicondir
 
 Manpage generation options:
   Generate? : $generate_manpages
