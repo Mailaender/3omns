@@ -13,12 +13,7 @@ install-data-hook: update-caches
 uninstall-hook: update-caches
 
 update-caches:
-	@echo "Attempting to update GTK icon cache..."
-	@gtk-update-icon-cache -f -t $(iconthemedir) || true
-	@echo "Done updating GTK icon cache"
-	@echo "Attempting to update desktop file database..."
-	@update-desktop-database $(desktopdir) || true
-	@echo "Done updating desktop file database"
+	gtk-update-icon-cache -f -t "$(iconthemedir)" || true
 
 .PHONY: update-caches
 
