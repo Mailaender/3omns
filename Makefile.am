@@ -1,6 +1,7 @@
 SUBDIRS = b3 l3 n3 res src
 
-dist_doc_DATA = COPYING COPYING.font README
+dist_noinst_DATA = COPYING.font
+dist_doc_DATA = README
 
 
 appicondir = $(iconthemedir)/scalable/apps
