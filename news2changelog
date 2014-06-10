@@ -1,0 +1,100 @@
+#!/bin/bash
+
+if [ "$1" = --help -o "$1" = '-?' ]; then
+  echo "Usage: $0 [DISTRO]"
+  echo "Generates a new debian/changelog entry from a project's NEWS file" \
+      "(given on"
+  echo "stdin).  The NEWS should be in a format like:"
+  echo
+  echo "PACKAGE VERSION ..."
+  echo "-------------------"
+  echo
+  echo "  * NEWS LINE 1"
+  echo "  * NEWS LINE 2"
+  echo "    LINE 2 CONTINUED"
+  echo "  * ..."
+  echo
+  echo "IGNORED..."
+  echo
+  echo "Whitespace and extra information are ignored where possible, except" \
+      "the first"
+  echo "line must contain the package name and version number."
+  exit
+fi
+
+
+distro=$1
+test -z "$distro" && distro=`lsb_release -sc`
+
+changelog=debian/changelog
+
+
+error() {
+  echo "$0: $1" 1>&2
+  exit 1
+}
+
+read_full_line() {
+  local save_ifs=$IFS
+  IFS=$'\r\n'
+
+  local line
+  read line
+  local result=$?
+
+  IFS=$save_ifs
+
+  echo "$line"
+  return $result
+}
+
+read_pkg_ver() {
+  local firstline=`read_full_line` || error "need NEWS data on stdin"
+
+  pkg=`echo "$firstline" | sed -rn 's/^(\S+)\s+\S+.*$/\1/p'`
+  ver=`echo "$firstline" | sed -rn 's/^\S+\s+(\S+).*$/\1/p'`
+
+  test -n "$pkg" -a -n "$ver" \
+      || error "first NEWS line should be like PACKAGE VERSION ..."
+}
+
+read_changes() {
+  changes=()
+
+  local line
+  while line=`read_full_line`; do
+    echo "$line" | grep -Eq '^\s*$|^-+$' && continue
+    echo "$line" | grep -Eq '^[^ *]' && break
+
+    if test "${#changes[@]}" -eq 0 || echo "$line" | grep -Eq '^\s*\*'; then
+      changes+=("`echo "$line" | sed -r 's/^[ *]+//'`")
+    else
+      changes[`expr "${#changes[@]}" - 1`]+=" `echo "$line" \
+          | sed -r 's/^\s*//'`"                                 # " <- For Vim.
+    fi
+  done
+
+  test "${#changes[@]}" -gt 0 || error "no NEWS line items found"
+}
+
+add_changes() {
+  local fullver=${ver}-1~${distro}1
+  local urgency=low
+
+  local create=
+  test -f "$changelog" || create=--create
+
+  dch $create --package="$pkg" -v "$fullver" -u "$urgency" -D "$distro" \
+      "${changes[0]}" || error "dch failed to create a new version"
+  for c in "${changes[@]:1}"; do
+    dch "$c" || error "dch failed to append changes"
+  done
+}
+
+
+read_pkg_ver
+read_changes
+add_changes
+
+echo "Created new '$changelog' entry:"
+sed -r '/^ -- /q' "$changelog"
