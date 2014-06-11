@@ -20,7 +20,9 @@ Features
 How to Play
 -----------
 
-See the INSTALL file for building and installation instructions.
+See the INSTALL file for building and installation instructions.  If you're
+running Ubuntu Trusty, you can skip building from source and simply add the
+3omns PPA; see <https://launchpad.net/~chazomaticus/+archive/3omns>.
 
 Once 3omns is installed, run `3omns` to play.  See also `3omns --help` for
 options, including how to play over the LAN.
