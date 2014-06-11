@@ -1,6 +1,11 @@
 Building and Installing 3omns
 =============================
 
+If you've cloned 3omns in git or downloaded a source tarball, use autoreconf to
+kick off the build process:
+
+    autoreconf -i
+
 3omns uses the standard Autotools build sequence:
 
     ./configure
