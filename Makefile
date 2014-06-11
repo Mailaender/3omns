@@ -1,5 +1,5 @@
-GITVER = master
-DISTROS = trusty saucy
+GITVER = 0.1
+DISTROS = trusty
 
 DISTEXT = tar.xz
 
