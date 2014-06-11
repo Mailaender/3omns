@@ -135,14 +135,6 @@ $(SOURCESCHECK): %-sourcecheck : pbuilder-%-update
 $(SOURCESCHECK): %-sourcecheck : $(PKGFILEPRE)%$(SOURCEDSCPOST)
 	pbuilder-dist '$*' build '$<'
 
-clean:
-	rm -rf '$(EXPORTDIR)' '$(EXPORTDIR).tar' '$(EXPORTDIR).stamp'
-	! test -d '$(BUILDDIR)' && rm -f '$(BUILDDIR)' || true
-	@test -d '$(BUILDDIR)' \
-			&& echo "\nNot cleaning $(BUILDDIR); \"rm -r" \
-					"'$(BUILDDIR)'\" at your discretion." \
-			|| true
 
-
-.PHONY: all clean gitstamp $(PBUILDERUPDATES) prereqs setup sources \
-		sourcescheck $(SOURCESCHECK)
+.PHONY: all gitstamp $(PBUILDERUPDATES) prereqs setup sources sourcescheck \
+		$(SOURCESCHECK)
