@@ -12,7 +12,7 @@ DEBVER := ${shell git show '$(GITVER):configure.ac' \
 		| grep '^AC_INIT(' \
 		| sed -r 's/^AC_INIT\(\[[^]]+\], \[([^]]+)\].*$$/\1/'}
 
-GITVER_DATE := $(shell git show -s --date=iso8601 --format=%cd $(GITVER))
+GITVER_DATE := $(shell git log -1 --date=iso8601 --format=%cd $(GITVER))
 GITVER_PATH := $(shell echo '$(GITVER)' | sed -r 's/[^a-zA-Z0-9.]/_/g')
 EXPORTDIR = $(PKG)-git-$(GITVER_PATH)
 DISTDIR = $(PKG)-$(DEBVER)
