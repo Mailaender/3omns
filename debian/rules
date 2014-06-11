@@ -4,5 +4,6 @@
 	dh $@
 
 override_dh_auto_configure:
-	dh_auto_configure -- --bindir='$${exec_prefix}/games' \
+	dh_auto_configure -- --enable-manpages \
+			--bindir='$${exec_prefix}/games' \
 			--datadir='$${datarootdir}/games'
