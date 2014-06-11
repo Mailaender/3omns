@@ -40,25 +40,37 @@ PKGFILES = $(DISTROS:%=$(PKGFILEPRE)%$(PKGFILEPOST))
 SOURCEPOST = $(PKGFILEPOST)_source.changes
 SOURCES = $(PKGFILES:%$(PKGFILEPOST)=%$(SOURCEPOST))
 
+SOURCESCHECK = $(DISTROS:%=%-sourcecheck)
 
-source: sources
-sources: $(SOURCES)
+SOURCEDSCPOST = $(PKGFILEPOST).dsc
+SOURCEDSCS = $(PKGFILES:%$(PKGFILEPOST)=%$(SOURCEDSCPOST))
 
-# TODO: pbuilder-dist tests?
-# TODO: automatically dput?
+PBUILDERDIR = ~/pbuilder
+PBUILDERUPDATES = $(DISTROS:%=pbuilder-%-update)
+
+
+all: sourcescheck
 
 # TODO: deb/debs targets that build the binary packages.  This is complicated
 # because debuild always overwrites the .dsc file, so you have to move the
 # artifacts elsewhere after building source and before building debs.
 
-all: source
+# TODO: dput target?  Automatically?
+
+sources: $(SOURCES)
+sourcescheck: $(SOURCESCHECK)
+	@echo
+	@echo "Source packages in $(BUILDDIR) have been checked and are" \
+			"ready for uploading."
+
 
 prereqs: $(BUILDDISTDIR)/configure $(BUILDDEBDIR)/changelog
 
 setup: prereqs $(OTHERCHANGELOGS)
 	@echo
-	@echo "Updated $(DEBDIR)/changelog and set up $(BUILDDIR) for deb"
-	@echo "building, with extra changelogs in $(CHANGELOGDIR)."
+	@echo "Updated $(DEBDIR)/changelog and set up $(BUILDDIR) for deb" \
+			"building, with extra"
+	@echo "changelogs in $(CHANGELOGDIR)."
 
 
 $(EXPORTDIR).stamp: gitstamp
@@ -110,6 +122,19 @@ $(SOURCES): $(PKGFILEPRE)%$(SOURCEPOST) : $(CHANGELOGPRE)%
 	cd '$(BUILDDISTDIR)' && debuild -S
 	test -f '$@' # Source sanity check.
 
+# TODO: this won't be right if we build any binary debs.
+$(SOURCEDSCS): %$(SOURCEDSCPOST) : %$(SOURCEPOST)
+
+$(PBUILDERUPDATES): pbuilder-%-update :
+	test -f $(PBUILDERDIR)'/$*-base.tgz' \
+			&& pbuilder-dist '$*' update \
+			|| pbuilder-dist '$*' create
+	test -f $(PBUILDERDIR)'/$*-base.tgz' # pbuilder-dist sanity check.
+
+$(SOURCESCHECK): %-sourcecheck : pbuilder-%-update
+$(SOURCESCHECK): %-sourcecheck : $(PKGFILEPRE)%$(SOURCEDSCPOST)
+	pbuilder-dist '$*' build '$<'
+
 clean:
 	rm -rf '$(EXPORTDIR)' '$(EXPORTDIR).tar' '$(EXPORTDIR).stamp'
 	! test -d '$(BUILDDIR)' && rm -f '$(BUILDDIR)' || true
@@ -119,4 +144,5 @@ clean:
 			|| true
 
 
-.PHONY: all clean gitstamp prereqs setup source sources
+.PHONY: all clean gitstamp $(PBUILDERUPDATES) prereqs setup sources \
+		sourcescheck $(SOURCESCHECK)
