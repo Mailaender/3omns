@@ -57,6 +57,8 @@ all: sourcescheck
 
 # TODO: dput target?  Automatically?
 
+# TODO: behave nicely when the changelog is newer than the GITVER's NEWS file.
+
 sources: $(SOURCES)
 sourcescheck: $(SOURCESCHECK)
 	@echo
