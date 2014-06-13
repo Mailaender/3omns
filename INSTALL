@@ -1,6 +1,39 @@
 Building and Installing 3omns
 =============================
 
+If you happen to be running Ubuntu Trusty and just want to see the latest
+release of 3omns in action, you can skip building it yourself and install it
+from the 3omns PPA (see https://launchpad.net/~chazomaticus/+archive/3omns):
+
+    sudo add-apt-repository ppa:chazomaticus/3omns
+    sudo apt-get update
+    sudo apt-get install 3omns
+
+If you want the latest from git or aren't running Trusty, you can build and
+optionally install 3omns from source by following these instructions.
+
+
+Dependencies
+------------
+
+First, you should install some dependencies.  3omns depends on the following
+libraries:
+
+  * SDL 2.0 (http://www.libsdl.org/download-2.0.php)
+  * SDL_image 2.0 (http://www.libsdl.org/projects/SDL_image/)
+  * SDL_ttf 2.0 (http://www.libsdl.org/projects/SDL_ttf/)
+  * Lua 5.2 (http://www.lua.org/download.html)
+
+On Ubuntu Trusty, you can install the development versions of these libraries
+by running:
+
+    sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+            liblua5.2-dev
+
+
+Build
+-----
+
 If you've cloned 3omns in git or downloaded a source tarball, use autoreconf to
 kick off the build process:
 
@@ -13,11 +46,15 @@ kick off the build process:
 
 See './configure --help' for build options.
 
+
+Install
+-------
+
 Once 3omns is built, you can run it directly out of the build directory without
 installing:
 
     ./3omns
 
-To install, run something like:
+If you decide you want to install it, run something like:
 
     sudo make install
