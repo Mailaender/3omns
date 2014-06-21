@@ -12,12 +12,14 @@ AC_CONFIG_FILES([
 	src/Makefile
 ])
 
-PKG_CHECK_MODULES([DEPS], [
+PKG_CHECK_MODULES([SDL], [
 	sdl2 >= 2.0.0
 	SDL2_image >= 2.0.0
 	SDL2_ttf >= 2.0.12
-	lua5.2 >= 5.2.0
 ])
+PKG_CHECK_MODULES([LUA], [lua5.2 >= 5.2.0], [],        dnl Linux package name.
+	[PKG_CHECK_MODULES([LUA], [lua-5.2 >= 5.2.0])] dnl BSD package name.
+)
 AC_CHECK_HEADERS([argp.h], [],
 	[AC_MSG_ERROR([cannot find required header argp.h])]
 )
