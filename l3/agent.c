@@ -22,8 +22,8 @@
 #include "internal.h"
 #include "b3/b3.h"
 
-#include <lua5.2/lua.h>
-#include <lua5.2/lauxlib.h>
+#include <lua.h>
+#include <lauxlib.h>
 
 
 struct l3_agent {

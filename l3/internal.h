@@ -24,7 +24,7 @@
 #include "l3.h"
 #include "b3/b3.h"
 
-#include <lua5.2/lua.h>
+#include <lua.h>
 
 
 #define L3_NAME "l3"

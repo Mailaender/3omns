@@ -21,8 +21,8 @@
 #include "internal.h"
 #include "b3/b3.h"
 
-#include <lua5.2/lua.h>
-#include <lua5.2/lauxlib.h>
+#include <lua.h>
+#include <lauxlib.h>
 
 
 void push_pos(lua_State *restrict l, const b3_pos *restrict pos) {

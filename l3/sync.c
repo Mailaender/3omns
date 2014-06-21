@@ -23,8 +23,8 @@
 #include "b3/b3.h"
 
 #include <stddef.h>
-#include <lua5.2/lua.h>
-#include <lua5.2/lauxlib.h>
+#include <lua.h>
+#include <lauxlib.h>
 
 
 int sync_level_ref = LUA_NOREF;

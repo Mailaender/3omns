@@ -22,8 +22,8 @@
 #include "b3/b3.h"
 
 #include <stddef.h>
-#include <lua5.2/lua.h>
-#include <lua5.2/lauxlib.h>
+#include <lua.h>
+#include <lauxlib.h>
 
 
 static b3_image **push_new_image(lua_State *restrict l) {
