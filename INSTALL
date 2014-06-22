@@ -30,6 +30,11 @@ by running:
     sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
             liblua5.2-dev
 
+I should also mention that 3omns depends on GNU glibc's argp library
+(https://www.gnu.org/software/libc/manual/html_node/Argp.html).  In Linux, argp
+normally comes with your build system, but non-GNU systems may have to install
+a standalone version and tell 3omns's build files where to find it.
+
 
 Build
 -----
