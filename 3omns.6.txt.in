@@ -41,14 +41,15 @@ OPTIONS
 
 ////
 TODO: figure out how to coerce autoconf into letting us use @pkgdatadir@ or
-something similar below, instead of referring the user to '3omns --help'.  See
-the autoconf manual section 4.8.2 "Installation Directory Variables".
+something similar below, instead of referring the user to
+'--default-resources'.  See the autoconf manual section 4.8.2
+"Installation Directory Variables".
 ////
 
 *-r*, *--resources*='RES'::
     Normally, 3omns looks for its resources somewhere like */usr/share/3omns*
-    (see *3omns --help* for the actual location).  Specify an alternative in
-    'RES'.
+    (see *3omns --default-resources* for the actual location).  Specify an
+    alternative in 'RES'.
 
 [[net-options]]
 === Network Play Options
@@ -72,6 +73,21 @@ the autoconf manual section 4.8.2 "Installation Directory Variables".
 
 *-n*, *--debug-network*::
     Print all network communication as it happens.
+
+=== Informational Options
+*-R*, *--default-resources*::
+    Print the default value of 'RES', the path where 3omns normally looks for
+    its resources, and exit.  This just provides an unambiguous way to find
+    the path without parsing the help text.
+
+*-?*, *--help*::
+    Print a brief command line help listing and exit.
+
+*--usage*::
+    Print a terse command line usage summary and exit.
+
+*-V*, *--version*::
+    Print 3omns version and exit.
 
 BUGS
 ----
