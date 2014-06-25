@@ -16,8 +16,9 @@ optionally install 3omns from source by following these instructions.
 Dependencies
 ------------
 
-First, you should install some dependencies.  3omns depends on the following
-libraries:
+3omns is (partly) written in C11, so it requires a fairly modern C compiler.
+
+3omns depends on the following libraries:
 
   * SDL 2.0 (http://www.libsdl.org/download-2.0.php)
   * SDL_image 2.0 (http://www.libsdl.org/projects/SDL_image/)
@@ -30,10 +31,18 @@ by running:
     sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
             liblua5.2-dev
 
-I should also mention that 3omns depends on GNU glibc's argp library
+3omns also depends on GNU glibc's argp library
 (https://www.gnu.org/software/libc/manual/html_node/Argp.html).  In Linux, argp
 normally comes with your build system, but non-GNU systems may have to install
 a standalone version and tell 3omns's build files where to find it.
+
+The 3omns build process optionally depends on AsciiDoc (http://asciidoc.org/)
+to generate the manpage.  AsciiDoc may also depend on some 3rd party tools to
+function properly.  In Ubuntu Trusty, you can install the correct dependencies
+by running:
+
+    sudo apt-get install asciidoc libxml2-utils xsltproc docbook-xml \
+            docbook-xsl
 
 
 Build
