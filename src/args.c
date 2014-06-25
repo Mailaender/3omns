@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <argp.h>
 
@@ -63,12 +64,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'g':
         args->game = arg;
         break;
-    case 'd':
-        args->debug = 1;
-        break;
-    case 'n':
-        args->debug_network = 1;
-        break;
     case 'c':
         args->client = 1;
         args->hostname = arg;
@@ -84,6 +79,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                 b3_fatal("Error parsing port '%s': %s", arg, strerror(e));
             break;
         }
+    case 'd':
+        args->debug = 1;
+        break;
+    case 'n':
+        args->debug_network = 1;
+        break;
+    case 'R':
+        puts(INSTALLED_RESOURCES);
+        exit(0);
+        break;
     default:
         return ARGP_ERR_UNKNOWN;
     }
@@ -121,6 +126,9 @@ void parse_args(struct args *restrict args, int argc, char *argv[]) {
         {NULL, 0, NULL, 0, "Debug options:", 2},
         {"debug", 'd', NULL, 0, "Run in debug mode", 2},
         {"debug-network", 'n', NULL, 0, "Print network communication", 2},
+        {NULL, 0, NULL, 0, "Informational options:", 3},
+        {"default-resources", 'R', NULL, 0, "Print default resources path "
+                "('"INSTALLED_RESOURCES"') and exit", 3},
         {0}
     };
     struct argp argp = {options, parse_opt, NULL, doc};
