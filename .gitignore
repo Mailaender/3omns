@@ -1,6 +1,7 @@
 /3omns
 /3omns.6
 /3omns.6.txt
+/l3/tests/driver
 /n3/tests/test_core
 
 *.a
@@ -19,7 +20,8 @@ Makefile.in
 /depcomp
 /install-sh
 /missing
-/n3/test-suite.log
-/n3/tests/core.log
-/n3/tests/core.trs
 /test-driver
+
+/*/test-suite.log
+/*/tests/*.log
+/*/tests/*.trs
