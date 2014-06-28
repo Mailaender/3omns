@@ -365,11 +365,13 @@ int main(int argc, char *argv[]) {
 
     atexit(b3_quit);
     atexit(quit_net);
+    atexit(b3_exit_window);
     atexit(l3_quit);
     atexit(quit_res);
 
-    b3_init(PACKAGE_NAME, &window_size, handle_input);
+    b3_init();
     init_net();
+    b3_enter_window(PACKAGE_NAME, &window_size, handle_input);
     l3_init(args.resources, args.game, args.client, args.debug);
     init_res();
 

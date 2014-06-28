@@ -124,12 +124,15 @@ enum b3_input {
 typedef _Bool (*b3_input_callback)(b3_input input, _Bool pressed, void *data);
 
 
-void b3_init(
+void b3_init(void);
+void b3_quit(void);
+
+void b3_enter_window(
     const char *restrict window_title,
     const b3_size *restrict window_size,
     b3_input_callback input_callback
 );
-void b3_quit(void);
+void b3_exit_window(void);
 
 extern b3_size b3_window_size;
 

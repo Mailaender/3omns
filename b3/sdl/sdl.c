@@ -59,11 +59,7 @@ static _Bool quit = 0;
 static b3_input_callback handle_input = NULL;
 
 
-void b3_init(
-    const char *restrict window_title,
-    const b3_size *restrict window_size,
-    b3_input_callback input_callback
-) {
+void b3_init(void) {
     quit = 0;
 
     if(SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO) != 0)
@@ -76,7 +72,19 @@ void b3_init(
         b3_fatal("Error initializing SDL_ttf: %s", TTF_GetError());
 
     b3_tick_frequency = (b3_ticks)SDL_GetPerformanceFrequency();
+}
 
+void b3_quit(void) {
+    TTF_Quit();
+    IMG_Quit();
+    SDL_Quit();
+}
+
+void b3_enter_window(
+    const char *restrict window_title,
+    const b3_size *restrict window_size,
+    b3_input_callback input_callback
+) {
     window = SDL_CreateWindow(
         window_title,
         SDL_WINDOWPOS_UNDEFINED,
@@ -102,9 +110,9 @@ void b3_init(
     handle_input = input_callback;
 }
 
-void b3_quit(void) {
+void b3_exit_window(void) {
+    b3_window_size = (b3_size){0, 0};
     handle_input = NULL;
-
     if(renderer) {
         SDL_DestroyRenderer(renderer);
         renderer = NULL;
@@ -113,10 +121,6 @@ void b3_quit(void) {
         SDL_DestroyWindow(window);
         window = NULL;
     }
-
-    TTF_Quit();
-    IMG_Quit();
-    SDL_Quit();
 }
 
 static int keysym_to_input(const SDL_Keysym *restrict keysym) {
