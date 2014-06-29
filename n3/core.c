@@ -108,6 +108,13 @@ static inline void *get_addr(const n3_host *restrict host) {
             : (void *)&((struct sockaddr_in6 *)&host->address)->sin6_addr);
 }
 
+static inline size_t get_addr_size(const n3_host *restrict host) {
+    // Assume either AF_INET or AF_INET6.
+    return (host->address.ss_family == AF_INET
+            ? sizeof(struct in_addr)
+            : sizeof(struct in6_addr));
+}
+
 char *n3_get_host_address(
     const n3_host *restrict host,
     char *restrict address,
@@ -153,14 +160,7 @@ int n3_compare_hosts(const n3_host *restrict a, const n3_host *restrict b) {
 
     // TODO: do IPv6's sin6_flowinfo or sin6_scope_id fields factor into this?
 
-    return memcmp(
-        get_addr(a),
-        get_addr(b),
-        // Assume either AF_INET or AF_INET6.
-        (a->address.ss_family == AF_INET
-                ? sizeof(struct in_addr)
-                : sizeof(struct in6_addr))
-    );
+    return memcmp(get_addr(a), get_addr(b), get_addr_size(a));
 }
 
 static int new_socket(_Bool server, const n3_host *restrict address) {
