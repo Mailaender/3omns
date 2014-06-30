@@ -126,7 +126,7 @@ static void client(int wait_fd) {
     int wait_rc = wait_for_read(wait_fd);
     assert(wait_rc == 1);
 
-    int sd = n3_new_connected_socket(&connect);
+    int sd = n3_new_linked_socket(&connect);
 
     n3_host test_connect;
     n3_init_host_from_socket_local(&test_connect, sd);
@@ -184,7 +184,7 @@ static void client(int wait_fd) {
             "received data matches sent data");
 
     test_assert(!n3_compare_hosts(&received_host, &connect),
-            "received from connected host");
+            "received from linked host");
 
     n3_free_socket(sd);
 }

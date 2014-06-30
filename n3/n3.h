@@ -57,7 +57,7 @@ int n3_compare_hosts(const n3_host *restrict a, const n3_host *restrict b);
 
 
 int n3_new_listening_socket(const n3_host *restrict local);
-int n3_new_connected_socket(const n3_host *restrict remote);
+int n3_new_linked_socket(const n3_host *restrict remote);
 void n3_free_socket(int socket_fd);
 
 void n3_raw_send(
@@ -65,14 +65,14 @@ void n3_raw_send(
     int buf_count,
     const void *const bufs[],
     const size_t sizes[], // Total should be <= 548 (see N3_SAFE_MESSAGE_SIZE).
-    const n3_host *restrict remote // NULL if connected (i.e. not listening).
+    const n3_host *restrict remote // NULL if linked (i.e. not listening).
 );
 size_t n3_raw_receive(
     int socket_fd,
     int buf_count,
     void *restrict bufs[],
     size_t sizes[],
-    n3_host *restrict remote // NULL if connected (i.e. not listening).
+    n3_host *restrict remote // NULL if linked (i.e. not listening).
 );
 
 
@@ -96,65 +96,70 @@ size_t n3_raw_receive(
 #define N3_SAFE_BUFFER_SIZE (N3_SAFE_PACKET_SIZE - N3_HEADER_SIZE)
 
 
-typedef struct n3_client n3_client;
+typedef struct n3_terminal n3_terminal;
 
-n3_client *n3_new_client(const n3_host *restrict remote);
-void n3_free_client(n3_client *restrict client);
+typedef _Bool (*n3_link_callback)(
+    n3_terminal *terminal,
+    const n3_host *remote,
+    void *data
+);
 
-int n3_get_client_fd(n3_client *restrict client);
+n3_terminal *n3_new_terminal(
+    const n3_host *restrict local,
+    n3_link_callback new_link_filter
+);
+n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal);
+void n3_free_terminal(n3_terminal *restrict terminal);
+
+int n3_get_terminal_fd(n3_terminal *restrict terminal);
 // TODO: getter for local n3_host.
 
-void n3_client_send(
-    n3_client *restrict client,
-    const void *restrict buf,
-    size_t size
-);
-size_t n3_client_receive(
-    n3_client *restrict client,
-    void *restrict buf,
-    size_t size
-);
-
-
-typedef struct n3_server n3_server;
-
-typedef _Bool (*n3_connection_callback)(
-    n3_server *server,
-    const n3_host *host,
+void n3_for_each_link(
+    n3_terminal *restrict terminal,
+    n3_link_callback callback,
     void *data
 );
 
-n3_server *n3_new_server(
-    const n3_host *restrict local,
-    n3_connection_callback connection_filter_callback
-);
-void n3_free_server(n3_server *restrict server);
-
-int n3_get_server_fd(n3_server *restrict server);
-
-void n3_for_each_connection(
-    n3_server *restrict server,
-    n3_connection_callback callback,
-    void *data
-);
+// TODO: disconnect from a particular remote.
 
 void n3_broadcast(
-    n3_server *restrict server,
+    n3_terminal *restrict terminal,
     const void *restrict buf,
     size_t size
 );
 void n3_send_to(
-    n3_server *restrict server,
+    n3_terminal *restrict terminal,
     const void *restrict buf,
     size_t size,
-    const n3_host *restrict host
+    const n3_host *restrict remote
 );
-size_t n3_server_receive(
-    n3_server *restrict server,
+size_t n3_receive(
+    n3_terminal *restrict terminal,
     void *restrict buf,
     size_t size,
-    n3_host *restrict host,
-    void *connection_filter_data
+    n3_host *restrict remote,
+    void *new_link_filter_data
+);
+
+
+typedef struct n3_link n3_link;
+
+n3_link *n3_new_link(const n3_host *restrict remote);
+n3_link *n3_link_to(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote
+);
+n3_link *n3_ref_link(n3_link *restrict link);
+void n3_free_link(n3_link *restrict link);
+
+n3_terminal *n3_get_terminal(n3_link *restrict link);
+// TODO: getter for remote n3_host.
+// TODO: a disconnect function separate from free?
+
+void n3_send(
+    n3_link *restrict link,
+    const void *restrict buf,
+    size_t size
 );
 
 

@@ -27,60 +27,119 @@
 #include <stdlib.h>
 
 
-struct connection {
+struct link_data {
     n3_host remote;
     // TODO
 };
 
-struct n3_client {
+struct n3_terminal {
+    int ref_count;
+
     int socket_fd;
-    struct connection connection;
+
+    n3_link_callback filter_new_link;
+
+    struct link_data *links;
+    int link_size;
+    int link_count;
 };
 
-struct n3_server {
-    int socket_fd;
-    n3_connection_callback filter_connection;
-    struct connection *connections;
-    int connection_size;
-    int connection_count;
+struct n3_link {
+    int ref_count;
+
+    n3_terminal *terminal;
+    n3_host remote;
 };
 
 
 static const uint8_t magic[N3_HEADER_SIZE] = {0x31,0xc6,0xa9,0xfa};
 
 
-static struct connection *init_connection(
-    struct connection *connection,
+static struct link_data *init_link_data(
+    struct link_data *link_data,
     const n3_host *restrict remote
 ) {
-    connection->remote = *remote;
-    return connection;
+    link_data->remote = *remote;
+    return link_data;
 }
 
-static int compare_connections(const void *a_, const void *b_) {
-    const struct connection *restrict a = a_;
-    const struct connection *restrict b = b_;
-    return n3_compare_hosts(&a->remote, &b->remote);
+static void destroy_link_data(struct link_data *link_data) {
+    // No-op for now.
+}
+
+static n3_terminal *new_terminal(
+    int socket_fd,
+    n3_link_callback new_link_filter
+) {
+    n3_terminal *terminal = b3_malloc(sizeof(*terminal), 1);
+    terminal->socket_fd = socket_fd;
+    terminal->filter_new_link = new_link_filter;
+    terminal->link_size = 8;
+    terminal->links
+            = b3_malloc(terminal->link_size * sizeof(*terminal->links), 1);
+    return n3_ref_terminal(terminal);
+}
+
+n3_terminal *n3_new_terminal(
+    const n3_host *restrict local,
+    n3_link_callback new_link_filter
+) {
+    return new_terminal(n3_new_listening_socket(local), new_link_filter);
+}
+
+n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal) {
+    terminal->ref_count++;
+    return terminal;
+}
+
+void n3_free_terminal(n3_terminal *restrict terminal) {
+    if(terminal && !--terminal->ref_count) {
+        if(terminal->socket_fd >= 0) {
+            n3_free_socket(terminal->socket_fd);
+            terminal->socket_fd = -1;
+        }
+        terminal->filter_new_link = NULL;
+        for(int i = 0; i < terminal->link_count; i++)
+            destroy_link_data(&terminal->links[i]);
+        b3_free(terminal->links, 0);
+        terminal->links = NULL;
+        terminal->link_size = 0;
+        terminal->link_count = 0;
+        b3_free(terminal, 0);
+    }
+}
+
+int n3_get_terminal_fd(n3_terminal *restrict terminal) {
+    return terminal->socket_fd;
+}
+
+void n3_for_each_link(
+    n3_terminal *restrict terminal,
+    n3_link_callback callback,
+    void *data
+) {
+    for(int i = 0; i < terminal->link_count; i++)
+        callback(terminal, &terminal->links[i].remote, data);
 }
 
 static void proto_send(
     int socket_fd,
     const void *restrict buf,
     size_t size,
-    const n3_host *restrict host
+    const n3_host *restrict remote
 ) {
     // TODO: reliability.
 
     const void *bufs[] = {magic, buf};
     size_t sizes[] = {sizeof(magic), size};
-    n3_raw_send(socket_fd, B3_STATIC_ARRAY_COUNT(bufs), bufs, sizes, host);
+    n3_raw_send(socket_fd, B3_STATIC_ARRAY_COUNT(bufs), bufs, sizes, remote);
 }
 
 static size_t proto_receive(
     int socket_fd,
     void *restrict buf,
     size_t size,
-    n3_host *restrict host
+    n3_host *restrict remote
 ) {
     uint8_t magic_test[sizeof(magic)];
     void *bufs[] = {magic_test, buf};
@@ -93,7 +152,7 @@ static size_t proto_receive(
             B3_STATIC_ARRAY_COUNT(bufs),
             bufs,
             sizes,
-            host
+            remote
         )) > 0;
     ) {
         if(sizes[0] == sizeof(magic) && !memcmp(magic_test, magic, sizes[0]))
@@ -103,199 +162,161 @@ static size_t proto_receive(
     return 0;
 }
 
-static void destroy_client(n3_client *restrict client) {
-    if(client->socket_fd >= 0) {
-        n3_free_socket(client->socket_fd);
-        client->socket_fd = -1;
-    }
-}
-
-n3_client *n3_new_client(const n3_host *restrict remote) {
-    n3_client *client = b3_malloc(sizeof(*client), 1);
-    client->socket_fd = n3_new_connected_socket(remote);
-    init_connection(&client->connection, remote);
-
-    // TODO: make a "connection".
-
-    return client;
-}
-
-void n3_free_client(n3_client *restrict client) {
-    if(client) {
-        destroy_client(client);
-        b3_free(client, 0);
-    }
-}
-
-int n3_get_client_fd(n3_client *restrict client) {
-    return client->socket_fd;
-}
-
-void n3_client_send(
-    n3_client *restrict client,
-    const void *restrict buf,
-    size_t size
-) {
-    proto_send(client->socket_fd, buf, size, NULL);
-}
-
-size_t n3_client_receive(
-    n3_client *restrict client,
-    void *restrict buf,
-    size_t size
-) {
-    // TODO: is it safe to assume we can only receive from the connect()ed
-    // socket?  It would seem so, if the blurb in the man page is trustworthy.
-
-    return proto_receive(client->socket_fd, buf, size, NULL);
-}
-
-static void destroy_server(n3_server *restrict server) {
-    if(server->socket_fd >= 0) {
-        n3_free_socket(server->socket_fd);
-        server->socket_fd = -1;
-    }
-    server->filter_connection = NULL;
-    b3_free(server->connections, 0);
-    server->connections = NULL;
-    server->connection_size = 0;
-    server->connection_count = 0;
-}
-
-n3_server *n3_new_server(
-    const n3_host *restrict local,
-    n3_connection_callback connection_filter_callback
-) {
-    n3_server *server = b3_malloc(sizeof(*server), 1);
-    server->socket_fd = n3_new_listening_socket(local);
-    server->filter_connection = connection_filter_callback;
-    server->connection_size = 8;
-    server->connections = b3_malloc(
-        server->connection_size * sizeof(*server->connections),
-        1
-    );
-    return server;
-}
-
-void n3_free_server(n3_server *restrict server) {
-    if(server) {
-        destroy_server(server);
-        b3_free(server, 0);
-    }
-}
-
-int n3_get_server_fd(n3_server *restrict server) {
-    return server->socket_fd;
-}
-
-void n3_for_each_connection(
-    n3_server *restrict server,
-    n3_connection_callback callback,
-    void *data
-) {
-    for(int i = 0; i < server->connection_count; i++)
-        callback(server, &server->connections[i].remote, data);
-}
-
 void n3_broadcast(
-    n3_server *restrict server,
+    n3_terminal *restrict terminal,
     const void *restrict buf,
     size_t size
 ) {
-    for(int i = 0; i < server->connection_count; i++) {
-        proto_send(
-            server->socket_fd,
-            buf,
-            size,
-            &server->connections[i].remote
-        );
-    }
+    for(int i = 0; i < terminal->link_count; i++)
+        proto_send(terminal->socket_fd, buf, size, &terminal->links[i].remote);
 }
 
-void n3_send_to(
-    n3_server *restrict server,
-    const void *restrict buf,
-    size_t size,
-    const n3_host *restrict host
-) {
-    // TODO: ensure host is an endpoint we're connected to?
-
-    proto_send(server->socket_fd, buf, size, host);
+static int compare_link_data(const void *a_, const void *b_) {
+    const struct link_data *restrict a = a_;
+    const struct link_data *restrict b = b_;
+    return n3_compare_hosts(&a->remote, &b->remote);
 }
 
-static struct connection *search_connections(
-    n3_server *restrict server,
-    const n3_host *restrict host
+static struct link_data *search_link_data(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote
 ) {
     return bsearch(
-        host,
-        server->connections,
-        server->connection_count,
-        sizeof(*server->connections),
-        compare_connections
+        remote,
+        terminal->links,
+        terminal->link_count,
+        sizeof(*terminal->links),
+        compare_link_data
     );
 }
 
-static void insert_connection(
-    n3_server *restrict server,
-    const n3_host *restrict host
+static void insert_link_data(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote
 ) {
-    struct connection c;
-    init_connection(&c, host);
+    struct link_data data;
+    init_link_data(&data, remote);
 
-    if(server->connection_count + 1 > server->connection_size) {
-        server->connection_size *= 2;
-        server->connections = b3_realloc(
-            server->connections,
-            server->connection_size * sizeof(*server->connections)
+    if(terminal->link_count + 1 > terminal->link_size) {
+        terminal->link_size *= 2;
+        terminal->links = b3_realloc(
+            terminal->links,
+            terminal->link_size * sizeof(*terminal->links)
         );
     }
 
     // TODO: a binary search instead of a scan.
     int i;
-    for(i = 0; i < server->connection_count; i++) {
-        if(compare_connections(&c, &server->connections[i]) < 0)
+    for(i = 0; i < terminal->link_count; i++) {
+        if(compare_link_data(&data, &terminal->links[i]) < 0)
             break;
     }
 
     memmove(
-        &server->connections[i + 1],
-        &server->connections[i],
-        (server->connection_count - i) * sizeof(*server->connections)
+        &terminal->links[i + 1],
+        &terminal->links[i],
+        (terminal->link_count - i) * sizeof(*terminal->links)
     );
 
-    memcpy(&server->connections[i], &c, sizeof(c));
-    server->connection_count++;
+    memcpy(&terminal->links[i], &data, sizeof(data));
+    terminal->link_count++;
 }
 
-size_t n3_server_receive(
-    n3_server *restrict server,
+void n3_send_to(
+    n3_terminal *restrict terminal,
+    const void *restrict buf,
+    size_t size,
+    const n3_host *restrict remote
+) {
+    if(!search_link_data(terminal, remote))
+        insert_link_data(terminal, remote);
+
+    proto_send(terminal->socket_fd, buf, size, remote);
+}
+
+size_t n3_receive(
+    n3_terminal *restrict terminal,
     void *restrict buf,
     size_t size,
-    n3_host *restrict host,
-    void *connection_filter_data
+    n3_host *restrict remote,
+    void *new_link_filter_data
 ) {
-    n3_host received_host;
-    n3_host *restrict r_host = (host ? host : &received_host);
+    n3_host remote_;
+    n3_host *restrict r = (remote ? remote : &remote_);
 
     for(
         size_t received;
-        (received = proto_receive(server->socket_fd, buf, size, r_host)) > 0;
+        (received = proto_receive(terminal->socket_fd, buf, size, r)) > 0;
     ) {
-        // TODO: this connection juggling needs to happen inside proto_receive.
-        if(!search_connections(server, r_host)) {
-            if(server->filter_connection && !server->filter_connection(
-                server,
-                r_host,
-                connection_filter_data
+        // TODO: does this link juggling need to happen inside proto_receive?
+        if(!search_link_data(terminal, r)) {
+            if(terminal->filter_new_link && !terminal->filter_new_link(
+                terminal,
+                r,
+                new_link_filter_data
             ))
                 continue;
 
-            insert_connection(server, r_host);
+            insert_link_data(terminal, r);
         }
 
         return received;
     }
 
     return 0;
+}
+
+static _Bool deny_new_links(
+    n3_terminal *terminal,
+    const n3_host *remote,
+    void *data
+) {
+    return 0;
+}
+
+n3_link *n3_new_link(const n3_host *restrict remote) {
+    n3_terminal *terminal = new_terminal(
+        n3_new_linked_socket(remote),
+        deny_new_links
+    );
+    insert_link_data(terminal, remote);
+
+    n3_link *link = n3_link_to(terminal, remote);
+    n3_free_terminal(terminal);
+    return link;
+}
+
+n3_link *n3_link_to(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote
+) {
+    n3_link *link = b3_malloc(sizeof(*link), 1);
+    link->terminal = n3_ref_terminal(terminal);
+    link->remote = *remote;
+    return n3_ref_link(link);
+}
+
+n3_link *n3_ref_link(n3_link *restrict link) {
+    link->ref_count++;
+    return link;
+}
+
+void n3_free_link(n3_link *restrict link) {
+    if(link && !--link->ref_count) {
+        // TODO: disconnect.
+        n3_free_terminal(link->terminal);
+        b3_free(link, sizeof(*link));
+    }
+}
+
+n3_terminal *n3_get_terminal(n3_link *restrict link) {
+    return n3_ref_terminal(link->terminal);
+}
+
+void n3_send(
+    n3_link *restrict link,
+    const void *restrict buf,
+    size_t size
+) {
+    n3_send_to(link->terminal, buf, size, &link->remote);
 }

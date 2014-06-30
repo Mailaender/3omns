@@ -40,8 +40,7 @@ struct notify_entity_data {
 };
 
 
-static n3_server *server = NULL;
-static n3_client *client = NULL;
+static n3_terminal *terminal = NULL;
 
 static int sent_packets = 0;
 static int received_packets = 0;
@@ -134,27 +133,18 @@ static void send_notification(
     size_t size,
     const n3_host *restrict host
 ) {
-    if(args.client) {
-        debug_network_print(buf, size, "Send: ");
-        n3_client_send(client, buf, size);
-        sent_packets++;
+    if(!args.client && !args.serve)
+        return;
+
+    if(host) {
+        n3_send_to(terminal, buf, size, host);
+        debug_network_print(buf, size, "Sent to %s: ", host_to_string(host));
     }
-    else if(args.serve) {
-        if(host) {
-            debug_network_print(
-                buf,
-                size,
-                "Send to %s: ",
-                host_to_string(host)
-            );
-            n3_send_to(server, buf, size, host);
-        }
-        else {
-            debug_network_print(buf, size, "Broadcast: ");
-            n3_broadcast(server, buf, size);
-        }
-        sent_packets++;
+    else {
+        n3_broadcast(terminal, buf, size);
+        debug_network_print(buf, size, "Broadcast: ");
     }
+    sent_packets++;
 }
 
 static size_t receive_notification(
@@ -163,27 +153,22 @@ static size_t receive_notification(
     size_t size,
     n3_host *restrict host
 ) {
-    size_t received = 0;
-    if(args.client) {
-        received = n3_client_receive(client, buf, size);
-        if(received) {
-            received_packets++;
-            debug_network_print(buf, received, "Received: ");
-        }
-    }
-    else if(args.serve) {
-        n3_host received_host;
-        n3_host *restrict r_host = (host ? host : &received_host);
-        received = n3_server_receive(server, buf, size, r_host, round);
-        if(received) {
-            received_packets++;
-            debug_network_print(
-                buf,
-                received,
-                "Received from %s: ",
-                host_to_string(r_host)
-            );
-        }
+    if(!args.client && !args.serve)
+        return 0;
+
+    n3_host host_;
+    n3_host *h = (host ? host : &host_);
+
+    size_t received = n3_receive(terminal, buf, size, h, round);
+
+    if(received) {
+        received_packets++;
+        debug_network_print(
+            buf,
+            received,
+            "Received from %s: ",
+            host_to_string(h)
+        );
     }
     return received;
 }
@@ -550,8 +535,8 @@ void get_net_debug_stats(struct debug_stats *restrict debug_stats) {
     debug_stats->received_packets = received_packets;
 }
 
-static _Bool filter_connection(
-    n3_server *restrict server,
+static _Bool filter_new_link(
+    n3_terminal *restrict terminal,
     const n3_host *restrict host,
     void *data
 ) {
@@ -569,19 +554,21 @@ void init_net(void) {
         n3_init_host_any_local(&host, args.port);
 
     if(args.client) {
-        client = n3_new_client(&host);
+        n3_link *server_link = n3_new_link(&host);
+        terminal = n3_get_terminal(server_link);
+        n3_free_link(server_link);
+
         DEBUG_PRINT("Connecting to %s\n", host_to_string(&host));
         notify_connect();
     }
     else if(args.serve) {
-        server = n3_new_server(&host, filter_connection);
+        terminal = n3_new_terminal(&host, filter_new_link);
+
         DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
     }
 }
 
 void quit_net(void) {
-    n3_free_client(client);
-    client = NULL;
-    n3_free_server(server);
-    server = NULL;
+    n3_free_terminal(terminal);
+    terminal = NULL;
 }

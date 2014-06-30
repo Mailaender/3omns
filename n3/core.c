@@ -177,7 +177,7 @@ int n3_new_listening_socket(const n3_host *restrict local) {
     return sd;
 }
 
-int n3_new_connected_socket(const n3_host *restrict remote) {
+int n3_new_linked_socket(const n3_host *restrict remote) {
     int sd = new_socket(remote->address.ss_family);
     if(connect(sd, (struct sockaddr *)&remote->address, remote->size) < 0)
         b3_fatal("Error connecting socket: %s", strerror(errno));
