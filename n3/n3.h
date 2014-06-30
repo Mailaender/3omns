@@ -60,14 +60,14 @@ int n3_new_server_socket(const n3_host *restrict local);
 int n3_new_client_socket(const n3_host *restrict remote);
 void n3_free_socket(int socket_fd);
 
-void n3_send(
+void n3_raw_send(
     int socket_fd,
     int buf_count,
     const void *const bufs[],
     const size_t sizes[], // Total should be <= 548 (see N3_SAFE_MESSAGE_SIZE).
     const n3_host *restrict remote // NULL if client.
 );
-size_t n3_receive(
+size_t n3_raw_receive(
     int socket_fd,
     int buf_count,
     void *restrict bufs[],

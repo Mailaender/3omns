@@ -70,7 +70,7 @@ static void server(int notify_fd) {
     void *receive_bufs[2] = {receive_buf0, receive_buf1};
     size_t receive_sizes[2] = {sizeof(receive_buf0), sizeof(receive_buf1)};
     n3_host received_host;
-    size_t received_size = n3_receive(
+    size_t received_size = n3_raw_receive(
         server_fd,
         2,
         receive_bufs,
@@ -114,7 +114,7 @@ static void server(int notify_fd) {
     memcpy(send_buf0, &server_send_data[0], send_sizes[0]);
     memcpy(send_buf1, &server_send_data[send_sizes[0]], send_sizes[1]);
 
-    n3_send(server_fd, 2, send_bufs, send_sizes, &received_host);
+    n3_raw_send(server_fd, 2, send_bufs, send_sizes, &received_host);
 
     n3_free_socket(server_fd);
 }
@@ -145,7 +145,7 @@ static void client(int wait_fd) {
     memcpy(send_buf0, &client_send_data[0], send_sizes[0]);
     memcpy(send_buf1, &client_send_data[send_sizes[0]], send_sizes[1]);
 
-    n3_send(client_fd, 3, send_bufs, send_sizes, NULL);
+    n3_raw_send(client_fd, 3, send_bufs, send_sizes, NULL);
 
     int poll_rc = wait_for_read(client_fd);
     assert(poll_rc == 1);
@@ -160,7 +160,7 @@ static void client(int wait_fd) {
         sizeof(receive_buf2),
     };
     n3_host received_host;
-    size_t received_size = n3_receive(
+    size_t received_size = n3_raw_receive(
         client_fd,
         3,
         receive_bufs,

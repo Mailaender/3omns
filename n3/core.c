@@ -205,7 +205,7 @@ void n3_free_socket(int socket_fd) {
     close(socket_fd);
 }
 
-void n3_send(
+void n3_raw_send(
     int socket_fd,
     int buf_count,
     const void *const bufs[],
@@ -233,7 +233,7 @@ void n3_send(
         b3_fatal("Sent data truncated, %'zd of %'zu bytes", sent, size);
 }
 
-size_t n3_receive(
+size_t n3_raw_receive(
     int socket_fd,
     int buf_count,
     void *restrict bufs[],

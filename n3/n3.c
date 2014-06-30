@@ -73,7 +73,7 @@ static void proto_send(
 
     const void *bufs[] = {magic, buf};
     size_t sizes[] = {sizeof(magic), size};
-    n3_send(socket_fd, B3_STATIC_ARRAY_COUNT(bufs), bufs, sizes, host);
+    n3_raw_send(socket_fd, B3_STATIC_ARRAY_COUNT(bufs), bufs, sizes, host);
 }
 
 static size_t proto_receive(
@@ -88,7 +88,7 @@ static size_t proto_receive(
 
     for(
         size_t received;
-        (received = n3_receive(
+        (received = n3_raw_receive(
             socket_fd,
             B3_STATIC_ARRAY_COUNT(bufs),
             bufs,
