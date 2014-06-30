@@ -46,8 +46,7 @@ struct n3_server {
 };
 
 
-static const uint8_t magic[N3_HEADER_SIZE]
-        = {0x31,0xc6,0xa9,0xfa,0x99,0xbe,0xea,0x9b};
+static const uint8_t magic[N3_HEADER_SIZE] = {0x31,0xc6,0xa9,0xfa};
 
 
 static struct connection *init_connection(

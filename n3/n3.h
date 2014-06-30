@@ -78,7 +78,7 @@ size_t n3_raw_receive(
 
 // Size of the n3 protocol header in bytes.  This amount of space is used by
 // the n3 protocol in every sent packet.
-#define N3_HEADER_SIZE 8
+#define N3_HEADER_SIZE 4
 
 // A good maximum packet size to avoid path fragmentation.  If you know your
 // path MTU is bigger, feel free to ignore this (or define it else-wise).  The
