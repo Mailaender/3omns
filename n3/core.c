@@ -170,9 +170,9 @@ static int new_socket(sa_family_t family) {
     return socket_fd;
 }
 
-int n3_new_listening_socket(const n3_host *restrict local_host) {
-    int sd = new_socket(local_host->address.ss_family);
-    if(bind(sd, (struct sockaddr *)&local_host->address, local_host->size) < 0)
+int n3_new_listening_socket(const n3_host *restrict local) {
+    int sd = new_socket(local->address.ss_family);
+    if(bind(sd, (struct sockaddr *)&local->address, local->size) < 0)
         b3_fatal("Error binding socket: %s", strerror(errno));
     return sd;
 }

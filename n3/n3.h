@@ -56,7 +56,7 @@ n3_port n3_get_host_port(const n3_host *restrict host);
 int n3_compare_hosts(const n3_host *restrict a, const n3_host *restrict b);
 
 
-int n3_new_listening_socket(const n3_host *restrict local_host);
+int n3_new_listening_socket(const n3_host *restrict local);
 int n3_new_connected_socket(const n3_host *restrict remote);
 void n3_free_socket(int socket_fd);
 
