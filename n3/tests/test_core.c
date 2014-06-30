@@ -51,18 +51,18 @@ static void server(int notify_fd) {
     n3_host listen;
     n3_init_host_any_local(&listen, port);
 
-    int server_fd = n3_new_server_socket(&listen);
+    int sd = n3_new_listening_socket(&listen);
 
     uint8_t c = 1;
     ssize_t notify_written = write(notify_fd, &c, 1);
     assert(notify_written == 1);
 
     n3_host test_listen;
-    n3_init_host_from_socket_local(&test_listen, server_fd);
+    n3_init_host_from_socket_local(&test_listen, sd);
     test_assert(n3_get_host_port(&test_listen) == port,
             "server port correct");
 
-    int poll_rc = wait_for_read(server_fd);
+    int poll_rc = wait_for_read(sd);
     assert(poll_rc == 1);
 
     uint8_t receive_buf0[3];
@@ -71,7 +71,7 @@ static void server(int notify_fd) {
     size_t receive_sizes[2] = {sizeof(receive_buf0), sizeof(receive_buf1)};
     n3_host received_host;
     size_t received_size = n3_raw_receive(
-        server_fd,
+        sd,
         2,
         receive_bufs,
         receive_sizes,
@@ -114,9 +114,9 @@ static void server(int notify_fd) {
     memcpy(send_buf0, &server_send_data[0], send_sizes[0]);
     memcpy(send_buf1, &server_send_data[send_sizes[0]], send_sizes[1]);
 
-    n3_raw_send(server_fd, 2, send_bufs, send_sizes, &received_host);
+    n3_raw_send(sd, 2, send_bufs, send_sizes, &received_host);
 
-    n3_free_socket(server_fd);
+    n3_free_socket(sd);
 }
 
 static void client(int wait_fd) {
@@ -126,10 +126,10 @@ static void client(int wait_fd) {
     int wait_rc = wait_for_read(wait_fd);
     assert(wait_rc == 1);
 
-    int client_fd = n3_new_client_socket(&connect);
+    int sd = n3_new_connected_socket(&connect);
 
     n3_host test_connect;
-    n3_init_host_from_socket_local(&test_connect, client_fd);
+    n3_init_host_from_socket_local(&test_connect, sd);
     test_assert(n3_get_host_port(&test_connect) != 0,
             "client port immediately available");
 
@@ -145,9 +145,9 @@ static void client(int wait_fd) {
     memcpy(send_buf0, &client_send_data[0], send_sizes[0]);
     memcpy(send_buf1, &client_send_data[send_sizes[0]], send_sizes[1]);
 
-    n3_raw_send(client_fd, 3, send_bufs, send_sizes, NULL);
+    n3_raw_send(sd, 3, send_bufs, send_sizes, NULL);
 
-    int poll_rc = wait_for_read(client_fd);
+    int poll_rc = wait_for_read(sd);
     assert(poll_rc == 1);
 
     uint8_t receive_buf0[4];
@@ -161,7 +161,7 @@ static void client(int wait_fd) {
     };
     n3_host received_host;
     size_t received_size = n3_raw_receive(
-        client_fd,
+        sd,
         3,
         receive_bufs,
         receive_sizes,
@@ -186,7 +186,7 @@ static void client(int wait_fd) {
     test_assert(!n3_compare_hosts(&received_host, &connect),
             "received from connected host");
 
-    n3_free_socket(client_fd);
+    n3_free_socket(sd);
 }
 
 int main(void) {

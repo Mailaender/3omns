@@ -163,42 +163,25 @@ int n3_compare_hosts(const n3_host *restrict a, const n3_host *restrict b) {
     return memcmp(get_addr(a), get_addr(b), get_addr_size(a));
 }
 
-static int new_socket(_Bool server, const n3_host *restrict address) {
-    int socket_fd = socket(address->address.ss_family, SOCK_DGRAM, 0);
-    if(socket_fd < 0) {
-        b3_fatal(
-            "Error creating %s socket: %s",
-            (server ? "server" : "client"),
-            strerror(errno)
-        );
-    }
-
-    if(server) {
-        if(bind(
-            socket_fd,
-            (struct sockaddr *)&address->address,
-            address->size
-        ) < 0)
-            b3_fatal("Error binding server socket: %s", strerror(errno));
-    }
-    else {
-        if(connect(
-            socket_fd,
-            (struct sockaddr *)&address->address,
-            address->size
-        ) < 0)
-            b3_fatal("Error connecting client socket: %s", strerror(errno));
-    }
-
+static int new_socket(sa_family_t family) {
+    int socket_fd = socket(family, SOCK_DGRAM, 0);
+    if(socket_fd < 0)
+        b3_fatal("Error creating socket: %s", strerror(errno));
     return socket_fd;
 }
 
-int n3_new_server_socket(const n3_host *restrict local) {
-    return new_socket(1, local);
+int n3_new_listening_socket(const n3_host *restrict local_host) {
+    int sd = new_socket(local_host->address.ss_family);
+    if(bind(sd, (struct sockaddr *)&local_host->address, local_host->size) < 0)
+        b3_fatal("Error binding socket: %s", strerror(errno));
+    return sd;
 }
 
-int n3_new_client_socket(const n3_host *restrict remote) {
-    return new_socket(0, remote);
+int n3_new_connected_socket(const n3_host *restrict remote) {
+    int sd = new_socket(remote->address.ss_family);
+    if(connect(sd, (struct sockaddr *)&remote->address, remote->size) < 0)
+        b3_fatal("Error connecting socket: %s", strerror(errno));
+    return sd;
 }
 
 void n3_free_socket(int socket_fd) {

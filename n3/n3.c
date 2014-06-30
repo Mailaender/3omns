@@ -112,7 +112,7 @@ static void destroy_client(n3_client *restrict client) {
 
 n3_client *n3_new_client(const n3_host *restrict remote) {
     n3_client *client = b3_malloc(sizeof(*client), 1);
-    client->socket_fd = n3_new_client_socket(remote);
+    client->socket_fd = n3_new_connected_socket(remote);
     init_connection(&client->connection, remote);
 
     // TODO: make a "connection".
@@ -167,7 +167,7 @@ n3_server *n3_new_server(
     n3_connection_callback connection_filter_callback
 ) {
     n3_server *server = b3_malloc(sizeof(*server), 1);
-    server->socket_fd = n3_new_server_socket(local);
+    server->socket_fd = n3_new_listening_socket(local);
     server->filter_connection = connection_filter_callback;
     server->connection_size = 8;
     server->connections = b3_malloc(

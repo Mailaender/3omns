@@ -56,8 +56,8 @@ n3_port n3_get_host_port(const n3_host *restrict host);
 int n3_compare_hosts(const n3_host *restrict a, const n3_host *restrict b);
 
 
-int n3_new_server_socket(const n3_host *restrict local);
-int n3_new_client_socket(const n3_host *restrict remote);
+int n3_new_listening_socket(const n3_host *restrict local_host);
+int n3_new_connected_socket(const n3_host *restrict remote);
 void n3_free_socket(int socket_fd);
 
 void n3_raw_send(
@@ -65,14 +65,14 @@ void n3_raw_send(
     int buf_count,
     const void *const bufs[],
     const size_t sizes[], // Total should be <= 548 (see N3_SAFE_MESSAGE_SIZE).
-    const n3_host *restrict remote // NULL if client.
+    const n3_host *restrict remote // NULL if connected (i.e. not listening).
 );
 size_t n3_raw_receive(
     int socket_fd,
     int buf_count,
     void *restrict bufs[],
     size_t sizes[],
-    n3_host *restrict remote // NULL if client.
+    n3_host *restrict remote // NULL if connected (i.e. not listening).
 );
 
 
