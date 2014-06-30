@@ -76,14 +76,24 @@ size_t n3_raw_receive(
 );
 
 
-// A good maximum buffer size to avoid path fragmentation.  If you know your
-// path MTU is bigger, feel free to ignore this.  The IPv4 minimum reassembly
-// buffer size is 576, minus 20 for the IP header, minus 8 for the UDP header,
-// equals 548.  For details, see Michael Kerrisk's "The Linux Programming
-// Interface" (2010) (ISBN-13: 978-1-59327-220-3), p. 1190, sec.  58.6.2, under
-// "Selecting a UDP datagram size to avoid IP fragmentation".  The n3 protocol
-// takes 8 more bytes, leaving 540 for messages sent using the protocol.
-#define N3_SAFE_BUFFER_SIZE 540 // 548 max UDP packet size - 8 protocol bytes.
+// Size of the n3 protocol header in bytes.  This amount of space is used by
+// the n3 protocol in every sent packet.
+#define N3_HEADER_SIZE 8
+
+// A good maximum packet size to avoid path fragmentation.  If you know your
+// path MTU is bigger, feel free to ignore this (or define it else-wise).  The
+// IPv4 minimum reassembly buffer size is 576, minus 20 for the IP header,
+// minus 8 for the UDP header, equals 548.  For details, see Michael Kerrisk's
+// "The Linux Programming Interface" (2010) (ISBN-13: 978-1-59327-220-3), p.
+// 1190, sec.  58.6.2, under "Selecting a UDP datagram size to avoid IP
+// fragmentation".
+#ifndef N3_SAFE_PACKET_SIZE
+#define N3_SAFE_PACKET_SIZE 548
+#endif
+
+// A good maximum buffer size for an app's messages.  The app's messages are
+// sent with the n3 protocol header prepended, which is accounted for here.
+#define N3_SAFE_BUFFER_SIZE (N3_SAFE_PACKET_SIZE - N3_HEADER_SIZE)
 
 
 typedef struct n3_client n3_client;
