@@ -64,7 +64,7 @@ void n3_raw_send(
     int socket_fd,
     int buf_count,
     const void *const bufs[],
-    const size_t sizes[], // Total should be <= 548 (see N3_SAFE_MESSAGE_SIZE).
+    const size_t sizes[], // Total should generally be <= N3_SAFE_PACKET_SIZE.
     const n3_host *restrict remote // NULL if linked (i.e. not listening).
 );
 size_t n3_raw_receive(
