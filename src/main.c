@@ -292,9 +292,10 @@ static void loop(struct round *restrict round) {
             }
         }
 
-        _Bool dirty = b3_get_entity_pool_dirty(round->level.sprites)
-                || b3_get_entity_pool_dirty(round->level.entities);
-        if(round->initialized && dirty) {
+        if(round->initialized && (
+            b3_get_entity_pool_dirty(round->level.sprites)
+                    || b3_get_entity_pool_dirty(round->level.entities)
+        )) {
             l3_cull(&round->level);
 
             notify_updates(round);
