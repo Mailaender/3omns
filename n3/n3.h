@@ -106,7 +106,7 @@ typedef _Bool (*n3_link_callback)(
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
-    n3_link_callback new_link_filter
+    n3_link_callback incoming_link_filter
 );
 n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal);
 void n3_free_terminal(n3_terminal *restrict terminal);
@@ -138,7 +138,7 @@ size_t n3_receive(
     void *restrict buf,
     size_t size,
     n3_host *restrict remote,
-    void *new_link_filter_data
+    void *incoming_link_filter_data
 );
 
 

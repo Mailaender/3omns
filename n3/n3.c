@@ -37,7 +37,7 @@ struct n3_terminal {
 
     int socket_fd;
 
-    n3_link_callback filter_new_link;
+    n3_link_callback filter_incoming_link;
 
     struct link_data *links;
     int link_size;
@@ -69,11 +69,11 @@ static void destroy_link_data(struct link_data *link_data) {
 
 static n3_terminal *new_terminal(
     int socket_fd,
-    n3_link_callback new_link_filter
+    n3_link_callback incoming_link_filter
 ) {
     n3_terminal *terminal = b3_malloc(sizeof(*terminal), 1);
     terminal->socket_fd = socket_fd;
-    terminal->filter_new_link = new_link_filter;
+    terminal->filter_incoming_link = incoming_link_filter;
     terminal->link_size = 8;
     terminal->links
             = b3_malloc(terminal->link_size * sizeof(*terminal->links), 1);
@@ -82,9 +82,9 @@ static n3_terminal *new_terminal(
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
-    n3_link_callback new_link_filter
+    n3_link_callback incoming_link_filter
 ) {
-    return new_terminal(n3_new_listening_socket(local), new_link_filter);
+    return new_terminal(n3_new_listening_socket(local), incoming_link_filter);
 }
 
 n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal) {
@@ -98,7 +98,7 @@ void n3_free_terminal(n3_terminal *restrict terminal) {
             n3_free_socket(terminal->socket_fd);
             terminal->socket_fd = -1;
         }
-        terminal->filter_new_link = NULL;
+        terminal->filter_incoming_link = NULL;
         for(int i = 0; i < terminal->link_count; i++)
             destroy_link_data(&terminal->links[i]);
         b3_free(terminal->links, 0);
@@ -239,7 +239,7 @@ size_t n3_receive(
     void *restrict buf,
     size_t size,
     n3_host *restrict remote,
-    void *new_link_filter_data
+    void *incoming_link_filter_data
 ) {
     n3_host remote_;
     n3_host *restrict r = (remote ? remote : &remote_);
@@ -250,10 +250,11 @@ size_t n3_receive(
     ) {
         // TODO: does this link juggling need to happen inside proto_receive?
         if(!search_link_data(terminal, r)) {
-            if(terminal->filter_new_link && !terminal->filter_new_link(
+            if(terminal->filter_incoming_link
+                    && !terminal->filter_incoming_link(
                 terminal,
                 r,
-                new_link_filter_data
+                incoming_link_filter_data
             ))
                 continue;
 
