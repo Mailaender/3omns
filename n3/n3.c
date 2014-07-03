@@ -109,7 +109,7 @@ void n3_free_terminal(n3_terminal *restrict terminal) {
     }
 }
 
-int n3_get_terminal_fd(n3_terminal *restrict terminal) {
+int n3_get_fd(n3_terminal *restrict terminal) {
     return terminal->socket_fd;
 }
 

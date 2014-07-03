@@ -111,7 +111,7 @@ n3_terminal *n3_new_terminal(
 n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal);
 void n3_free_terminal(n3_terminal *restrict terminal);
 
-int n3_get_terminal_fd(n3_terminal *restrict terminal);
+int n3_get_fd(n3_terminal *restrict terminal);
 // TODO: getter for local n3_host.
 
 void n3_for_each_link(
