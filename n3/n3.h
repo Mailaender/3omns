@@ -104,6 +104,8 @@ typedef _Bool (*n3_link_callback)(
     void *data
 );
 
+// TODO: add a free_packet callback so the user can provide an alternative to
+// b3_free() when sent buffers are no longer needed.  It receives buf and size.
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
     n3_link_callback incoming_link_filter
@@ -124,12 +126,12 @@ void n3_for_each_link(
 
 void n3_broadcast(
     n3_terminal *restrict terminal,
-    const void *restrict buf,
+    void *restrict buf, // Must be b3_malloc'd, ownership passes to n3.
     size_t size
 );
 void n3_send_to(
     n3_terminal *restrict terminal,
-    const void *restrict buf,
+    void *restrict buf, // Must be b3_malloc'd, ownership passes to n3.
     size_t size,
     const n3_host *restrict remote
 );
@@ -158,7 +160,7 @@ n3_terminal *n3_get_terminal(n3_link *restrict link);
 
 void n3_send(
     n3_link *restrict link,
-    const void *restrict buf,
+    void *restrict buf, // Must be malloc'd, ownership passes to n3.
     size_t size
 );
 

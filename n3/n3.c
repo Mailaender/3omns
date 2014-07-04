@@ -164,11 +164,13 @@ static size_t proto_receive(
 
 void n3_broadcast(
     n3_terminal *restrict terminal,
-    const void *restrict buf,
+    void *restrict buf,
     size_t size
 ) {
     for(int i = 0; i < terminal->link_count; i++)
         proto_send(terminal->socket_fd, buf, size, &terminal->links[i].remote);
+
+    b3_free(buf, size);
 }
 
 static int compare_link_data(const void *a_, const void *b_) {
@@ -224,7 +226,7 @@ static void insert_link_data(
 
 void n3_send_to(
     n3_terminal *restrict terminal,
-    const void *restrict buf,
+    void *restrict buf,
     size_t size,
     const n3_host *restrict remote
 ) {
@@ -232,6 +234,8 @@ void n3_send_to(
         insert_link_data(terminal, remote);
 
     proto_send(terminal->socket_fd, buf, size, remote);
+
+    b3_free(buf, size);
 }
 
 size_t n3_receive(
@@ -316,7 +320,7 @@ n3_terminal *n3_get_terminal(n3_link *restrict link) {
 
 void n3_send(
     n3_link *restrict link,
-    const void *restrict buf,
+    void *restrict buf,
     size_t size
 ) {
     n3_send_to(link->terminal, buf, size, &link->remote);

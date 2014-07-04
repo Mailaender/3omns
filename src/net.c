@@ -129,7 +129,7 @@ static void scan_buffer_(
 }
 
 static void send_notification(
-    const uint8_t *restrict buf,
+    uint8_t *restrict buf,
     size_t size,
     const n3_host *restrict host
 ) {
@@ -137,12 +137,12 @@ static void send_notification(
         return;
 
     if(host) {
-        n3_send_to(terminal, buf, size, host);
         debug_network_print(buf, size, "Sent to %s: ", host_to_string(host));
+        n3_send_to(terminal, buf, size, host);
     }
     else {
-        n3_broadcast(terminal, buf, size);
         debug_network_print(buf, size, "Broadcast: ");
+        n3_broadcast(terminal, buf, size);
     }
     sent_packets++;
 }
@@ -177,8 +177,12 @@ static void notify_paused_state(
     const struct round *restrict round,
     const n3_host *restrict host
 ) {
-    uint8_t buf[] = {'p', (round->paused ? '1' : '0')};
-    send_notification(buf, sizeof(buf), host);
+#define PAUSE_BUF_SIZE 2
+    uint8_t *buf = b3_malloc(PAUSE_BUF_SIZE, 0);
+    buf[0] = 'p';
+    buf[1] = (round->paused ? '1' : '0');
+    send_notification(buf, PAUSE_BUF_SIZE, host);
+#undef PAUSE_BUF_SIZE
 }
 
 static void process_paused_state(
@@ -210,8 +214,13 @@ void notify_input(const struct round *restrict round, b3_input input) {
     else if(input == B3_INPUT_RIGHT(player)) button = 'r';
     else button = 'f';
 
-    uint8_t buf[] = {'i', player + '0', button};
-    send_notification(buf, sizeof(buf), NULL);
+#define INPUT_BUF_SIZE 3
+    uint8_t *buf = b3_malloc(INPUT_BUF_SIZE, 0);
+    buf[0] = 'i';
+    buf[1] = player + '0';
+    buf[2] = button;
+    send_notification(buf, INPUT_BUF_SIZE, NULL);
+#undef INPUT_BUF_SIZE
 }
 
 static void process_input(
@@ -239,10 +248,11 @@ static void notify_map(
     const struct round *restrict round,
     const n3_host *restrict host
 ) {
-    uint8_t buf[N3_SAFE_BUFFER_SIZE];
+    uint8_t *buf = b3_malloc(N3_SAFE_BUFFER_SIZE, 0);
     int pos = 0;
 
-#define PRINT_MAP(...) print_buffer(buf, sizeof(buf), &pos, __VA_ARGS__)
+#define PRINT_MAP(...) \
+        print_buffer(buf, N3_SAFE_BUFFER_SIZE, &pos, __VA_ARGS__)
     PRINT_MAP(
         "m%Xx%X-%X/",
         round->map_size.width,
@@ -346,6 +356,7 @@ static void notify_entity(b3_entity *restrict entity, void *callback_data) {
     // TODO: this approximation should be more exact.
     if((size_t)*d->pos + serial_len + 50 > d->size) {
         send_notification(d->buf, (size_t)*d->pos, d->host);
+        d->buf = b3_malloc(d->size, 0);
         *d->pos = 0;
     }
 
@@ -377,13 +388,19 @@ static void notify_entities(
     const struct round *restrict round,
     const n3_host *restrict host
 ) {
-    uint8_t buf[N3_SAFE_BUFFER_SIZE];
+    uint8_t *buf = b3_malloc(N3_SAFE_BUFFER_SIZE, 0);
     int pos = 0;
 
     b3_for_each_entity(
         round->level.entities,
         notify_entity,
-        &(struct notify_entity_data){dirty_only, buf, sizeof(buf), &pos, host}
+        &(struct notify_entity_data){
+            dirty_only,
+            buf,
+            N3_SAFE_BUFFER_SIZE,
+            &pos,
+            host
+        }
     );
 
     if(pos)
@@ -436,10 +453,11 @@ static void notify_deleted_entities(const struct round *restrict round) {
     // the client like we're notifying about a nonexistent entity being
     // deleted.  It shouldn't matter, it's just an odd case.
 
-    uint8_t buf[N3_SAFE_BUFFER_SIZE];
+    uint8_t *buf = b3_malloc(N3_SAFE_BUFFER_SIZE, 0);
     int pos = 0;
 
-#define PRINT_DELETED(...) print_buffer(buf, sizeof(buf), &pos, __VA_ARGS__)
+#define PRINT_DELETED(...) \
+        print_buffer(buf, N3_SAFE_BUFFER_SIZE, &pos, __VA_ARGS__)
     PRINT_DELETED("d");
 
     for(int i = 0; i < count; i++)
@@ -489,8 +507,11 @@ void notify_updates(const struct round *restrict round) {
 }
 
 static void notify_connect(void) {
-    uint8_t buf[] = {'c'};
-    send_notification(buf, sizeof(buf), NULL);
+#define CONNECT_BUF_SIZE 1
+    uint8_t *buf = b3_malloc(CONNECT_BUF_SIZE, 0);
+    buf[0] = 'c';
+    send_notification(buf, CONNECT_BUF_SIZE, NULL);
+#undef CONNECT_BUF_SIZE
 }
 
 static void process_connect(
