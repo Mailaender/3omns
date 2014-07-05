@@ -29,6 +29,8 @@
 #include <stdio.h>
 
 
+#define PROTOCOL_VERSION '1'
+
 struct notify_entity_data {
     _Bool dirty_only;
 
@@ -507,9 +509,10 @@ void notify_updates(const struct round *restrict round) {
 }
 
 static void notify_connect(void) {
-#define CONNECT_BUF_SIZE 1
+#define CONNECT_BUF_SIZE 2
     uint8_t *buf = b3_malloc(CONNECT_BUF_SIZE, 0);
     buf[0] = 'c';
+    buf[1] = PROTOCOL_VERSION;
     send_notification(buf, CONNECT_BUF_SIZE, NULL);
 #undef CONNECT_BUF_SIZE
 }
@@ -520,9 +523,13 @@ static void process_connect(
     size_t size,
     const n3_host *restrict host
 ) {
-    notify_paused_state(round, host);
-    notify_map(round, host);
-    notify_entities(0, round, host);
+    // TODO: actively disconnect or tell the client they have an incompatible
+    // version, instead of just ignoring them.
+    if(size == 2 && buf[1] == PROTOCOL_VERSION) {
+        notify_paused_state(round, host);
+        notify_map(round, host);
+        notify_entities(0, round, host);
+    }
 }
 
 void process_notifications(struct round *restrict round) {
