@@ -25,19 +25,16 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 
 
-#define PROTOCOL_VERSION '1'
+#define PROTOCOL_VERSION '2'
 
 struct notify_entity_data {
     _Bool dirty_only;
-
-    uint8_t *buf;
-    size_t size;
-    int *pos;
-
+    n3_buffer *buffer;
     const n3_host *host;
 };
 
@@ -58,7 +55,7 @@ static const char *host_to_string(const n3_host *restrict host) {
 }
 
 static void debug_network_print(
-    const uint8_t *restrict buf,
+    n3_buffer *restrict buffer,
     size_t size,
     const char *restrict format,
     ...
@@ -70,47 +67,55 @@ static void debug_network_print(
     va_start(args, format);
 
     vfprintf(DEBUG_NETWORK_FILE, format, args);
-    fwrite(buf, 1, size, DEBUG_NETWORK_FILE);
+    fwrite(n3_get_buffer(buffer), 1, size, DEBUG_NETWORK_FILE);
     fputc('\n', DEBUG_NETWORK_FILE);
 
     va_end(args);
 }
 
-static void print_buffer(
-    uint8_t *restrict buf,
-    size_t size,
-    int *restrict pos,
+static void append_buffer(
+    n3_buffer *restrict buffer,
     const char *restrict format,
     ...
 ) {
     va_list args;
     va_start(args, format);
 
-    *pos += vsnprintf((char *)buf + *pos, size - *pos, format, args);
-    if((size_t)*pos > size) // Ignore terminating null.
+    size_t size = n3_get_buffer_size(buffer);
+    size_t cap = n3_get_buffer_cap(buffer);
+    int printed = vsnprintf(
+        (char *)n3_get_buffer(buffer) + cap,
+        size - cap,
+        format,
+        args
+    );
+    if(cap + printed > size) // Ignore terminating null.
         b3_fatal("Send buffer too small");
+    n3_set_buffer_cap(buffer, cap + printed);
 
     va_end(args);
 }
 
-// Assume buf is null-terminated.
-#define scan_buffer(buf, pos, assignments, format, ...) do { \
+// Assume buffer is null-terminated.  This overloads the buffer cap to keep
+// track of where we've scanned to, which is a bit odd, but works and is easy.
+#define scan_buffer(buffer, assignments, format, ...) do { \
+    size_t cap = n3_get_buffer_cap(buffer); \
     int consumed = 0; \
     scan_buffer_( \
-        (buf), \
-        *(pos), \
+        (buffer), \
+        cap, \
         (assignments), \
         format, \
         format "%n", \
         __VA_ARGS__, \
         &consumed \
     ); \
-    *(pos) += consumed; \
+    n3_set_buffer_cap((buffer), cap + consumed); \
 } while(0)
 
 static void scan_buffer_(
-    const uint8_t *restrict buf,
-    int pos,
+    n3_buffer *restrict buffer,
+    size_t cap,
     int assignments,
     const char *restrict parse_format,
     const char *restrict format,
@@ -119,7 +124,7 @@ static void scan_buffer_(
     va_list args;
     va_start(args, format);
 
-    int assigned = vsscanf((char *)buf + pos, format, args);
+    int assigned = vsscanf((char *)n3_get_buffer(buffer) + cap, format, args);
     if(assigned < assignments) {
         b3_fatal(
             "Error parsing received message; expected scanf-format: %s",
@@ -131,73 +136,92 @@ static void scan_buffer_(
 }
 
 static void send_notification(
-    uint8_t *restrict buf,
-    size_t size,
+    n3_buffer *restrict buffer,
     const n3_host *restrict host
 ) {
     if(!args.client && !args.serve)
         return;
 
+    size_t buffer_size = n3_get_buffer_cap(buffer);
     if(host) {
-        debug_network_print(buf, size, "Sent to %s: ", host_to_string(host));
-        n3_send_to(terminal, buf, size, host);
+        debug_network_print(
+            buffer,
+            buffer_size,
+            "Sent to %s: ",
+            host_to_string(host)
+        );
+        n3_send_to(terminal, buffer, host);
     }
     else {
-        debug_network_print(buf, size, "Broadcast: ");
-        n3_broadcast(terminal, buf, size);
+        debug_network_print(buffer, buffer_size, "Broadcast: ");
+        n3_broadcast(terminal, buffer);
     }
     sent_packets++;
 }
 
-static size_t receive_notification(
+static n3_buffer *receive_notification(
     struct round *restrict round,
-    uint8_t *restrict buf,
-    size_t size,
     n3_host *restrict host
 ) {
     if(!args.client && !args.serve)
-        return 0;
+        return NULL;
 
     n3_host host_;
     n3_host *h = (host ? host : &host_);
 
-    size_t received = n3_receive(terminal, buf, size, h, round);
-
-    if(received) {
+    n3_buffer *buffer = n3_receive(terminal, h, round);
+    if(buffer) {
         received_packets++;
         debug_network_print(
-            buf,
-            received,
+            buffer,
+            n3_get_buffer_size(buffer) - 1,
             "Received from %s: ",
             host_to_string(h)
         );
     }
-    return received;
+    return buffer;
+}
+
+static n3_buffer *new_buffer(
+    size_t size,
+    const n3_allocator *restrict allocator
+) {
+    // Add space for the terminating NUL, and start cap at 0 (which we use to
+    // track what's been printed/scanned thus far).
+    n3_buffer *buffer = n3_new_buffer(size + 1, allocator);
+    n3_set_buffer_cap(buffer, 0);
+
+    // Add NUL just so it's always a printable string.
+    char *b = n3_get_buffer(buffer);
+    b[0] = '\0';
+
+    return buffer;
 }
 
 static void notify_paused_state(
     const struct round *restrict round,
     const n3_host *restrict host
 ) {
-#define PAUSE_BUF_SIZE 2
-    uint8_t *buf = b3_malloc(PAUSE_BUF_SIZE, 0);
-    buf[0] = 'p';
-    buf[1] = (round->paused ? '1' : '0');
-    send_notification(buf, PAUSE_BUF_SIZE, host);
-#undef PAUSE_BUF_SIZE
+    n3_buffer *buffer = new_buffer(2, NULL);
+    append_buffer(buffer, "p%c", (round->paused ? '1' : '0'));
+    send_notification(buffer, host);
 }
 
 static void process_paused_state(
     struct round *restrict round,
-    const uint8_t *restrict buf,
-    size_t size
+    n3_buffer *restrict buffer
 ) {
-    _Bool p = (buf[1] == '0' ? 0 : 1);
-    if(round->paused != p) {
-        round->paused = p;
+    char p = '0';
+    scan_buffer(buffer, 1, "p%c", &p);
+
+    _Bool paused = (p == '0' ? 0 : 1);
+    if(round->paused != paused) {
+        round->paused = paused;
         if(args.serve)
             notify_paused_state(round, NULL);
     }
+
+    n3_free_buffer(buffer);
 }
 
 void notify_paused_changed(const struct round *restrict round) {
@@ -216,55 +240,53 @@ void notify_input(const struct round *restrict round, b3_input input) {
     else if(input == B3_INPUT_RIGHT(player)) button = 'r';
     else button = 'f';
 
-#define INPUT_BUF_SIZE 3
-    uint8_t *buf = b3_malloc(INPUT_BUF_SIZE, 0);
-    buf[0] = 'i';
-    buf[1] = player + '0';
-    buf[2] = button;
-    send_notification(buf, INPUT_BUF_SIZE, NULL);
-#undef INPUT_BUF_SIZE
+    n3_buffer *buffer = new_buffer(3, NULL);
+    append_buffer(buffer, "i%c%c", player + '0', button);
+    send_notification(buffer, NULL);
 }
 
 static void process_input(
     struct round *restrict round,
-    const uint8_t *restrict buf,
-    size_t size
+    n3_buffer *restrict buffer
 ) {
-    int player = buf[1] - '0';
-    if(size < 3 || player < 0 || player > 3)
+    char p = '0';
+    char b = '0';
+    scan_buffer(buffer, 2, "i%c%c", &p, &b);
+
+    int player = p - '0';
+    if(player < 0 || player > 3)
         b3_fatal("Received invalid input event");
 
     // TODO: map the remote player to an appropriate local one.
 
     b3_input input;
-    if(buf[2] == 'u') input = B3_INPUT_UP(player);
-    else if(buf[2] == 'd') input = B3_INPUT_DOWN(player);
-    else if(buf[2] == 'l') input = B3_INPUT_LEFT(player);
-    else if(buf[2] == 'r') input = B3_INPUT_RIGHT(player);
+    if(b == 'u') input = B3_INPUT_UP(player);
+    else if(b == 'd') input = B3_INPUT_DOWN(player);
+    else if(b == 'l') input = B3_INPUT_LEFT(player);
+    else if(b == 'r') input = B3_INPUT_RIGHT(player);
     else input = B3_INPUT_FIRE(player);
 
     l3_input(&round->level, input);
+
+    n3_free_buffer(buffer);
 }
 
 static void notify_map(
     const struct round *restrict round,
     const n3_host *restrict host
 ) {
-    uint8_t *buf = b3_malloc(N3_SAFE_BUFFER_SIZE, 0);
-    int pos = 0;
+    n3_buffer *buffer = new_buffer(N3_SAFE_BUFFER_SIZE, NULL);
 
-#define PRINT_MAP(...) \
-        print_buffer(buf, N3_SAFE_BUFFER_SIZE, &pos, __VA_ARGS__)
-    PRINT_MAP(
-        "m%Xx%X-%X/",
+    append_buffer(
+        buffer,
+        "m%Xx%X-%X",
         round->map_size.width,
         round->map_size.height,
         b3_get_entity_pool_size(round->level.entities)
     );
 
-    for(int i = 0; i < L3_DUDE_COUNT - 1; i++)
-        PRINT_MAP("%X,", round->level.dude_ids[i]);
-    PRINT_MAP("%X|", round->level.dude_ids[L3_DUDE_COUNT - 1]);
+    for(int i = 0; i < L3_DUDE_COUNT; i++)
+        append_buffer(buffer, "$%X", round->level.dude_ids[i]);
 
     b3_tile run_tile = 0;
     int run_count = 0;
@@ -276,33 +298,30 @@ static void notify_map(
                 run_count++;
             else {
                 if(run_count > 0)
-                    PRINT_MAP("%X:%c;", run_count, (int)run_tile);
+                    append_buffer(buffer, "*%X:%c", run_count, (int)run_tile);
                 run_tile = tile;
                 run_count = 1;
             }
         }
     }
-    PRINT_MAP("%X:%c", run_count, (int)run_tile);
-#undef PRINT_MAP
+    append_buffer(buffer, "*%X:%c", run_count, (int)run_tile);
 
-    send_notification(buf, (size_t)pos, host);
+    send_notification(buffer, host);
 }
 
 static void process_map(
     struct round *restrict round,
-    const uint8_t *restrict buf,
-    size_t size
+    n3_buffer *restrict buffer
 ) {
     if(round->initialized)
         return;
 
-    int pos = 0;
+    char *buf = n3_get_buffer(buffer);
 
-#define SCAN_MAP(...) scan_buffer(buf, &pos, __VA_ARGS__)
     int width = 0;
     int height = 0;
     int max_entities = 0;
-    SCAN_MAP(3, "m%Xx%X-%X/", &width, &height, &max_entities);
+    scan_buffer(buffer, 3, "m%Xx%X-%X", &width, &height, &max_entities);
 
     // TODO: these maxima should be a bit more rigorously defined.
     if(width <= 0 || height <= 0 || max_entities <= 0
@@ -318,15 +337,14 @@ static void process_map(
     round->map_size = b3_get_map_size(round->level.map);
     round->tile_size = b3_get_map_tile_size(&round->map_size, &game_size);
 
-    for(int i = 0; i < L3_DUDE_COUNT - 1; i++)
-        SCAN_MAP(1, "%X,", &round->level.dude_ids[i]);
-    SCAN_MAP(1, "%X|", &round->level.dude_ids[L3_DUDE_COUNT - 1]);
+    for(int i = 0; i < L3_DUDE_COUNT; i++)
+        scan_buffer(buffer, 1, "$%X", &round->level.dude_ids[i]);
 
     b3_pos map_pos = {0, 0};
-    do {
+    while(buf[n3_get_buffer_cap(buffer)] == '*') {
         b3_tile run_tile = 0;
         int run_count = 0;
-        SCAN_MAP(2, "%X:%c", &run_count, &run_tile);
+        scan_buffer(buffer, 2, "*%X:%c", &run_count, &run_tile);
 
         for(int i = 0; i < run_count; i++) {
             if(map_pos.y >= height)
@@ -338,12 +356,13 @@ static void process_map(
                 map_pos.y++;
             }
         }
-    } while(buf[pos++] == ';');
-#undef SCAN_MAP
+    }
 
     l3_set_sync_level(&round->level);
 
     round->initialized = 1;
+
+    n3_free_buffer(buffer);
 }
 
 static void notify_entity(b3_entity *restrict entity, void *callback_data) {
@@ -355,20 +374,26 @@ static void notify_entity(b3_entity *restrict entity, void *callback_data) {
     size_t serial_len = 0;
     char *serial = l3_serialize_entity(entity, &serial_len);
 
-    // TODO: this approximation should be more exact.
-    if((size_t)*d->pos + serial_len + 50 > d->size) {
-        send_notification(d->buf, (size_t)*d->pos, d->host);
-        d->buf = b3_malloc(d->size, 0);
-        *d->pos = 0;
-    }
+    if(d->buffer) {
+        size_t cap = n3_get_buffer_cap(d->buffer);
+        size_t size = n3_get_buffer_size(d->buffer);
 
-#define PRINT_ENTITY(...) print_buffer(d->buf, d->size, d->pos, __VA_ARGS__)
-    if(!*d->pos)
-        PRINT_ENTITY("e");
+        // TODO: this approximation should be more exact.
+        if(cap + serial_len + 50 > size) {
+            send_notification(d->buffer, d->host);
+            d->buffer = NULL;
+        }
+    }
+    if(!d->buffer)
+        d->buffer = new_buffer(N3_SAFE_BUFFER_SIZE, NULL);
+
+    if(!n3_get_buffer_cap(d->buffer))
+        append_buffer(d->buffer, "e");
 
     // TODO: only transmit the delta, instead of the full line.
     b3_pos entity_pos = b3_get_entity_pos(entity);
-    PRINT_ENTITY(
+    append_buffer(
+        d->buffer,
         "#%X:%X,%X-%X|%zX:",
         b3_get_entity_id(entity),
         entity_pos.x,
@@ -377,8 +402,7 @@ static void notify_entity(b3_entity *restrict entity, void *callback_data) {
         serial_len
     );
     if(serial)
-        PRINT_ENTITY("%*s", (int)serial_len, serial);
-#undef PRINT_ENTITY
+        append_buffer(d->buffer, "%*s", (int)serial_len, serial);
 
     if(d->dirty_only)
         b3_set_entity_dirty(entity, 0);
@@ -390,55 +414,53 @@ static void notify_entities(
     const struct round *restrict round,
     const n3_host *restrict host
 ) {
-    uint8_t *buf = b3_malloc(N3_SAFE_BUFFER_SIZE, 0);
-    int pos = 0;
+    struct notify_entity_data d = {dirty_only, NULL, host};
 
-    b3_for_each_entity(
-        round->level.entities,
-        notify_entity,
-        &(struct notify_entity_data){
-            dirty_only,
-            buf,
-            N3_SAFE_BUFFER_SIZE,
-            &pos,
-            host
-        }
-    );
+    b3_for_each_entity(round->level.entities, notify_entity, &d);
 
-    if(pos)
-        send_notification(buf, (size_t)pos, host);
+    if(d.buffer) {
+        if(n3_get_buffer_cap(d.buffer))
+            send_notification(d.buffer, host);
+        else
+            n3_free_buffer(d.buffer);
+    }
 }
 
 static void process_entities(
     struct round *restrict round,
-    const uint8_t *restrict buf,
-    size_t size
+    n3_buffer *restrict buffer
 ) {
-    int pos = 1; // Skip initial 'e'.
+    char *buf = n3_get_buffer(buffer);
 
-#define SCAN_ENTITIES(...) scan_buffer(buf, &pos, __VA_ARGS__)
-    while(buf[pos] == '#') {
+    n3_set_buffer_cap(buffer, 1); // Skip initial 'e'.
+
+    while(buf[n3_get_buffer_cap(buffer)] == '#') {
         b3_entity_id id = 0;
         int x = 0;
         int y = 0;
         int life = 0;
         size_t serial_len = 0;
-        SCAN_ENTITIES(5, "#%X:%X,%X-%X|%zX:", &id, &x, &y, &life, &serial_len);
-        const char *serial = (const char *)&buf[pos];
-        pos += (int)serial_len;
+        scan_buffer(
+            buffer,
+            5,
+            "#%X:%X,%X-%X|%zX:",
+            &id,
+            &x,
+            &y,
+            &life,
+            &serial_len
+        );
+        size_t cap = n3_get_buffer_cap(buffer);
+        const char *serial = &buf[cap];
+        n3_set_buffer_cap(buffer, cap + serial_len);
 
         if(x < 0 || y < 0 || life < 0 || serial_len > 10000)
             b3_fatal("Received invalid entity data");
 
-        l3_sync_entity(
-            id,
-            &(b3_pos){x, y},
-            life,
-            serial,
-            serial_len
-        );
+        l3_sync_entity(id, &(b3_pos){x, y}, life, serial, serial_len);
     }
-#undef SCAN_ENTITIES
+
+    n3_free_buffer(buffer);
 }
 
 static void notify_deleted_entities(const struct round *restrict round) {
@@ -455,42 +477,36 @@ static void notify_deleted_entities(const struct round *restrict round) {
     // the client like we're notifying about a nonexistent entity being
     // deleted.  It shouldn't matter, it's just an odd case.
 
-    uint8_t *buf = b3_malloc(N3_SAFE_BUFFER_SIZE, 0);
-    int pos = 0;
+    n3_buffer *buffer = new_buffer(N3_SAFE_BUFFER_SIZE, NULL);
 
-#define PRINT_DELETED(...) \
-        print_buffer(buf, N3_SAFE_BUFFER_SIZE, &pos, __VA_ARGS__)
-    PRINT_DELETED("d");
-
+    append_buffer(buffer, "d");
     for(int i = 0; i < count; i++)
-        PRINT_DELETED("#%X", ids[i]);
-#undef PRINT_DELETED
+        append_buffer(buffer, "#%X", ids[i]);
 
-    send_notification(buf, (size_t)pos, NULL);
+    send_notification(buffer, NULL);
 
     b3_clear_released_ids(round->level.entities);
 }
 
 static void process_deleted_entities(
     struct round *restrict round,
-    const uint8_t *restrict buf,
-    size_t size
+    n3_buffer *restrict buffer
 ) {
-    int pos = 1; // Skip initial 'd'.
+    char *buf = n3_get_buffer(buffer);
+
+    n3_set_buffer_cap(buffer, 1); // Skip initial 'd'.
 
     // size/2 should be a safe maximum number of ids, since the minimum size of
     // an id is one digit, and each one is separated by one '#'.
-    b3_entity_id ids[size / 2];
+    b3_entity_id ids[n3_get_buffer_size(buffer) / 2];
     int id_count = 0;
 
-#define SCAN_DELETED(...) scan_buffer(buf, &pos, __VA_ARGS__)
-    while(buf[pos] == '#') {
+    while(buf[n3_get_buffer_cap(buffer)] == '#') {
         b3_entity_id id = 0;
-        SCAN_DELETED(1, "#%X", &id);
+        scan_buffer(buffer, 1, "#%X", &id);
 
         ids[id_count++] = id;
     }
-#undef SCAN_DELETED
 
     l3_sync_deleted(ids, id_count);
 
@@ -498,6 +514,8 @@ static void process_deleted_entities(
         b3_entity *entity = b3_get_entity(round->level.entities, ids[i]);
         b3_release_entity(entity);
     }
+
+    n3_free_buffer(buffer);
 }
 
 void notify_updates(const struct round *restrict round) {
@@ -509,50 +527,43 @@ void notify_updates(const struct round *restrict round) {
 }
 
 static void notify_connect(void) {
-#define CONNECT_BUF_SIZE 2
-    uint8_t *buf = b3_malloc(CONNECT_BUF_SIZE, 0);
-    buf[0] = 'c';
-    buf[1] = PROTOCOL_VERSION;
-    send_notification(buf, CONNECT_BUF_SIZE, NULL);
-#undef CONNECT_BUF_SIZE
+    n3_buffer *buffer = new_buffer(2, NULL);
+    append_buffer(buffer, "c%c", PROTOCOL_VERSION);
+    send_notification(buffer, NULL);
 }
 
 static void process_connect(
     struct round *restrict round,
-    const uint8_t *restrict buf,
-    size_t size,
+    n3_buffer *restrict buffer,
     const n3_host *restrict host
 ) {
+    char v = '0';
+    scan_buffer(buffer, 1, "c%c", &v);
+
     // TODO: actively disconnect or tell the client they have an incompatible
     // version, instead of just ignoring them.
-    if(size == 2 && buf[1] == PROTOCOL_VERSION) {
+    if(v == PROTOCOL_VERSION) {
         notify_paused_state(round, host);
         notify_map(round, host);
         notify_entities(0, round, host);
     }
+
+    n3_free_buffer(buffer);
 }
 
 void process_notifications(struct round *restrict round) {
-    uint8_t buf[N3_SAFE_BUFFER_SIZE + 1];
     n3_host host;
     for(
-        size_t received;
-        (received = receive_notification(
-            round,
-            buf,
-            sizeof(buf) - 1,
-            &host
-        )) > 0;
+        n3_buffer *buffer;
+        (buffer = receive_notification(round, &host)) > 0;
     ) {
-        buf[received] = 0; // So we can safely scan_buffer() later.
-
-        switch(buf[0]) {
-        case 'c': process_connect(round, buf, received, &host); break;
-        case 'p': process_paused_state(round, buf, received); break;
-        case 'i': process_input(round, buf, received); break;
-        case 'm': process_map(round, buf, received); break;
-        case 'e': process_entities(round, buf, received); break;
-        case 'd': process_deleted_entities(round, buf, received); break;
+        switch(((char *)n3_get_buffer(buffer))[0]) {
+        case 'c': process_connect(round, buffer, &host); break;
+        case 'p': process_paused_state(round, buffer); break;
+        case 'i': process_input(round, buffer); break;
+        case 'm': process_map(round, buffer); break;
+        case 'e': process_entities(round, buffer); break;
+        case 'd': process_deleted_entities(round, buffer); break;
         default: b3_fatal("Received unknown notification");
         }
     }
@@ -574,6 +585,21 @@ static _Bool filter_new_link(
     return 1;
 }
 
+static n3_buffer *build_receive_buffer(
+    void *restrict buf,
+    size_t size,
+    const n3_allocator *restrict allocator
+) {
+    n3_buffer *buffer = new_buffer(size, allocator);
+
+    // Add terminating NUL so we can safely scan_buffer().
+    char *b = n3_get_buffer(buffer);
+    memcpy(b, buf, size);
+    b[size] = '\0';
+
+    return buffer;
+}
+
 void init_net(void) {
     n3_host host;
     if(args.client || (args.serve && args.hostname))
@@ -581,8 +607,11 @@ void init_net(void) {
     else if(args.serve)
         n3_init_host_any_local(&host, args.port);
 
+    n3_terminal_options options = N3_TERMINAL_OPTIONS_INIT;
+    options.build_receive_buffer = build_receive_buffer;
+
     if(args.client) {
-        n3_link *server_link = n3_new_link(&host);
+        n3_link *server_link = n3_new_link(&host, &options);
         terminal = n3_get_terminal(server_link);
         n3_free_link(server_link);
 
@@ -590,7 +619,7 @@ void init_net(void) {
         notify_connect();
     }
     else if(args.serve) {
-        terminal = n3_new_terminal(&host, filter_new_link);
+        terminal = n3_new_terminal(&host, filter_new_link, &options);
 
         DEBUG_PRINT("Listening at %s\n", host_to_string(&host));
     }

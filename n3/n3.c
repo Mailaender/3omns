@@ -27,6 +27,14 @@
 #include <stdlib.h>
 
 
+struct n3_buffer {
+    int ref_count;
+    n3_free free;
+    size_t size;
+    size_t cap;
+    uint8_t buf[];
+};
+
 struct link_data {
     n3_host remote;
     // TODO
@@ -34,6 +42,8 @@ struct link_data {
 
 struct n3_terminal {
     int ref_count;
+
+    n3_terminal_options options;
 
     int socket_fd;
 
@@ -55,6 +65,66 @@ struct n3_link {
 static const uint8_t magic[N3_HEADER_SIZE] = {0x31,0xc6,0xa9,0xfa};
 
 
+static void *default_malloc(size_t size) {
+    return b3_malloc(size, 0);
+}
+
+static void default_free(void *restrict buf, size_t size) {
+    b3_free(buf, 0);
+}
+
+n3_buffer *n3_new_buffer(size_t size, const n3_allocator *restrict allocator) {
+    n3_malloc malloc_ = default_malloc;
+    n3_free free_ = default_free;
+    if(allocator) {
+        if(allocator->malloc)
+            malloc_ = allocator->malloc;
+        if(allocator->free)
+            free_ = allocator->free;
+    }
+
+    n3_buffer *buffer = malloc_(size + sizeof(*buffer));
+    buffer->ref_count = 0;
+    buffer->free = free_;
+    buffer->size = size;
+    buffer->cap = size;
+    return n3_ref_buffer(buffer);
+}
+
+n3_buffer *n3_ref_buffer(n3_buffer *restrict buffer) {
+    buffer->ref_count++;
+    return buffer;
+}
+
+void n3_free_buffer(n3_buffer *restrict buffer) {
+    if(buffer && !--buffer->ref_count) {
+        n3_free free_ = buffer->free;
+        size_t size = buffer->size;
+
+        buffer->free = NULL;
+        buffer->size = 0;
+        buffer->cap = 0;
+        free_(buffer, size + sizeof(*buffer));
+    }
+}
+
+void *n3_get_buffer(n3_buffer *restrict buffer) {
+    return buffer->buf;
+}
+
+size_t n3_get_buffer_size(n3_buffer *restrict buffer) {
+    return buffer->size;
+}
+
+size_t n3_get_buffer_cap(n3_buffer *restrict buffer) {
+    return buffer->cap;
+}
+
+void n3_set_buffer_cap(n3_buffer *restrict buffer, size_t cap) {
+    if(cap <= buffer->size)
+        buffer->cap = cap;
+}
+
 static struct link_data *init_link_data(
     struct link_data *link_data,
     const n3_host *restrict remote
@@ -67,11 +137,33 @@ static void destroy_link_data(struct link_data *link_data) {
     // No-op for now.
 }
 
+static n3_buffer *default_build_receive_buffer(
+    void *buf,
+    size_t size,
+    const n3_allocator *allocator
+) {
+    n3_buffer *buffer = n3_new_buffer(size, allocator);
+    memcpy(buffer->buf, buf, size);
+    return buffer;
+}
+
 static n3_terminal *new_terminal(
     int socket_fd,
-    n3_link_callback incoming_link_filter
+    n3_link_callback incoming_link_filter,
+    const n3_terminal_options *restrict options
 ) {
     n3_terminal *terminal = b3_malloc(sizeof(*terminal), 1);
+    terminal->options.max_buffer_size = N3_SAFE_BUFFER_SIZE;
+    terminal->options.build_receive_buffer = default_build_receive_buffer;
+    if(options) {
+        if(options->max_buffer_size)
+            terminal->options.max_buffer_size = options->max_buffer_size;
+        terminal->options.receive_allocator = options->receive_allocator;
+        if(options->build_receive_buffer) {
+            terminal->options.build_receive_buffer
+                    = options->build_receive_buffer;
+        }
+    }
     terminal->socket_fd = socket_fd;
     terminal->filter_incoming_link = incoming_link_filter;
     terminal->link_size = 8;
@@ -82,9 +174,14 @@ static n3_terminal *new_terminal(
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
-    n3_link_callback incoming_link_filter
+    n3_link_callback incoming_link_filter,
+    const n3_terminal_options *restrict options
 ) {
-    return new_terminal(n3_new_listening_socket(local), incoming_link_filter);
+    return new_terminal(
+        n3_new_listening_socket(local),
+        incoming_link_filter,
+        options
+    );
 }
 
 n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal) {
@@ -124,14 +221,13 @@ void n3_for_each_link(
 
 static void proto_send(
     int socket_fd,
-    const void *restrict buf,
-    size_t size,
+    n3_buffer *restrict buffer,
     const n3_host *restrict remote
 ) {
     // TODO: reliability.
 
-    const void *bufs[] = {magic, buf};
-    size_t sizes[] = {sizeof(magic), size};
+    const void *bufs[] = {magic, buffer->buf};
+    size_t sizes[] = {sizeof(magic), buffer->cap};
     n3_raw_send(socket_fd, B3_STATIC_ARRAY_COUNT(bufs), bufs, sizes, remote);
 }
 
@@ -164,13 +260,12 @@ static size_t proto_receive(
 
 void n3_broadcast(
     n3_terminal *restrict terminal,
-    void *restrict buf,
-    size_t size
+    n3_buffer *restrict buffer
 ) {
     for(int i = 0; i < terminal->link_count; i++)
-        proto_send(terminal->socket_fd, buf, size, &terminal->links[i].remote);
+        proto_send(terminal->socket_fd, buffer, &terminal->links[i].remote);
 
-    b3_free(buf, size);
+    n3_free_buffer(buffer);
 }
 
 static int compare_link_data(const void *a_, const void *b_) {
@@ -226,31 +321,34 @@ static void insert_link_data(
 
 void n3_send_to(
     n3_terminal *restrict terminal,
-    void *restrict buf,
-    size_t size,
+    n3_buffer *restrict buffer,
     const n3_host *restrict remote
 ) {
     if(!search_link_data(terminal, remote))
         insert_link_data(terminal, remote);
 
-    proto_send(terminal->socket_fd, buf, size, remote);
+    proto_send(terminal->socket_fd, buffer, remote);
 
-    b3_free(buf, size);
+    n3_free_buffer(buffer);
 }
 
-size_t n3_receive(
+n3_buffer *n3_receive(
     n3_terminal *restrict terminal,
-    void *restrict buf,
-    size_t size,
     n3_host *restrict remote,
     void *incoming_link_filter_data
 ) {
     n3_host remote_;
-    n3_host *restrict r = (remote ? remote : &remote_);
+    n3_host *r = (remote ? remote : &remote_);
 
+    uint8_t receive_buf[terminal->options.max_buffer_size];
     for(
         size_t received;
-        (received = proto_receive(terminal->socket_fd, buf, size, r)) > 0;
+        (received = proto_receive(
+            terminal->socket_fd,
+            receive_buf,
+            sizeof(receive_buf),
+            r
+        )) > 0;
     ) {
         // TODO: does this link juggling need to happen inside proto_receive?
         if(!search_link_data(terminal, r)) {
@@ -265,10 +363,14 @@ size_t n3_receive(
             insert_link_data(terminal, r);
         }
 
-        return received;
+        return terminal->options.build_receive_buffer(
+            receive_buf,
+            received,
+            &terminal->options.receive_allocator
+        );
     }
 
-    return 0;
+    return NULL;
 }
 
 static _Bool deny_new_links(
@@ -279,10 +381,14 @@ static _Bool deny_new_links(
     return 0;
 }
 
-n3_link *n3_new_link(const n3_host *restrict remote) {
+n3_link *n3_new_link(
+    const n3_host *restrict remote,
+    const n3_terminal_options *restrict terminal_options
+) {
     n3_terminal *terminal = new_terminal(
         n3_new_linked_socket(remote),
-        deny_new_links
+        deny_new_links,
+        terminal_options
     );
     insert_link_data(terminal, remote);
 
@@ -320,8 +426,7 @@ n3_terminal *n3_get_terminal(n3_link *restrict link) {
 
 void n3_send(
     n3_link *restrict link,
-    void *restrict buf,
-    size_t size
+    n3_buffer *restrict buffer
 ) {
-    n3_send_to(link->terminal, buf, size, &link->remote);
+    n3_send_to(link->terminal, buffer, &link->remote);
 }

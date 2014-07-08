@@ -95,6 +95,28 @@ size_t n3_raw_receive(
 // sent with the n3 protocol header prepended, which is accounted for here.
 #define N3_SAFE_BUFFER_SIZE (N3_SAFE_PACKET_SIZE - N3_HEADER_SIZE)
 
+typedef void *(*n3_malloc)(size_t size);
+typedef void (*n3_free)(void *buf, size_t size);
+
+typedef struct n3_allocator n3_allocator;
+struct n3_allocator {
+    n3_malloc malloc;
+    n3_free free;
+};
+
+// TODO: define a constant for how much overhead in addition to the buffer size
+// each allocation will request (i.e. sizeof(n3_buffer))?
+typedef struct n3_buffer n3_buffer;
+
+n3_buffer *n3_new_buffer(size_t size, const n3_allocator *restrict allocator);
+n3_buffer *n3_ref_buffer(n3_buffer *restrict buffer);
+void n3_free_buffer(n3_buffer *restrict buffer);
+
+void *n3_get_buffer(n3_buffer *restrict buffer);
+size_t n3_get_buffer_size(n3_buffer *restrict buffer);
+size_t n3_get_buffer_cap(n3_buffer *restrict buffer);
+void n3_set_buffer_cap(n3_buffer *restrict buffer, size_t cap);
+
 
 typedef struct n3_terminal n3_terminal;
 
@@ -103,12 +125,24 @@ typedef _Bool (*n3_link_callback)(
     const n3_host *remote,
     void *data
 );
+typedef n3_buffer *(*n3_buffer_builder)(
+    void *buf,
+    size_t size,
+    const n3_allocator *allocator
+);
 
-// TODO: add a free_packet callback so the user can provide an alternative to
-// b3_free() when sent buffers are no longer needed.  It receives buf and size.
+typedef struct n3_terminal_options n3_terminal_options;
+struct n3_terminal_options {
+    size_t max_buffer_size;
+    n3_allocator receive_allocator;
+    n3_buffer_builder build_receive_buffer;
+};
+#define N3_TERMINAL_OPTIONS_INIT {0, {NULL, NULL}, NULL}
+
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
-    n3_link_callback incoming_link_filter
+    n3_link_callback incoming_link_filter,
+    const n3_terminal_options *restrict options
 );
 n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal);
 void n3_free_terminal(n3_terminal *restrict terminal);
@@ -126,19 +160,15 @@ void n3_for_each_link(
 
 void n3_broadcast(
     n3_terminal *restrict terminal,
-    void *restrict buf, // Must be b3_malloc'd, ownership passes to n3.
-    size_t size
+    n3_buffer *restrict buffer // Ownership passes to n3.
 );
 void n3_send_to(
     n3_terminal *restrict terminal,
-    void *restrict buf, // Must be b3_malloc'd, ownership passes to n3.
-    size_t size,
+    n3_buffer *restrict buffer, // Ownership passes to n3.
     const n3_host *restrict remote
 );
-size_t n3_receive(
+n3_buffer *n3_receive(
     n3_terminal *restrict terminal,
-    void *restrict buf,
-    size_t size,
     n3_host *restrict remote,
     void *incoming_link_filter_data
 );
@@ -146,7 +176,10 @@ size_t n3_receive(
 
 typedef struct n3_link n3_link;
 
-n3_link *n3_new_link(const n3_host *restrict remote);
+n3_link *n3_new_link(
+    const n3_host *restrict remote,
+    const n3_terminal_options *restrict terminal_options
+);
 n3_link *n3_link_to(
     n3_terminal *restrict terminal,
     const n3_host *restrict remote
@@ -160,8 +193,7 @@ n3_terminal *n3_get_terminal(n3_link *restrict link);
 
 void n3_send(
     n3_link *restrict link,
-    void *restrict buf, // Must be malloc'd, ownership passes to n3.
-    size_t size
+    n3_buffer *restrict buffer // Ownership passes to n3.
 );
 
 
