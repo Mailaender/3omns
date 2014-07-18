@@ -205,6 +205,8 @@ static void notify_paused_state(
     n3_buffer *buffer = new_buffer(2, NULL);
     append_buffer(buffer, "p%c", (round->paused ? '1' : '0'));
     send_notification(buffer, host);
+
+    n3_free_buffer(buffer);
 }
 
 static void process_paused_state(
@@ -243,6 +245,8 @@ void notify_input(const struct round *restrict round, b3_input input) {
     n3_buffer *buffer = new_buffer(3, NULL);
     append_buffer(buffer, "i%c%c", player + '0', button);
     send_notification(buffer, NULL);
+
+    n3_free_buffer(buffer);
 }
 
 static void process_input(
@@ -307,6 +311,8 @@ static void notify_map(
     append_buffer(buffer, "*%X:%c", run_count, (int)run_tile);
 
     send_notification(buffer, host);
+
+    n3_free_buffer(buffer);
 }
 
 static void process_map(
@@ -381,6 +387,7 @@ static void notify_entity(b3_entity *restrict entity, void *callback_data) {
         // TODO: this approximation should be more exact.
         if(cap + serial_len + 50 > size) {
             send_notification(d->buffer, d->host);
+            n3_free_buffer(d->buffer);
             d->buffer = NULL;
         }
     }
@@ -418,12 +425,10 @@ static void notify_entities(
 
     b3_for_each_entity(round->level.entities, notify_entity, &d);
 
-    if(d.buffer) {
-        if(n3_get_buffer_cap(d.buffer))
-            send_notification(d.buffer, host);
-        else
-            n3_free_buffer(d.buffer);
-    }
+    if(d.buffer && n3_get_buffer_cap(d.buffer))
+        send_notification(d.buffer, host);
+
+    n3_free_buffer(d.buffer);
 }
 
 static void process_entities(
@@ -485,6 +490,7 @@ static void notify_deleted_entities(const struct round *restrict round) {
 
     send_notification(buffer, NULL);
 
+    n3_free_buffer(buffer);
     b3_clear_released_ids(round->level.entities);
 }
 
@@ -530,6 +536,8 @@ static void notify_connect(void) {
     n3_buffer *buffer = new_buffer(2, NULL);
     append_buffer(buffer, "c%c", PROTOCOL_VERSION);
     send_notification(buffer, NULL);
+
+    n3_free_buffer(buffer);
 }
 
 static void process_connect(

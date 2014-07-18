@@ -264,8 +264,6 @@ void n3_broadcast(
 ) {
     for(int i = 0; i < terminal->link_count; i++)
         proto_send(terminal->socket_fd, buffer, &terminal->links[i].remote);
-
-    n3_free_buffer(buffer);
 }
 
 static int compare_link_data(const void *a_, const void *b_) {
@@ -328,8 +326,6 @@ void n3_send_to(
         insert_link_data(terminal, remote);
 
     proto_send(terminal->socket_fd, buffer, remote);
-
-    n3_free_buffer(buffer);
 }
 
 n3_buffer *n3_receive(

@@ -160,11 +160,11 @@ void n3_for_each_link(
 
 void n3_broadcast(
     n3_terminal *restrict terminal,
-    n3_buffer *restrict buffer // Ownership passes to n3.
+    n3_buffer *restrict buffer
 );
 void n3_send_to(
     n3_terminal *restrict terminal,
-    n3_buffer *restrict buffer, // Ownership passes to n3.
+    n3_buffer *restrict buffer,
     const n3_host *restrict remote
 );
 n3_buffer *n3_receive(
@@ -193,7 +193,7 @@ n3_terminal *n3_get_terminal(n3_link *restrict link);
 
 void n3_send(
     n3_link *restrict link,
-    n3_buffer *restrict buffer // Ownership passes to n3.
+    n3_buffer *restrict buffer
 );
 
 
