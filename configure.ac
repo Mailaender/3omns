@@ -2,6 +2,7 @@ AC_PREREQ([2.68])
 AC_INIT([3omns], [0.1+git], [chaz@chazomatic.us], [],
 		[http://chazomaticus.github.io/3omns/])
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip])
+AM_SILENT_RULES([yes])
 
 AC_CONFIG_FILES([
 	Makefile

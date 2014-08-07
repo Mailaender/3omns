@@ -23,7 +23,7 @@ GENERATED_MANPAGES = 3omns.6
 endif
 
 $(GENERATED_MANPAGES): %: %.txt
-	$(A2X_BIN) --format manpage $<
+	$(AM_V_GEN)$(A2X_BIN) --format manpage $<
 
 man_MANS = $(GENERATED_MANPAGES)
 CLEANFILES = $(GENERATED_MANPAGES)
