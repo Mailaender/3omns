@@ -46,6 +46,8 @@ n3_host *n3_init_host(
 );
 n3_host *n3_init_host_any_local(n3_host *restrict host, n3_port port);
 n3_host *n3_init_host_from_socket_local(n3_host *restrict host, int socket_fd);
+// TODO: init from string ip/ipv6 representation plus n3_port, and maybe from
+// another sockaddr_*?
 
 char *n3_get_host_address(
     const n3_host *restrict host,
@@ -118,8 +120,22 @@ size_t n3_get_buffer_cap(n3_buffer *restrict buffer);
 void n3_set_buffer_cap(n3_buffer *restrict buffer, size_t cap);
 
 
+typedef uint8_t n3_channel;
+
+#define N3_ORDERED_CHANNEL_MIN 0
+#define N3_ORDERED_CHANNEL_MAX 0x7f
+#define N3_UNORDERED_CHANNEL_MIN 0x80
+#define N3_UNORDERED_CHANNEL_MAX 0xff
+
+#define N3_CHANNEL_MIN N3_ORDERED_CHANNEL_MIN
+#define N3_CHANNEL_MAX N3_UNORDERED_CHANNEL_MAX
+
+#define N3_IS_ORDERED(ch) ((ch) <= N3_ORDERED_CHANNEL_MAX)
+
+
 typedef struct n3_terminal n3_terminal;
 
+// TODO: rename this to _filter, change _callback to return void.
 typedef _Bool (*n3_link_callback)(
     n3_terminal *terminal,
     const n3_host *remote,
@@ -156,14 +172,15 @@ void n3_for_each_link(
     void *data
 );
 
-// TODO: disconnect from a particular remote.
-
 void n3_broadcast(
     n3_terminal *restrict terminal,
+    n3_channel channel,
     n3_buffer *restrict buffer
+    // TODO: bool whether reliable at all (or maybe separate method?).
 );
 void n3_send_to(
     n3_terminal *restrict terminal,
+    n3_channel channel,
     n3_buffer *restrict buffer,
     const n3_host *restrict remote
 );
@@ -172,6 +189,8 @@ n3_buffer *n3_receive(
     n3_host *restrict remote,
     void *incoming_link_filter_data
 );
+
+// TODO: function to disconnect from a particular remote or all remotes?
 
 
 typedef struct n3_link n3_link;
@@ -189,12 +208,14 @@ void n3_free_link(n3_link *restrict link);
 
 n3_terminal *n3_get_terminal(n3_link *restrict link);
 // TODO: getter for remote n3_host.
-// TODO: a disconnect function separate from free?
 
 void n3_send(
     n3_link *restrict link,
+    n3_channel channel,
     n3_buffer *restrict buffer
 );
+
+// TODO: a disconnect function?
 
 
 #endif

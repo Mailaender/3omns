@@ -1,7 +1,7 @@
 AM_CPPFLAGS = -Wall -I $(top_srcdir)
 
 noinst_LIBRARIES = libn3.a
-libn3_a_SOURCES = n3.h n3.c raw.c
+libn3_a_SOURCES = n3.h internal.h buffer.c n3.c proto.c raw.c
 
 
 check_PROGRAMS = tests/test_raw

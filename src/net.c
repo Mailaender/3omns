@@ -150,11 +150,11 @@ static void send_notification(
             "Sent to %s: ",
             host_to_string(host)
         );
-        n3_send_to(terminal, buffer, host);
+        n3_send_to(terminal, 0, buffer, host);
     }
     else {
         debug_network_print(buffer, buffer_size, "Broadcast: ");
-        n3_broadcast(terminal, buffer);
+        n3_broadcast(terminal, 0, buffer);
     }
     sent_packets++;
 }
