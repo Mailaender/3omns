@@ -28,6 +28,8 @@
 #include <time.h>
 
 
+#define PROTO_VERSION 1 // Must fit in 4 bits.
+
 struct n3_buffer {
     int ref_count;
     n3_free free;
@@ -48,6 +50,18 @@ enum flags { // Must fit in 4 bits.
 typedef uint16_t sequence;
 #define SEQUENCE_BITS 16
 
+static inline int compare_sequence(sequence a, sequence b) {
+    if(a == b)
+        return 0;
+
+    // Allow for wrap-around.
+    const sequence half = 1 << (SEQUENCE_BITS - 1);
+    if((a < b && b - a < half) || (a > b && a - b > half))
+        return -1;
+
+    return 1;
+}
+
 struct packet {
     n3_channel channel;
     sequence seq;
@@ -55,11 +69,23 @@ struct packet {
     struct timespec time;
 };
 
-struct pool {
-    struct packet *packets;
-    int size;
-    int count;
-};
+static inline void destroy_packet(struct packet *restrict p) {
+    n3_free_buffer(p->buffer);
+}
+
+static inline int compare_packet(const void *key_, const void *member_) {
+    const sequence *restrict key = key_;
+    const struct packet *restrict member = member_;
+    return compare_sequence(*key, member->seq);
+}
+
+#define OL_NAME pool
+#define OL_ITEM_TYPE struct packet
+#define OL_ITEM_NAME packet
+#define OL_KEY_TYPE sequence
+#define OL_COMPARATOR compare_packet
+#define OL_ITEM_DESTRUCTOR destroy_packet
+#include "ordered_list.h" // struct pool
 
 struct simplex_channel_state {
     sequence seq;
@@ -83,13 +109,26 @@ struct link_state {
 };
 #define LINK_STATE_INIT {{{0}}} // FIXME: this is ridiculous.
 
-// TODO: combine code for link_states and pool.
-struct link_states {
-    struct link_state *states;
-    int size;
-    int count;
-};
-#define LINK_STATES_INIT {NULL, 0, 0}
+struct link_state *init_link_state(
+    struct link_state *restrict state,
+    const n3_host *restrict remote
+);
+void destroy_link_state(struct link_state *restrict state);
+
+static inline int compare_link_state(const void *key_, const void *member_) {
+    const n3_host *restrict key = key_;
+    const struct link_state *restrict member = member_;
+    return n3_compare_hosts(key, &member->remote);
+}
+
+#define OL_NAME link_states
+#define OL_ITEM_TYPE struct link_state
+#define OL_ITEM_NAME link_state
+#define OL_ITEMS_NAME states
+#define OL_KEY_TYPE n3_host
+#define OL_COMPARATOR compare_link_state
+#define OL_ITEM_DESTRUCTOR destroy_link_state
+#include "ordered_list.h" // struct link_states
 
 #define FOR_EACH_LINK_STATE(link_state_var, link_states) for( \
     struct link_state *link_state_var = &(link_states)->states[0], \
@@ -97,19 +136,6 @@ struct link_states {
     link_state_var < end__; \
     link_state_var++ \
 )
-
-
-void init_link_states(struct link_states *restrict link_states);
-void destroy_link_states(struct link_states *restrict link_states);
-
-struct link_state *search_link_state(
-    const struct link_states *restrict link_states,
-    const n3_host *restrict remote
-);
-struct link_state *insert_link_state(
-    struct link_states *restrict link_states,
-    const n3_host *restrict remote
-);
 
 
 void send_ack(

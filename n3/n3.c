@@ -27,6 +27,8 @@
 #include <string.h>
 
 
+#define INIT_LINK_STATES_SIZE 8
+
 struct n3_terminal {
     int ref_count;
     n3_terminal_options options;
@@ -74,7 +76,7 @@ static n3_terminal *new_terminal(
     terminal->socket_fd = socket_fd;
     terminal->filter_incoming_link = incoming_link_filter;
 
-    init_link_states(&terminal->links);
+    init_link_states(&terminal->links, INIT_LINK_STATES_SIZE);
 
     return n3_ref_terminal(terminal);
 }
@@ -132,13 +134,21 @@ void n3_broadcast(
         send_buffer(terminal->socket_fd, state, channel, buffer, 1);
 }
 
+static struct link_state *insert_link_state(
+    struct link_states *restrict states,
+    const n3_host *restrict remote
+) {
+    struct link_state state;
+    return add_link_state(states, init_link_state(&state, remote), remote);
+}
+
 void n3_send_to(
     n3_terminal *restrict terminal,
     n3_channel channel,
     n3_buffer *restrict buffer,
     const n3_host *restrict remote
 ) {
-    struct link_state *state = search_link_state(&terminal->links, remote);
+    struct link_state *state = find_link_state(&terminal->links, remote);
     if(!state)
         state = insert_link_state(&terminal->links, remote);
 
@@ -171,7 +181,7 @@ n3_buffer *n3_receive(
         if(!received)
             break;
 
-        struct link_state *state = search_link_state(&terminal->links, r);
+        struct link_state *state = find_link_state(&terminal->links, r);
         if(!state) {
             if(terminal->filter_incoming_link
                     && !terminal->filter_incoming_link(

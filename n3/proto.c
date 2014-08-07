@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
-#include <stdlib.h>
 #include <time.h>
 #include <unistd.h> // For _POSIX_TIMERS.
 
@@ -34,11 +33,6 @@
 #if(_POSIX_TIMERS <= 0)
 #error no POSIX timers :(
 #endif
-
-#define PROTO_VERSION 1 // Must fit in 4 bits.
-
-#define INIT_LINK_STATES_SIZE 8
-#define INIT_POOL_SIZE 8
 
 
 static void get_time(struct timespec *restrict ts) {
@@ -56,78 +50,6 @@ static void get_time(struct timespec *restrict ts) {
         b3_fatal("Error getting time: %s", strerror(errno));
 }
 
-static void destroy_packet(struct packet *restrict p) {
-    n3_free_buffer(p->buffer);
-}
-
-static void destroy_pool(struct pool *restrict p) {
-    for(int i = 0; i < p->count; i++)
-        destroy_packet(&p->packets[i]);
-    b3_free(p->packets, 0);
-}
-
-static int compare_sequence(sequence a, sequence b) {
-    if(a == b)
-        return 0;
-
-    // Allow for wrap-around.
-    const sequence half = 1 << (SEQUENCE_BITS - 1);
-    if((a < b && b - a < half) || (a > b && a - b > half))
-        return -1;
-
-    return 1;
-}
-
-static int compare_packet(const void *key_, const void *member_) {
-    const sequence *restrict key = key_;
-    const struct packet *restrict member = member_;
-    return compare_sequence(*key, member->seq);
-}
-
-static struct packet *search_packet(
-    const struct pool *restrict pool,
-    sequence seq
-) {
-    return bsearch(
-        &seq,
-        pool->packets,
-        pool->count,
-        sizeof(*pool->packets),
-        compare_packet
-    );
-}
-
-static void add_packet(
-    struct pool *restrict pool,
-    const struct packet *restrict packet
-) {
-    if(pool->count >= pool->size) {
-        if(!pool->size)
-            pool->size = INIT_POOL_SIZE;
-        else
-            pool->size *= 2;
-
-        pool->packets = b3_realloc(
-            pool->packets,
-            pool->size * sizeof(*pool->packets)
-        );
-    }
-
-    // TODO: alternate mode where it sorts based on seq instead of appending.
-    pool->packets[pool->count++] = *packet;
-}
-
-static void remove_packet(struct pool *restrict pool, sequence seq) {
-    struct packet *p = search_packet(pool, seq);
-    if(!p)
-        return;
-
-    destroy_packet(p);
-
-    ptrdiff_t index = p - pool->packets;
-    memmove(p, p + 1, (--pool->count - index) * sizeof(*p));
-}
-
 static void destroy_simplex_channel_state(
     struct simplex_channel_state *restrict scs
 ) {
@@ -141,91 +63,22 @@ static void destroy_duplex_channel_state(
     destroy_simplex_channel_state(&dcs->recv);
 }
 
-static void init_link_state(
+struct link_state *init_link_state(
     struct link_state *restrict state,
     const n3_host *restrict remote
 ) {
     *state = (struct link_state)LINK_STATE_INIT;
     state->remote = *remote;
+    return state;
 }
 
-static void destroy_link_state(struct link_state *restrict state) {
+void destroy_link_state(struct link_state *restrict state) {
     for(int i = 0; i < B3_STATIC_ARRAY_COUNT(state->ordered_states); i++)
         destroy_duplex_channel_state(&state->ordered_states[i]);
     for(int i = 0; i < B3_STATIC_ARRAY_COUNT(state->unordered_states); i++)
         destroy_simplex_channel_state(&state->unordered_states[i]);
     *state = (struct link_state)LINK_STATE_INIT;
 }
-
-void init_link_states(struct link_states *restrict link_states) {
-    *link_states = (struct link_states)LINK_STATES_INIT;
-    link_states->size = INIT_LINK_STATES_SIZE;
-    link_states->states
-            = b3_malloc(link_states->size * sizeof(*link_states->states), 1);
-}
-
-void destroy_link_states(struct link_states *restrict link_states) {
-    FOR_EACH_LINK_STATE(state, link_states)
-        destroy_link_state(state);
-    b3_free(link_states->states, 0);
-    *link_states = (struct link_states)LINK_STATES_INIT;
-}
-
-static int compare_link_state(const void *key_, const void *member_) {
-    const n3_host *restrict key = key_;
-    const struct link_state *restrict member = member_;
-    return n3_compare_hosts(key, &member->remote);
-}
-
-struct link_state *search_link_state(
-    const struct link_states *restrict link_states,
-    const n3_host *restrict remote
-) {
-    return bsearch(
-        remote,
-        link_states->states,
-        link_states->count,
-        sizeof(*link_states->states),
-        compare_link_state
-    );
-}
-
-struct link_state *insert_link_state(
-    struct link_states *restrict link_states,
-    const n3_host *restrict remote
-) {
-    struct link_state state;
-    init_link_state(&state, remote);
-
-    if(link_states->count >= link_states->size) {
-        link_states->size *= 2;
-        link_states->states = b3_realloc(
-            link_states->states,
-            link_states->size * sizeof(*link_states->states)
-        );
-    }
-
-    // TODO: a binary search instead of a scan.
-    int i = 0;
-    FOR_EACH_LINK_STATE(state, link_states) {
-        if(compare_link_state(remote, state) < 0)
-            break;
-        i++;
-    }
-
-    memmove(
-        &link_states->states[i + 1],
-        &link_states->states[i],
-        (link_states->count - i) * sizeof(*link_states->states)
-    );
-
-    link_states->states[i] = state;
-    link_states->count++;
-
-    return &link_states->states[i];
-}
-
-// TODO: remove link state.
 
 static struct simplex_channel_state *get_send_state(
     struct link_state *restrict state,
@@ -339,7 +192,7 @@ void send_buffer(
 
     if(reliable) {
         get_time(&p.time);
-        add_packet(&send_state->pool, &p);
+        add_packet(&send_state->pool, &p, NULL);
     }
     else
         n3_free_buffer(p.buffer);
@@ -380,5 +233,5 @@ void handle_ack_packet(
     struct simplex_channel_state *send_state
             = get_send_state(link_state, ack->channel);
 
-    remove_packet(&send_state->pool, ack->seq);
+    remove_packet(&send_state->pool, &ack->seq);
 }
