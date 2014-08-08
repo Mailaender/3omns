@@ -18,13 +18,13 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "n3.h"
-#include "internal.h"
 #include "b3/b3.h"
+#include "internal.h"
+#include "n3.h"
 
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <errno.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h> // For _POSIX_TIMERS.

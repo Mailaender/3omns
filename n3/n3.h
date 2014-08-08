@@ -21,9 +21,9 @@
 #ifndef n3_n3_h__
 #define n3_n3_h__
 
+#include <netinet/in.h>
 #include <stddef.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 
 
 // TODO: error reporting (return NULL/false and pass extra char ** for desc.).

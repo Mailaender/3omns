@@ -18,20 +18,20 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "n3.h"
 #include "b3/b3.h"
+#include "n3.h"
 
-#include <stddef.h>
-#include <inttypes.h>
+#include <arpa/inet.h>
 #include <errno.h>
-#include <string.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+#include <inttypes.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 
 static void resolve(

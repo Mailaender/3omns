@@ -18,15 +18,15 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "l3.h"
-#include "internal.h"
 #include "b3/b3.h"
+#include "internal.h"
+#include "l3.h"
 
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
 
 
 struct update_entity_data {

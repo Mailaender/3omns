@@ -20,11 +20,11 @@
 
 #include "b3.h"
 
-#include <stddef.h>
-#include <stdarg.h>
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_ttf.h>
+#include <stdarg.h>
+#include <stddef.h>
 
 
 struct b3_image {

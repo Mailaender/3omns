@@ -18,11 +18,11 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "internal.h"
 #include "b3/b3.h"
+#include "internal.h"
 
-#include <lua.h>
 #include <lauxlib.h>
+#include <lua.h>
 
 
 void push_pos(lua_State *restrict l, const b3_pos *restrict pos) {

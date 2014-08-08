@@ -20,14 +20,14 @@
 #include "3omns.h"
 #include "b3/b3.h"
 
+#include <argp.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <errno.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
-#include <argp.h>
 
 
 #define LOCAL_RESOURCES "./res"

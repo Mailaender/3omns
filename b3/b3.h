@@ -21,9 +21,9 @@
 #ifndef b3_b3_h__
 #define b3_b3_h__
 
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdarg.h>
 
 
 #define B3_STATIC_ARRAY_COUNT(a) (sizeof(a) / sizeof((a)[0]))

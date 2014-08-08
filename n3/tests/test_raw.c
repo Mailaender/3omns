@@ -22,14 +22,14 @@
 #include "n3/n3.h"
 #include "tests/test.h"
 
+#include <assert.h>
+#include <netinet/in.h>
+#include <poll.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <assert.h>
-#include <unistd.h>
-#include <poll.h>
 #include <sys/wait.h>
-#include <netinet/in.h>
+#include <unistd.h>
 
 
 // FIXME: find a port that's not in use instead of hard-coding it.

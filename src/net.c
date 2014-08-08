@@ -22,12 +22,12 @@
 #include "l3/l3.h"
 #include "n3/n3.h"
 
+#include <inttypes.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <inttypes.h>
-#include <string.h>
-#include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 
 #define PROTOCOL_VERSION '2'

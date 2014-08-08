@@ -21,10 +21,10 @@
 #include "b3.h"
 
 #include <errno.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 #define COPY_FORMAT_INITIAL_SIZE 16

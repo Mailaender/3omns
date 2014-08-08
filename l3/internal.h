@@ -21,8 +21,8 @@
 #ifndef l3_internal_h__
 #define l3_internal_h__
 
-#include "l3.h"
 #include "b3/b3.h"
+#include "l3.h"
 
 #include <lua.h>
 

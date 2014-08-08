@@ -18,13 +18,13 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "l3.h"
-#include "internal.h"
 #include "b3/b3.h"
+#include "internal.h"
+#include "l3.h"
 
-#include <stddef.h>
-#include <lua.h>
 #include <lauxlib.h>
+#include <lua.h>
+#include <stddef.h>
 
 
 static l3_level *check_level(lua_State *restrict l, int index) {

@@ -18,12 +18,12 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "internal.h"
 #include "b3/b3.h"
+#include "internal.h"
 
-#include <stddef.h>
-#include <lua.h>
 #include <lauxlib.h>
+#include <lua.h>
+#include <stddef.h>
 
 
 static b3_image **push_new_image(lua_State *restrict l) {
