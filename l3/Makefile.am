@@ -12,4 +12,4 @@ tests_driver_LDADD = libl3.a ../b3/libb3.a $(SDL_LIBS) $(LUA_LIBS)
 
 TESTS = tests/test_l3
 
-dist_check_DATA = tests/run $(TESTS) $(TESTS:%=%_/init.lua)
+dist_check_DATA = tests/run $(TESTS) $(TESTS:%=%_res/init.lua)

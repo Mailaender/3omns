@@ -1,2 +1,2 @@
 #!/bin/sh
-exec ./tests/driver "${0}_"
+exec ./tests/driver "${0}_res"
