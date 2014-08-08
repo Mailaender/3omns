@@ -18,8 +18,8 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __n3_h__
-#define __n3_h__
+#ifndef n3_n3_h__
+#define n3_n3_h__
 
 #include <stddef.h>
 #include <sys/socket.h>

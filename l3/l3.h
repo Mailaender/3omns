@@ -18,8 +18,8 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __l3_h__
-#define __l3_h__
+#ifndef l3_l3_h__
+#define l3_l3_h__
 
 #include "b3/b3.h"
 

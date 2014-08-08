@@ -17,8 +17,8 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __3omns_h__
-#define __3omns_h__
+#ifndef src_3omns_h__
+#define src_3omns_h__
 
 #include "b3/b3.h"
 #include "l3/l3.h"

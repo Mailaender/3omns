@@ -18,8 +18,8 @@
     with 3omns.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __internal_h__
-#define __internal_h__
+#ifndef l3_internal_h__
+#define l3_internal_h__
 
 #include "l3.h"
 #include "b3/b3.h"
