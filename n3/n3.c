@@ -33,7 +33,7 @@ struct n3_terminal {
     int ref_count;
     n3_terminal_options options;
     int socket_fd;
-    n3_link_callback filter_incoming_link;
+    n3_link_filter filter_incoming_link;
     struct link_states links;
 };
 
@@ -56,7 +56,7 @@ static n3_buffer *default_build_receive_buffer(
 
 static n3_terminal *new_terminal(
     int socket_fd,
-    n3_link_callback incoming_link_filter,
+    n3_link_filter incoming_link_filter,
     const n3_terminal_options *restrict options
 ) {
     n3_terminal *terminal = b3_malloc(sizeof(*terminal), 1);
@@ -83,7 +83,7 @@ static n3_terminal *new_terminal(
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
-    n3_link_callback incoming_link_filter,
+    n3_link_filter incoming_link_filter,
     const n3_terminal_options *restrict options
 ) {
     return new_terminal(

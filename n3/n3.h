@@ -135,8 +135,12 @@ typedef uint8_t n3_channel;
 
 typedef struct n3_terminal n3_terminal;
 
-// TODO: rename this to _filter, change _callback to return void.
-typedef _Bool (*n3_link_callback)(
+typedef void (*n3_link_callback)(
+    n3_terminal *terminal,
+    const n3_host *remote,
+    void *data
+);
+typedef _Bool (*n3_link_filter)(
     n3_terminal *terminal,
     const n3_host *remote,
     void *data
@@ -157,7 +161,7 @@ struct n3_terminal_options {
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
-    n3_link_callback incoming_link_filter,
+    n3_link_filter incoming_link_filter,
     const n3_terminal_options *restrict options
 );
 n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal);
