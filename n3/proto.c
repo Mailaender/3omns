@@ -186,12 +186,9 @@ static void resend_packets(
     struct simplex_channel_state *restrict send_state,
     const n3_host *restrict remote
 ) {
-    for(
-        struct packet *p = &send_state->pool.packets[0],
-            *end = &send_state->pool.packets[send_state->pool.count];
-        p < end;
-        p++
-    ) {
+    for(int i = 0; i < send_state->pool.count; i++) {
+        struct packet *p = &send_state->pool.packets[i];
+
         if(timeout_elapsed(&p->time, timeout_ms, now)) {
             send_packet(socket_fd, 0, p, remote);
             p->time = *now; // TODO: or should I call get_time again?
