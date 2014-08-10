@@ -270,7 +270,8 @@ static void process_input(
     else if(b == 'r') input = B3_INPUT_RIGHT(player);
     else input = B3_INPUT_FIRE(player);
 
-    l3_input(&round->level, input);
+    if(!round->paused && args.serve)
+        l3_input(&round->level, input);
 
     n3_free_buffer(buffer);
 }
