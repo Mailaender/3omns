@@ -97,6 +97,9 @@ size_t n3_raw_receive(
 // sent with the n3 protocol header prepended, which is accounted for here.
 #define N3_SAFE_BUFFER_SIZE (N3_SAFE_PACKET_SIZE - N3_HEADER_SIZE)
 
+#define N3_DEFAULT_RESEND_TIMEOUT_MS 500
+
+
 typedef void *(*n3_malloc)(size_t size);
 typedef void (*n3_free)(void *buf, size_t size);
 
@@ -119,6 +122,8 @@ size_t n3_get_buffer_size(n3_buffer *restrict buffer);
 size_t n3_get_buffer_cap(n3_buffer *restrict buffer);
 void n3_set_buffer_cap(n3_buffer *restrict buffer, size_t cap);
 
+
+// TODO: debug logging of low-level protocol shenanigans?
 
 typedef uint8_t n3_channel;
 
@@ -154,10 +159,11 @@ typedef n3_buffer *(*n3_buffer_builder)(
 typedef struct n3_terminal_options n3_terminal_options;
 struct n3_terminal_options {
     size_t max_buffer_size;
+    int resend_timeout_ms;
     n3_allocator receive_allocator;
     n3_buffer_builder build_receive_buffer;
 };
-#define N3_TERMINAL_OPTIONS_INIT {0, {NULL, NULL}, NULL}
+#define N3_TERMINAL_OPTIONS_INIT {0, 0, {NULL, NULL}, NULL}
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,

@@ -63,7 +63,7 @@ static inline int compare_sequence(sequence a, sequence b) {
 }
 
 struct packet {
-    n3_channel channel;
+    n3_channel channel; // Convenience; can be determined elsewhere.
     sequence seq;
     n3_buffer *buffer;
     struct timespec time;
@@ -100,6 +100,8 @@ struct duplex_channel_state {
 struct link_state {
     n3_host remote;
 
+    // TODO: allow the user to specify how many states they'll use, so we don't
+    // waste space (and processing time when resending).
     struct duplex_channel_state ordered_states[
         N3_ORDERED_CHANNEL_MAX - N3_ORDERED_CHANNEL_MIN + 1
     ];
@@ -137,6 +139,12 @@ static inline int compare_link_state(const void *key_, const void *member_) {
     link_state_var++ \
 )
 
+
+void resend(
+    int socket_fd,
+    int timeout_ms,
+    struct link_states *restrict link_states
+);
 
 void send_ack(
     int socket_fd,

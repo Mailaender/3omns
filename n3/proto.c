@@ -50,6 +50,31 @@ static void get_time(struct timespec *restrict ts) {
         b3_fatal("Error getting time: %s", strerror(errno));
 }
 
+static void add_time_ms(struct timespec *restrict ts, long ms) {
+    long ns_per_ms = 1000000;
+    long ns_per_s = 1000000000;
+
+    ts->tv_nsec += ms * ns_per_ms;
+    while(ts->tv_nsec >= ns_per_s) {
+        ts->tv_sec++;
+        ts->tv_nsec -= ns_per_s;
+    }
+}
+
+static _Bool timeout_elapsed(
+    const struct timespec *restrict t1,
+    int elapsed_ms,
+    const struct timespec *restrict now
+) {
+    // TODO: instead of doing this addition just to check, store the resend
+    // time directly.
+    struct timespec t2 = *t1;
+    add_time_ms(&t2, elapsed_ms);
+
+    return (now->tv_sec > t2.tv_sec
+            || (now->tv_sec == t2.tv_sec && now->tv_nsec >= t2.tv_nsec));
+}
+
 static void destroy_simplex_channel_state(
     struct simplex_channel_state *restrict scs
 ) {
@@ -148,6 +173,63 @@ static void send_packet(
     }
 
     n3_raw_send(socket_fd, B3_STATIC_ARRAY_COUNT(bufs), bufs, sizes, remote);
+
+    // Theoretically, this should also set the sent time of the packet, but
+    // since it'll never be used much of the time (e.g. for ack packets and
+    // anything else unreliable), we do it in the caller if necessary instead.
+}
+
+static void resend_packets(
+    int socket_fd,
+    int timeout_ms,
+    struct timespec *restrict now,
+    struct simplex_channel_state *restrict send_state,
+    const n3_host *restrict remote
+) {
+    for(
+        struct packet *p = &send_state->pool.packets[0],
+            *end = &send_state->pool.packets[send_state->pool.count];
+        p < end;
+        p++
+    ) {
+        if(timeout_elapsed(&p->time, timeout_ms, now)) {
+            send_packet(socket_fd, 0, p, remote);
+            p->time = *now; // TODO: or should I call get_time again?
+        }
+    }
+}
+
+void resend(
+    int socket_fd,
+    int timeout_ms,
+    struct link_states *restrict link_states
+) {
+    struct timespec ts;
+    get_time(&ts);
+
+    // TODO: this could be a looot more efficient.  Either limit how many
+    // states we keep track of, or perhaps keep track of a "next resend time"
+    // value (and maybe packet pointer), so we don't have to loop as often.
+    FOR_EACH_LINK_STATE(s, link_states) {
+        for(int i = 0; i < B3_STATIC_ARRAY_COUNT(s->ordered_states); i++) {
+            resend_packets(
+                socket_fd,
+                timeout_ms,
+                &ts,
+                &s->ordered_states[i].send,
+                &s->remote
+            );
+        }
+        for(int i = 0; i < B3_STATIC_ARRAY_COUNT(s->unordered_states); i++) {
+            resend_packets(
+                socket_fd,
+                timeout_ms,
+                &ts,
+                &s->unordered_states[i],
+                &s->remote
+            );
+        }
+    }
 }
 
 void send_ack(
@@ -195,7 +277,7 @@ void send_buffer(
         add_packet(&send_state->pool, &p, NULL);
     }
     else
-        n3_free_buffer(p.buffer);
+        destroy_packet(&p);
 }
 
 size_t receive_packet(

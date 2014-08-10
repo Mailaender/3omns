@@ -62,10 +62,13 @@ static n3_terminal *new_terminal(
     n3_terminal *terminal = b3_malloc(sizeof(*terminal), 1);
 
     terminal->options.max_buffer_size = N3_SAFE_BUFFER_SIZE;
+    terminal->options.resend_timeout_ms = N3_DEFAULT_RESEND_TIMEOUT_MS;
     terminal->options.build_receive_buffer = default_build_receive_buffer;
     if(options) {
         if(options->max_buffer_size)
             terminal->options.max_buffer_size = options->max_buffer_size;
+        if(options->resend_timeout_ms > 0)
+            terminal->options.resend_timeout_ms = options->resend_timeout_ms;
         terminal->options.receive_allocator = options->receive_allocator;
         if(options->build_receive_buffer) {
             terminal->options.build_receive_buffer
@@ -120,6 +123,7 @@ void n3_for_each_link(
     n3_link_callback callback,
     void *data
 ) {
+    // TODO: bad news here if they modify links within their callback.
     FOR_EACH_LINK_STATE(state, &terminal->links)
         callback(terminal, &state->remote, data);
 }
@@ -207,7 +211,8 @@ n3_buffer *n3_receive(
                 send_ack(terminal->socket_fd, &p, r);
         }
 
-        // TODO: resend packets that haven't been ack'd.
+        // TODO: timeout when packets sit un-ack'd too long (drop link,
+        // notify?).
 
         // TODO: if ordered, don't return it directly, but add it to the queue,
         // then start returning everything sequential from the queue.
@@ -217,6 +222,14 @@ n3_buffer *n3_receive(
             &terminal->options.receive_allocator
         );
     }
+
+    // TODO: putting this down here means a huge burst of incoming packets
+    // could prevent us from trying to resend anything...
+    resend(
+        terminal->socket_fd,
+        terminal->options.resend_timeout_ms,
+        &terminal->links
+    );
 
     return NULL;
 }
