@@ -154,12 +154,12 @@ void send_buffer(
     _Bool reliable
 );
 
-size_t receive_packet(
+_Bool receive_packet(
     int socket_fd,
     enum flags *restrict flags,
     struct packet *restrict packet, // Only fills in the metadata, not buffer.
     void *restrict buf,
-    size_t size,
+    size_t *restrict size,
     n3_host *restrict remote
 );
 

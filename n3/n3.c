@@ -186,17 +186,16 @@ n3_buffer *n3_receive(
     while(1) {
         enum flags flags = 0;
         struct packet p = {.buffer = NULL};
-        size_t received;
+        size_t size = sizeof(receive_buf);
 
-        received = receive_packet(
+        if(!receive_packet(
             terminal->socket_fd,
             &flags,
             &p,
             receive_buf,
-            sizeof(receive_buf),
+            &size,
             r
-        );
-        if(!received)
+        ))
             break;
 
         struct link_state *state = find_link_state(&terminal->links, r);
@@ -232,7 +231,7 @@ n3_buffer *n3_receive(
         // then start returning everything sequential from the queue.
         return terminal->options.build_receive_buffer(
             receive_buf,
-            received,
+            size,
             &terminal->options.receive_allocator
         );
     }
