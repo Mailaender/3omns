@@ -210,7 +210,9 @@ void resend(
     // TODO: this could be a looot more efficient.  Either limit how many
     // states we keep track of, or perhaps keep track of a "next resend time"
     // value (and maybe packet pointer), so we don't have to loop as often.
-    FOR_EACH_LINK_STATE(s, link_states) {
+    for(int i = 0; i < link_states->count; i++) {
+        struct link_state *s = &link_states->states[i];
+
         for(int i = 0; i < B3_STATIC_ARRAY_COUNT(s->ordered_states); i++) {
             resend_packets(
                 socket_fd,

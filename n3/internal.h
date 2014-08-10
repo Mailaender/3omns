@@ -132,13 +132,6 @@ static inline int compare_link_state(const void *key_, const void *member_) {
 #define OL_ITEM_DESTRUCTOR destroy_link_state
 #include "ordered_list.h" // struct link_states
 
-#define FOR_EACH_LINK_STATE(link_state_var, link_states) for( \
-    struct link_state *link_state_var = &(link_states)->states[0], \
-            *end__ = &(link_states)->states[(link_states)->count]; \
-    link_state_var < end__; \
-    link_state_var++ \
-)
-
 
 void resend(
     int socket_fd,

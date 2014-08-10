@@ -123,9 +123,16 @@ void n3_for_each_link(
     n3_link_callback callback,
     void *data
 ) {
-    // TODO: bad news here if they modify links within their callback.
-    FOR_EACH_LINK_STATE(state, &terminal->links)
-        callback(terminal, &state->remote, data);
+    if(terminal->links.count > 0) {
+        // Copy the list so the caller can modify the links from the callback
+        // without ill effect.
+        n3_host remotes[terminal->links.count];
+        for(int i = 0; i < terminal->links.count; i++)
+            remotes[i] = terminal->links.states[i].remote;
+
+        for(int i = 0; i < B3_STATIC_ARRAY_COUNT(remotes); i++)
+            callback(terminal, &remotes[i], data);
+    }
 }
 
 void n3_broadcast(
@@ -134,8 +141,15 @@ void n3_broadcast(
     n3_buffer *restrict buffer
 ) {
     // TODO: add unreliable option.
-    FOR_EACH_LINK_STATE(state, &terminal->links)
-        send_buffer(terminal->socket_fd, state, channel, buffer, 1);
+    for(int i = 0; i < terminal->links.count; i++) {
+        send_buffer(
+            terminal->socket_fd,
+            &terminal->links.states[i],
+            channel,
+            buffer,
+            1
+        );
+    }
 }
 
 static struct link_state *insert_link_state(
