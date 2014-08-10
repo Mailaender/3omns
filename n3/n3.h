@@ -200,7 +200,7 @@ n3_buffer *n3_receive(
     void *incoming_link_filter_data
 );
 
-// TODO: function to disconnect from a particular remote or all remotes?
+void n3_unlink_from(n3_terminal *restrict terminal, n3_host *restrict remote);
 
 
 typedef struct n3_link n3_link;
@@ -225,7 +225,7 @@ void n3_send(
     n3_buffer *restrict buffer
 );
 
-// TODO: a disconnect function?
+void n3_unlink(n3_link *restrict link);
 
 
 #endif

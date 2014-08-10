@@ -164,7 +164,7 @@ _Bool receive_packet(
 );
 
 void handle_ack_packet(
-    struct link_state *restrict link_state,
+    struct link_state *restrict state,
     const struct packet *restrict ack
 );
 

@@ -255,13 +255,12 @@ void send_fin(int socket_fd, const n3_host *restrict remote) {
 
 void send_buffer(
     int socket_fd,
-    struct link_state *restrict link_state,
+    struct link_state *restrict state,
     n3_channel channel,
     n3_buffer *restrict buffer,
     _Bool reliable
 ) {
-    struct simplex_channel_state *send_state
-            = get_send_state(link_state, channel);
+    struct simplex_channel_state *send_state = get_send_state(state, channel);
 
     struct packet p = {
         .channel = channel,
@@ -269,7 +268,7 @@ void send_buffer(
         .buffer = n3_ref_buffer(buffer),
     };
 
-    send_packet(socket_fd, 0, &p, &link_state->remote);
+    send_packet(socket_fd, 0, &p, &state->remote);
 
     if(reliable) {
         get_time(&p.time);
@@ -312,11 +311,11 @@ _Bool receive_packet(
 }
 
 void handle_ack_packet(
-    struct link_state *restrict link_state,
+    struct link_state *restrict state,
     const struct packet *restrict ack
 ) {
     struct simplex_channel_state *send_state
-            = get_send_state(link_state, ack->channel);
+            = get_send_state(state, ack->channel);
 
     remove_packet(&send_state->pool, &ack->seq);
 }

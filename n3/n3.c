@@ -103,7 +103,7 @@ n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal) {
 
 void n3_free_terminal(n3_terminal *restrict terminal) {
     if(terminal && !--terminal->ref_count) {
-        // TODO: disconnect links.
+        n3_unlink_from(terminal, NULL);
         if(terminal->socket_fd >= 0) {
             n3_free_socket(terminal->socket_fd);
             terminal->socket_fd = -1;
@@ -216,7 +216,8 @@ n3_buffer *n3_receive(
             continue;
         }
         else if(flags & FIN) {
-            // TODO: drop the link, notify the caller somehow.
+            remove_link_state(&terminal->links, r);
+            // TODO: notify the caller somehow.
             continue;
         }
         else { // No interesting flags.
@@ -245,6 +246,33 @@ n3_buffer *n3_receive(
     );
 
     return NULL;
+}
+
+static void unlink_from(
+    int socket_fd,
+    struct link_states *restrict states,
+    const n3_host *restrict remote
+) {
+    send_fin(socket_fd, remote);
+    remove_link_state(states, remote);
+}
+
+static void unlink_all_callback(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote,
+    void *data
+) {
+    unlink_from(terminal->socket_fd, &terminal->links, remote);
+}
+
+void n3_unlink_from(n3_terminal *restrict terminal, n3_host *restrict remote) {
+    if(!remote) {
+        n3_for_each_link(terminal, unlink_all_callback, NULL);
+        return;
+    }
+
+    if(find_link_state(&terminal->links, remote))
+        unlink_from(terminal->socket_fd, &terminal->links, remote);
 }
 
 static _Bool deny_new_links(
@@ -303,4 +331,8 @@ void n3_send(
     n3_buffer *restrict buffer
 ) {
     n3_send_to(link->terminal, channel, buffer, &link->remote);
+}
+
+void n3_unlink(n3_link *restrict link) {
+    n3_unlink_from(link->terminal, &link->remote);
 }
