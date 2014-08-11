@@ -150,6 +150,12 @@ typedef _Bool (*n3_link_filter)(
     const n3_host *remote,
     void *data
 );
+typedef void (*n3_unlink_callback)(
+    n3_terminal *terminal,
+    const n3_host *remote,
+    _Bool timeout,
+    void *data
+);
 typedef n3_buffer *(*n3_buffer_builder)(
     void *buf,
     size_t size,
@@ -162,8 +168,9 @@ struct n3_terminal_options {
     int resend_timeout_ms;
     n3_allocator receive_allocator;
     n3_buffer_builder build_receive_buffer;
+    n3_unlink_callback remote_unlink_callback;
 };
-#define N3_TERMINAL_OPTIONS_INIT {0, 0, {NULL, NULL}, NULL}
+#define N3_TERMINAL_OPTIONS_INIT {0, 0, {NULL, NULL}, NULL, NULL}
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
@@ -197,7 +204,8 @@ void n3_send_to(
 n3_buffer *n3_receive(
     n3_terminal *restrict terminal,
     n3_host *restrict remote,
-    void *new_link_filter_data
+    void *new_link_filter_data,
+    void *remote_unlink_callback_data
 );
 
 void n3_unlink_from(n3_terminal *restrict terminal, n3_host *restrict remote);

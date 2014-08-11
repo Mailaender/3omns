@@ -169,7 +169,7 @@ static n3_buffer *receive_notification(
     n3_host host_;
     n3_host *h = (host ? host : &host_);
 
-    n3_buffer *buffer = n3_receive(terminal, h, round);
+    n3_buffer *buffer = n3_receive(terminal, h, round, round);
     if(buffer) {
         received_packets++;
         debug_network_print(
@@ -594,6 +594,17 @@ static _Bool filter_new_link(
     return 1;
 }
 
+static void handle_remote_unlink(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict host,
+    _Bool timeout,
+    void *data
+) {
+    // const struct round *restrict round = data;
+
+    DEBUG_PRINT("%s disconnected\n", host_to_string(host));
+}
+
 static n3_buffer *build_receive_buffer(
     void *restrict buf,
     size_t size,
@@ -618,6 +629,7 @@ void init_net(void) {
 
     n3_terminal_options options = N3_TERMINAL_OPTIONS_INIT;
     options.build_receive_buffer = build_receive_buffer;
+    options.remote_unlink_callback = handle_remote_unlink;
 
     if(args.client) {
         n3_link *server_link = n3_new_link(&host, &options);

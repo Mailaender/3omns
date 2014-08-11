@@ -74,6 +74,8 @@ static n3_terminal *new_terminal(
             terminal->options.build_receive_buffer
                     = options->build_receive_buffer;
         }
+        terminal->options.remote_unlink_callback
+                = options->remote_unlink_callback;
     }
 
     terminal->socket_fd = socket_fd;
@@ -177,7 +179,8 @@ void n3_send_to(
 n3_buffer *n3_receive(
     n3_terminal *restrict terminal,
     n3_host *restrict remote,
-    void *new_link_filter_data
+    void *new_link_filter_data,
+    void *remote_unlink_callback_data
 ) {
     n3_host remote_;
     n3_host *r = (remote ? remote : &remote_);
@@ -216,7 +219,14 @@ n3_buffer *n3_receive(
         }
         else if(flags & FIN) {
             remove_link_state(&terminal->links, r);
-            // TODO: notify the caller somehow.
+            if(terminal->options.remote_unlink_callback) {
+                terminal->options.remote_unlink_callback(
+                    terminal,
+                    r,
+                    0,
+                    remote_unlink_callback_data
+                );
+            }
             continue;
         }
         else { // No interesting flags.
