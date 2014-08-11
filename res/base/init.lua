@@ -32,7 +32,10 @@ local util = require("util")
 
 local seed = os.time()
 math.randomseed(seed)
-util.debug_print("Seed: " .. seed)
+
+if not l3.CLIENT then
+  util.debug_print("Seed: " .. seed)
+end
 
 do
   local sprites = l3.image.load(util.resource("/gfx/sprites.png"))
