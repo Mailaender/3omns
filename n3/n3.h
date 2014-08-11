@@ -167,7 +167,7 @@ struct n3_terminal_options {
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
-    n3_link_filter incoming_link_filter,
+    n3_link_filter new_link_filter,
     const n3_terminal_options *restrict options
 );
 n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal);
@@ -197,7 +197,7 @@ void n3_send_to(
 n3_buffer *n3_receive(
     n3_terminal *restrict terminal,
     n3_host *restrict remote,
-    void *incoming_link_filter_data
+    void *new_link_filter_data
 );
 
 void n3_unlink_from(n3_terminal *restrict terminal, n3_host *restrict remote);
