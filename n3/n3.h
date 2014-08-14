@@ -98,6 +98,8 @@ size_t n3_raw_receive(
 #define N3_SAFE_BUFFER_SIZE (N3_SAFE_PACKET_SIZE - N3_HEADER_SIZE)
 
 #define N3_DEFAULT_RESEND_TIMEOUT_MS 500
+#define N3_DEFAULT_PING_TIMEOUT_MS 1000
+#define N3_DEFAULT_UNLINK_TIMEOUT_MS 3000
 
 
 typedef void *(*n3_malloc)(size_t size);
@@ -166,11 +168,13 @@ typedef struct n3_terminal_options n3_terminal_options;
 struct n3_terminal_options {
     size_t max_buffer_size;
     int resend_timeout_ms;
+    int ping_timeout_ms;
+    int unlink_timeout_ms;
     n3_allocator receive_allocator;
     n3_buffer_builder build_receive_buffer;
     n3_unlink_callback remote_unlink_callback;
 };
-#define N3_TERMINAL_OPTIONS_INIT {0, 0, {NULL, NULL}, NULL, NULL}
+#define N3_TERMINAL_OPTIONS_INIT {0, 0, 0, 0, {NULL, NULL}, NULL, NULL}
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
@@ -208,6 +212,11 @@ n3_buffer *n3_receive(
     void *remote_unlink_callback_data
 );
 
+void n3_update(
+    n3_terminal *restrict terminal,
+    void *remote_unlink_callback_data
+);
+
 void n3_unlink_from(n3_terminal *restrict terminal, n3_host *restrict remote);
 
 
@@ -224,6 +233,7 @@ n3_link *n3_link_to(
 n3_link *n3_ref_link(n3_link *restrict link);
 void n3_free_link(n3_link *restrict link);
 
+// TODO: is_linked, that returns whether the terminal still has the link state.
 n3_terminal *n3_get_terminal(n3_link *restrict link);
 // TODO: getter for remote n3_host.
 

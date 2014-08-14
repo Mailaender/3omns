@@ -621,6 +621,9 @@ static n3_buffer *build_receive_buffer(
 }
 
 void init_net(void) {
+    if(!args.client && !args.serve)
+        return;
+
     n3_host host;
     if(args.client || (args.serve && args.hostname))
         n3_init_host(&host, args.hostname, args.port);
@@ -649,4 +652,11 @@ void init_net(void) {
 void quit_net(void) {
     n3_free_terminal(terminal);
     terminal = NULL;
+}
+
+void update_net(struct round *restrict round) {
+    if(!args.client && !args.serve)
+        return;
+
+    n3_update(terminal, round);
 }

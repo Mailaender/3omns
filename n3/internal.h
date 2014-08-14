@@ -30,22 +30,16 @@
 
 #define PROTO_VERSION 1 // Must fit in 4 bits.
 
-struct n3_buffer {
-    int ref_count;
-    n3_free free;
-    size_t size;
-    size_t cap;
-    uint8_t buf[];
-};
 
 enum flags { // Must fit in 4 bits.
-    ACK = 1 << 0,
-    FIN = 1 << 1,
-    // TODO: PING?
+    PING = 1 << 0, // Also means "connect".
+    ACK = 1 << 1,
+    FIN = 1 << 2,
     // TODO: RESENT, maybe useful for informational/statistical purposes?
 
-    ALL_FLAGS = ACK | FIN
+    ALL_FLAGS = PING | ACK | FIN
 };
+
 
 typedef uint16_t sequence;
 #define SEQUENCE_BITS 16
@@ -61,6 +55,7 @@ static inline int compare_sequence(sequence a, sequence b) {
 
     return 1;
 }
+
 
 struct packet {
     n3_channel channel; // Convenience; can be determined elsewhere.
@@ -79,6 +74,7 @@ static inline int compare_packet(const void *key_, const void *member_) {
     return compare_sequence(*key, member->seq);
 }
 
+
 #define OL_NAME pool
 #define OL_ITEM_TYPE struct packet
 #define OL_ITEM_NAME packet
@@ -86,6 +82,7 @@ static inline int compare_packet(const void *key_, const void *member_) {
 #define OL_COMPARATOR compare_packet
 #define OL_ITEM_DESTRUCTOR destroy_packet
 #include "ordered_list.h" // struct pool
+
 
 struct simplex_channel_state {
     sequence seq;
@@ -99,6 +96,9 @@ struct duplex_channel_state {
 
 struct link_state {
     n3_host remote;
+
+    struct timespec send_time; // Only tracks ACK-able sends.
+    struct timespec recv_time;
 
     // TODO: allow the user to specify how many states they'll use, so we don't
     // waste space (and processing time when resending).
@@ -123,49 +123,85 @@ static inline int compare_link_state(const void *key_, const void *member_) {
     return n3_compare_hosts(key, &member->remote);
 }
 
+
 #define OL_NAME link_states
 #define OL_ITEM_TYPE struct link_state
 #define OL_ITEM_NAME link_state
-#define OL_ITEMS_NAME states
+#define OL_ITEMS_NAME links
 #define OL_KEY_TYPE n3_host
 #define OL_COMPARATOR compare_link_state
 #define OL_ITEM_DESTRUCTOR destroy_link_state
 #include "ordered_list.h" // struct link_states
 
+static inline struct link_state *insert_link_state(
+    struct link_states *restrict links,
+    const n3_host *restrict remote
+) {
+    struct link_state link;
+    return add_link_state(links, init_link_state(&link, remote), remote);
+}
 
-void resend(
+
+struct n3_buffer {
+    int ref_count;
+    n3_free free;
+    size_t size;
+    size_t cap;
+    uint8_t buf[];
+};
+
+struct n3_terminal {
+    int ref_count;
+    n3_terminal_options options;
+    int socket_fd;
+    n3_link_filter filter_new_link;
+    struct link_states links;
+};
+
+
+struct timespec *get_time(struct timespec *restrict ts);
+
+void send_ping(
     int socket_fd,
-    int timeout_ms,
-    struct link_states *restrict link_states
+    struct link_state *restrict link,
+    const struct timespec *restrict now
 );
-
+void send_pong(
+    int socket_fd,
+    struct link_state *restrict link,
+    const struct timespec *restrict now
+);
 void send_ack(
     int socket_fd,
+    struct link_state *restrict link,
     const struct packet *restrict packet,
-    const n3_host *restrict remote
+    const struct timespec *restrict now
 );
-void send_fin(int socket_fd, const n3_host *restrict remote);
+void send_fin(
+    int socket_fd,
+    struct link_state *restrict link,
+    const struct timespec *restrict now
+);
 
 void send_buffer(
     int socket_fd,
-    struct link_state *restrict link_state,
+    struct link_state *restrict link,
     n3_channel channel,
     n3_buffer *restrict buffer,
     _Bool reliable
 );
 
-_Bool receive_packet(
-    int socket_fd,
-    enum flags *restrict flags,
-    struct packet *restrict packet, // Only fills in the metadata, not buffer.
-    void *restrict buf,
-    size_t *restrict size,
-    n3_host *restrict remote
+n3_buffer *receive_buffer(
+    n3_terminal *restrict terminal,
+    void *new_link_filter_data,
+    void *remote_unlink_callback_data,
+    struct link_state **restrict link
 );
 
-void handle_ack_packet(
-    struct link_state *restrict state,
-    const struct packet *restrict ack
+void upkeep(
+    n3_terminal *restrict terminal,
+    void *remote_unlink_callback_data,
+    const struct timespec *restrict now
 );
 
 

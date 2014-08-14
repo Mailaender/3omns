@@ -29,14 +29,6 @@
 
 #define INIT_LINK_STATES_SIZE 8
 
-struct n3_terminal {
-    int ref_count;
-    n3_terminal_options options;
-    int socket_fd;
-    n3_link_filter filter_new_link;
-    struct link_states links;
-};
-
 struct n3_link {
     int ref_count;
     n3_terminal *terminal;
@@ -63,12 +55,18 @@ static n3_terminal *new_terminal(
 
     terminal->options.max_buffer_size = N3_SAFE_BUFFER_SIZE;
     terminal->options.resend_timeout_ms = N3_DEFAULT_RESEND_TIMEOUT_MS;
+    terminal->options.ping_timeout_ms = N3_DEFAULT_PING_TIMEOUT_MS;
+    terminal->options.unlink_timeout_ms = N3_DEFAULT_UNLINK_TIMEOUT_MS;
     terminal->options.build_receive_buffer = default_build_receive_buffer;
     if(options) {
         if(options->max_buffer_size)
             terminal->options.max_buffer_size = options->max_buffer_size;
         if(options->resend_timeout_ms > 0)
             terminal->options.resend_timeout_ms = options->resend_timeout_ms;
+        if(options->ping_timeout_ms > 0)
+            terminal->options.ping_timeout_ms = options->ping_timeout_ms;
+        if(options->unlink_timeout_ms > 0)
+            terminal->options.unlink_timeout_ms = options->unlink_timeout_ms;
         terminal->options.receive_allocator = options->receive_allocator;
         if(options->build_receive_buffer) {
             terminal->options.build_receive_buffer
@@ -130,7 +128,7 @@ void n3_for_each_link(
         // without ill effect.
         n3_host remotes[terminal->links.count];
         for(int i = 0; i < terminal->links.count; i++)
-            remotes[i] = terminal->links.states[i].remote;
+            remotes[i] = terminal->links.links[i].remote;
 
         for(int i = 0; i < B3_STATIC_ARRAY_COUNT(remotes); i++)
             callback(terminal, &remotes[i], data);
@@ -146,20 +144,12 @@ void n3_broadcast(
     for(int i = 0; i < terminal->links.count; i++) {
         send_buffer(
             terminal->socket_fd,
-            &terminal->links.states[i],
+            &terminal->links.links[i],
             channel,
             buffer,
             1
         );
     }
-}
-
-static struct link_state *insert_link_state(
-    struct link_states *restrict states,
-    const n3_host *restrict remote
-) {
-    struct link_state state;
-    return add_link_state(states, init_link_state(&state, remote), remote);
 }
 
 void n3_send_to(
@@ -168,12 +158,12 @@ void n3_send_to(
     n3_buffer *restrict buffer,
     const n3_host *restrict remote
 ) {
-    struct link_state *state = find_link_state(&terminal->links, remote);
-    if(!state)
-        state = insert_link_state(&terminal->links, remote);
+    struct link_state *link = find_link_state(&terminal->links, remote);
+    if(!link)
+        link = insert_link_state(&terminal->links, remote);
 
     // TODO: add unreliable option.
-    send_buffer(terminal->socket_fd, state, channel, buffer, 1);
+    send_buffer(terminal->socket_fd, link, channel, buffer, 1);
 }
 
 n3_buffer *n3_receive(
@@ -182,88 +172,41 @@ n3_buffer *n3_receive(
     void *new_link_filter_data,
     void *remote_unlink_callback_data
 ) {
-    n3_host remote_;
-    n3_host *r = (remote ? remote : &remote_);
-
-    uint8_t receive_buf[terminal->options.max_buffer_size];
-    while(1) {
-        enum flags flags = 0;
-        struct packet p = {.buffer = NULL};
-        size_t size = sizeof(receive_buf);
-
-        if(!receive_packet(
-            terminal->socket_fd,
-            &flags,
-            &p,
-            receive_buf,
-            &size,
-            r
-        ))
-            break;
-
-        struct link_state *state = find_link_state(&terminal->links, r);
-        if(!state) {
-            if(terminal->filter_new_link && !terminal->filter_new_link(
-                terminal,
-                r,
-                new_link_filter_data
-            ))
-                continue;
-
-            state = insert_link_state(&terminal->links, r);
-        }
-
-        if(flags & ACK) {
-            handle_ack_packet(state, &p);
-            continue;
-        }
-        else if(flags & FIN) {
-            remove_link_state(&terminal->links, r);
-            if(terminal->options.remote_unlink_callback) {
-                terminal->options.remote_unlink_callback(
-                    terminal,
-                    r,
-                    0,
-                    remote_unlink_callback_data
-                );
-            }
-            continue;
-        }
-        else { // No interesting flags.
-            if(p.seq != 0)
-                send_ack(terminal->socket_fd, &p, r);
-        }
-
-        // TODO: timeout when packets sit un-ack'd too long (drop link,
-        // notify?).
-
-        // TODO: if ordered, don't return it directly, but add it to the queue,
-        // then start returning everything sequential from the queue.
-        return terminal->options.build_receive_buffer(
-            receive_buf,
-            size,
-            &terminal->options.receive_allocator
-        );
-    }
-
-    // TODO: putting this down here means a huge burst of incoming packets
-    // could prevent us from trying to resend anything...
-    resend(
-        terminal->socket_fd,
-        terminal->options.resend_timeout_ms,
-        &terminal->links
+    struct link_state *link = NULL;
+    n3_buffer *buffer = receive_buffer(
+        terminal,
+        new_link_filter_data,
+        remote_unlink_callback_data,
+        &link
     );
+    if(!buffer)
+        return NULL;
 
-    return NULL;
+    if(remote)
+        *remote = link->remote;
+    return buffer;
+}
+
+void n3_update(
+    n3_terminal *restrict terminal,
+    void *remote_unlink_callback_data
+) {
+    struct timespec now;
+    upkeep(terminal, remote_unlink_callback_data, get_time(&now));
 }
 
 static void unlink_from(
     int socket_fd,
-    struct link_states *restrict states,
-    const n3_host *restrict remote
+    struct link_states *restrict links,
+    const struct n3_host *restrict remote,
+    const struct timespec *restrict now
 ) {
-    send_fin(socket_fd, remote);
-    remove_link_state(states, remote);
+    struct link_state *link = find_link_state(links, remote);
+    if(link) {
+        send_fin(socket_fd, link, now);
+        // TODO: don't search for this again inside remove_link_state.
+        remove_link_state(links, remote);
+    }
 }
 
 static void unlink_all_callback(
@@ -271,17 +214,21 @@ static void unlink_all_callback(
     const n3_host *restrict remote,
     void *data
 ) {
-    unlink_from(terminal->socket_fd, &terminal->links, remote);
+    const struct timespec *restrict now = data;
+
+    unlink_from(terminal->socket_fd, &terminal->links, remote, now);
 }
 
 void n3_unlink_from(n3_terminal *restrict terminal, n3_host *restrict remote) {
+    struct timespec now;
+    get_time(&now);
+
     if(!remote) {
-        n3_for_each_link(terminal, unlink_all_callback, NULL);
+        n3_for_each_link(terminal, unlink_all_callback, &now);
         return;
     }
 
-    if(find_link_state(&terminal->links, remote))
-        unlink_from(terminal->socket_fd, &terminal->links, remote);
+    unlink_from(terminal->socket_fd, &terminal->links, remote, &now);
 }
 
 static _Bool deny_new_links(
@@ -301,7 +248,6 @@ n3_link *n3_new_link(
         deny_new_links,
         terminal_options
     );
-    insert_link_state(&terminal->links, remote);
 
     n3_link *link = n3_link_to(terminal, remote);
     n3_free_terminal(terminal);
@@ -315,6 +261,14 @@ n3_link *n3_link_to(
     n3_link *link = b3_malloc(sizeof(*link), 1);
     link->terminal = n3_ref_terminal(terminal);
     link->remote = *remote;
+
+    if(!find_link_state(&terminal->links, remote)) {
+        struct link_state *ls = insert_link_state(&terminal->links, remote);
+
+        struct timespec now;
+        send_ping(terminal->socket_fd, ls, get_time(&now)); // Ping = connect.
+    }
+
     return n3_ref_link(link);
 }
 

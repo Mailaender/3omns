@@ -85,6 +85,8 @@ struct round {
 void init_net(void);
 void quit_net(void);
 
+void update_net(struct round *restrict round);
+
 void notify_paused_changed(const struct round *restrict round);
 void notify_input(const struct round *restrict round, b3_input input);
 void notify_updates(const struct round *restrict round);

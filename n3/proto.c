@@ -35,7 +35,7 @@
 #endif
 
 
-static void get_time(struct timespec *restrict ts) {
+struct timespec *get_time(struct timespec *restrict ts) {
     clockid_t clock =
 #if(defined(CLOCK_MONOTONIC_RAW))
         CLOCK_MONOTONIC_RAW
@@ -48,6 +48,7 @@ static void get_time(struct timespec *restrict ts) {
 
     if(clock_gettime(clock, ts) != 0)
         b3_fatal("Error getting time: %s", strerror(errno));
+    return ts;
 }
 
 static void add_time_ms(struct timespec *restrict ts, long ms) {
@@ -61,18 +62,33 @@ static void add_time_ms(struct timespec *restrict ts, long ms) {
     }
 }
 
+static int compare_timespec(
+    const struct timespec *restrict t1,
+    const struct timespec *restrict t2
+) {
+    if(t1->tv_sec > t2->tv_sec)
+        return 1;
+    if(t1->tv_sec < t2->tv_sec)
+        return -1;
+    // Seconds equal:
+    if(t1->tv_nsec > t2->tv_nsec)
+        return 1;
+    if(t1->tv_nsec < t2->tv_nsec)
+        return -1;
+    return 0;
+}
+
+// Whether t1 + elapsed_ms <= t2.
 static _Bool timeout_elapsed(
     const struct timespec *restrict t1,
     int elapsed_ms,
-    const struct timespec *restrict now
+    const struct timespec *restrict t2
 ) {
     // TODO: instead of doing this addition just to check, store the resend
     // time directly.
-    struct timespec t2 = *t1;
-    add_time_ms(&t2, elapsed_ms);
-
-    return (now->tv_sec > t2.tv_sec
-            || (now->tv_sec == t2.tv_sec && now->tv_nsec >= t2.tv_nsec));
+    struct timespec timeout = *t1;
+    add_time_ms(&timeout, elapsed_ms);
+    return (compare_timespec(&timeout, t2) <= 0);
 }
 
 static void destroy_simplex_channel_state(
@@ -89,29 +105,34 @@ static void destroy_duplex_channel_state(
 }
 
 struct link_state *init_link_state(
-    struct link_state *restrict state,
+    struct link_state *restrict link,
     const n3_host *restrict remote
 ) {
-    *state = (struct link_state)LINK_STATE_INIT;
-    state->remote = *remote;
-    return state;
+    struct timespec now;
+    get_time(&now);
+
+    *link = (struct link_state)LINK_STATE_INIT;
+    link->remote = *remote;
+    link->send_time = now;
+    link->recv_time = now;
+    return link;
 }
 
-void destroy_link_state(struct link_state *restrict state) {
-    for(int i = 0; i < B3_STATIC_ARRAY_COUNT(state->ordered_states); i++)
-        destroy_duplex_channel_state(&state->ordered_states[i]);
-    for(int i = 0; i < B3_STATIC_ARRAY_COUNT(state->unordered_states); i++)
-        destroy_simplex_channel_state(&state->unordered_states[i]);
-    *state = (struct link_state)LINK_STATE_INIT;
+void destroy_link_state(struct link_state *restrict link) {
+    for(int i = 0; i < B3_STATIC_ARRAY_COUNT(link->ordered_states); i++)
+        destroy_duplex_channel_state(&link->ordered_states[i]);
+    for(int i = 0; i < B3_STATIC_ARRAY_COUNT(link->unordered_states); i++)
+        destroy_simplex_channel_state(&link->unordered_states[i]);
+    *link = (struct link_state)LINK_STATE_INIT;
 }
 
 static struct simplex_channel_state *get_send_state(
-    struct link_state *restrict state,
+    struct link_state *restrict link,
     n3_channel channel
 ) {
     if(N3_IS_ORDERED(channel))
-        return &state->ordered_states[channel - N3_ORDERED_CHANNEL_MIN].send;
-    return &state->unordered_states[channel - N3_UNORDERED_CHANNEL_MIN];
+        return &link->ordered_states[channel - N3_ORDERED_CHANNEL_MIN].send;
+    return &link->unordered_states[channel - N3_UNORDERED_CHANNEL_MIN];
 }
 
 static sequence next_send_sequence(
@@ -158,9 +179,10 @@ static _Bool read_proto_header(
 
 static void send_packet(
     int socket_fd,
+    struct link_state *restrict link,
     enum flags flags,
-    const struct packet *restrict packet,
-    const n3_host *restrict remote
+    struct packet *restrict packet,
+    const struct timespec *restrict now
 ) {
     uint8_t header[N3_HEADER_SIZE];
     fill_proto_header(header, flags, packet->channel, packet->seq);
@@ -172,95 +194,84 @@ static void send_packet(
         sizes[1] = packet->buffer->cap;
     }
 
-    n3_raw_send(socket_fd, B3_STATIC_ARRAY_COUNT(bufs), bufs, sizes, remote);
+    n3_raw_send(
+        socket_fd,
+        B3_STATIC_ARRAY_COUNT(bufs),
+        bufs,
+        sizes,
+        &link->remote
+    );
 
-    // Theoretically, this should also set the sent time of the packet, but
-    // since it'll never be used much of the time (e.g. for ack packets and
-    // anything else unreliable), we do it in the caller if necessary instead.
+    packet->time = *now;
+    if(flags == 0 || flags == PING)
+        link->send_time = *now;
 }
 
-static void resend_packets(
+void send_ping(
     int socket_fd,
-    int timeout_ms,
-    struct timespec *restrict now,
-    struct simplex_channel_state *restrict send_state,
-    const n3_host *restrict remote
+    struct link_state *restrict link,
+    const struct timespec *restrict now
 ) {
-    for(int i = 0; i < send_state->pool.count; i++) {
-        struct packet *p = &send_state->pool.packets[i];
-
-        if(timeout_elapsed(&p->time, timeout_ms, now)) {
-            send_packet(socket_fd, 0, p, remote);
-            p->time = *now; // TODO: or should I call get_time again?
-        }
-    }
+    struct packet ping = {
+        .channel = 0,
+        .seq = 0,
+        .buffer = NULL,
+    };
+    send_packet(socket_fd, link, PING, &ping, now);
+    destroy_packet(&ping);
 }
 
-void resend(
+void send_pong(
     int socket_fd,
-    int timeout_ms,
-    struct link_states *restrict link_states
+    struct link_state *restrict link,
+    const struct timespec *restrict now
 ) {
-    struct timespec ts;
-    get_time(&ts);
-
-    // TODO: this could be a looot more efficient.  Either limit how many
-    // states we keep track of, or perhaps keep track of a "next resend time"
-    // value (and maybe packet pointer), so we don't have to loop as often.
-    for(int i = 0; i < link_states->count; i++) {
-        struct link_state *s = &link_states->states[i];
-
-        for(int i = 0; i < B3_STATIC_ARRAY_COUNT(s->ordered_states); i++) {
-            resend_packets(
-                socket_fd,
-                timeout_ms,
-                &ts,
-                &s->ordered_states[i].send,
-                &s->remote
-            );
-        }
-        for(int i = 0; i < B3_STATIC_ARRAY_COUNT(s->unordered_states); i++) {
-            resend_packets(
-                socket_fd,
-                timeout_ms,
-                &ts,
-                &s->unordered_states[i],
-                &s->remote
-            );
-        }
-    }
+    struct packet pong = {
+        .channel = 0,
+        .seq = 0,
+        .buffer = NULL,
+    };
+    send_packet(socket_fd, link, PING | ACK, &pong, now);
+    destroy_packet(&pong);
 }
 
 void send_ack(
     int socket_fd,
+    struct link_state *restrict link,
     const struct packet *restrict packet,
-    const n3_host *restrict remote
+    const struct timespec *restrict now
 ) {
     struct packet ack = {
         .channel = packet->channel,
         .seq = packet->seq,
         .buffer = NULL,
     };
-    send_packet(socket_fd, ACK, &ack, remote);
+    send_packet(socket_fd, link, ACK, &ack, now);
+    destroy_packet(&ack);
 }
 
-void send_fin(int socket_fd, const n3_host *restrict remote) {
+void send_fin(
+    int socket_fd,
+    struct link_state *restrict link,
+    const struct timespec *restrict now
+) {
     struct packet fin = {
         .channel = 0,
         .seq = 0,
         .buffer = NULL,
     };
-    send_packet(socket_fd, FIN, &fin, remote);
+    send_packet(socket_fd, link, FIN, &fin, now);
+    destroy_packet(&fin);
 }
 
 void send_buffer(
     int socket_fd,
-    struct link_state *restrict state,
+    struct link_state *restrict link,
     n3_channel channel,
     n3_buffer *restrict buffer,
     _Bool reliable
 ) {
-    struct simplex_channel_state *send_state = get_send_state(state, channel);
+    struct simplex_channel_state *send_state = get_send_state(link, channel);
 
     struct packet p = {
         .channel = channel,
@@ -268,54 +279,241 @@ void send_buffer(
         .buffer = n3_ref_buffer(buffer),
     };
 
-    send_packet(socket_fd, 0, &p, &state->remote);
+    struct timespec now;
+    send_packet(socket_fd, link, 0, &p, get_time(&now));
 
-    if(reliable) {
-        get_time(&p.time);
+    if(reliable)
         add_packet(&send_state->pool, &p, NULL);
-    }
     else
         destroy_packet(&p);
 }
 
-_Bool receive_packet(
+static void handle_ping(
     int socket_fd,
-    enum flags *restrict flags,
-    struct packet *restrict packet, // Only fills in the metadata, not buffer.
-    void *restrict buf,
-    size_t *restrict size,
-    n3_host *restrict remote
+    struct link_state *restrict link,
+    enum flags flags,
+    const struct timespec *restrict now
 ) {
-    uint8_t header[N3_HEADER_SIZE];
-    void *bufs[] = {header, buf};
-    size_t sizes[] = {sizeof(header), *size};
+    if(!(flags & ACK))
+        send_pong(socket_fd, link, now);
+}
 
-    for(
-        size_t received;
-        (received = n3_raw_receive(
-            socket_fd,
+static void handle_ack(
+    struct link_state *restrict link,
+    const struct packet *restrict packet
+) {
+    struct simplex_channel_state *send_state
+            = get_send_state(link, packet->channel);
+
+    remove_packet(&send_state->pool, &packet->seq);
+}
+
+static void handle_hup(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote,
+    _Bool timeout,
+    void *remote_unlink_callback_data
+) {
+    remove_link_state(&terminal->links, remote);
+
+    if(terminal->options.remote_unlink_callback) {
+        terminal->options.remote_unlink_callback(
+            terminal,
+            remote,
+            timeout,
+            remote_unlink_callback_data
+        );
+    }
+}
+
+static struct packet *handle_message(
+    n3_terminal *restrict terminal,
+    struct link_state *restrict link,
+    struct packet *restrict packet,
+    void *buf,
+    size_t size,
+    const struct timespec *restrict now
+) {
+    if(packet->seq != 0)
+        send_ack(terminal->socket_fd, link, packet, now);
+
+    packet->buffer = terminal->options.build_receive_buffer(
+        buf,
+        size,
+        &terminal->options.receive_allocator
+    );
+
+    return packet;
+}
+
+static struct link_state *get_link(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote,
+    void *new_link_filter_data
+) {
+    struct link_state *link = find_link_state(&terminal->links, remote);
+    if(!link) {
+        if(terminal->filter_new_link && !terminal->filter_new_link(
+            terminal,
+            remote,
+            new_link_filter_data
+        ))
+            return NULL;
+
+        link = insert_link_state(&terminal->links, remote);
+    }
+
+    return link;
+}
+
+static struct link_state *receive_packet(
+    n3_terminal *restrict terminal,
+    void *new_link_filter_data,
+    void *remote_unlink_callback_data,
+    struct packet *restrict packet
+) {
+    // TODO: is there a nice way to split this up?
+    while(1) {
+        uint8_t header[N3_HEADER_SIZE];
+        uint8_t buf[terminal->options.max_buffer_size];
+        void *bufs[] = {header, buf};
+        size_t sizes[] = {sizeof(header), sizeof(buf)};
+
+        n3_host remote;
+        size_t received = n3_raw_receive(
+            terminal->socket_fd,
             B3_STATIC_ARRAY_COUNT(bufs),
             bufs,
             sizes,
-            remote
-        )) > 0;
-    ) {
-        if(read_proto_header(header, flags, &packet->channel, &packet->seq)) {
-            *size = sizes[1];
-            return 1;
+            &remote
+        );
+        if(!received)
+            break;
+
+        struct timespec now;
+        get_time(&now);
+
+        enum flags flags = 0;
+        struct packet p = {.buffer = NULL};
+        if(received < N3_HEADER_SIZE
+                || !read_proto_header(header, &flags, &p.channel, &p.seq))
+            continue;
+
+        struct link_state *link
+                = get_link(terminal, &remote, new_link_filter_data);
+        if(!link)
+            continue;
+
+        link->recv_time = now;
+
+        if(flags & PING) {
+            handle_ping(terminal->socket_fd, link, flags, &now);
+            continue;
         }
+        if(flags & ACK) {
+            handle_ack(link, &p);
+            continue;
+        }
+        if(flags & FIN) {
+            handle_hup(terminal, &remote, 0, remote_unlink_callback_data);
+            continue;
+        }
+
+        // TODO: if ordered, don't return the packet directly, but add it to
+        // the queue, then start returning everything sequential from the
+        // queue.
+        *packet = *handle_message(terminal, link, &p, buf, sizes[1], &now);
+        return link;
     }
 
-    *size = 0;
-    return 0;
+    return NULL;
 }
 
-void handle_ack_packet(
-    struct link_state *restrict state,
-    const struct packet *restrict ack
+n3_buffer *receive_buffer(
+    n3_terminal *restrict terminal,
+    void *new_link_filter_data,
+    void *remote_unlink_callback_data,
+    struct link_state **restrict link
 ) {
-    struct simplex_channel_state *send_state
-            = get_send_state(state, ack->channel);
+    struct packet p = {.buffer = NULL};
+    *link = receive_packet(
+        terminal,
+        new_link_filter_data,
+        remote_unlink_callback_data,
+        &p
+    );
+    if(!*link)
+        return NULL;
 
-    remove_packet(&send_state->pool, &ack->seq);
+    n3_buffer *buffer = n3_ref_buffer(p.buffer);
+    destroy_packet(&p);
+    return buffer;
+}
+
+static void resend_packets(
+    int socket_fd,
+    struct link_state *restrict link,
+    struct simplex_channel_state *restrict send_state,
+    const struct timespec *restrict now,
+    int timeout_ms
+) {
+    for(int i = 0; i < send_state->pool.count; i++) {
+        if(timeout_elapsed(&send_state->pool.packets[i].time, timeout_ms, now))
+            send_packet(socket_fd, link, 0, &send_state->pool.packets[i], now);
+    }
+}
+
+void upkeep(
+    n3_terminal *restrict terminal,
+    void *remote_unlink_callback_data,
+    const struct timespec *restrict now
+) {
+    for(int i = 0; i < terminal->links.count; i++) {
+        struct link_state *s = &terminal->links.links[i];
+
+        if(timeout_elapsed(
+            &s->recv_time,
+            terminal->options.unlink_timeout_ms,
+            now
+        )) {
+            handle_hup(terminal, &s->remote, 1, remote_unlink_callback_data);
+            // HACK: because handle_hup removes the link from terminal->links,
+            // we need to bump i back one too, so the next iteration gets the
+            // correct new next link.
+            i--;
+            continue;
+        }
+
+        // Ping only if we aren't awaiting a response and it's been a while
+        // since we last heard from them.
+        if(compare_timespec(&s->send_time, &s->recv_time) < 0
+                && timeout_elapsed(
+                    &s->recv_time,
+                    terminal->options.ping_timeout_ms,
+                    now
+                ))
+            send_ping(terminal->socket_fd, s, now);
+
+        // TODO: this could be a looot more efficient.  Either limit how many
+        // states we keep track of, or keep track of a "next resend time" value
+        // (and maybe packet pointer), so we don't have to loop as often.
+        for(int j = 0; j < B3_STATIC_ARRAY_COUNT(s->ordered_states); j++) {
+            resend_packets(
+                terminal->socket_fd,
+                s,
+                &s->ordered_states[j].send,
+                now,
+                terminal->options.resend_timeout_ms
+            );
+        }
+        for(int j = 0; j < B3_STATIC_ARRAY_COUNT(s->unordered_states); j++) {
+            resend_packets(
+                terminal->socket_fd,
+                s,
+                &s->unordered_states[j],
+                now,
+                terminal->options.resend_timeout_ms
+            );
+        }
+    }
 }
