@@ -54,6 +54,7 @@ static void resolve(
     int err = getaddrinfo(hostname, service, &hints, &result);
     if(err) {
         const char *str = gai_strerror(err);
+        // TODO: turn these into log_error calls.
         if(hostname)
             b3_fatal("Error looking up hostname '%s': %s", hostname, str);
         else
@@ -86,6 +87,7 @@ n3_host *n3_init_host_from_socket_local(
     int socket_fd
 ) {
     socklen_t size = sizeof(host->address);
+    // TODO: turn these into log_error calls.
     if(getsockname(socket_fd, (struct sockaddr *)&host->address, &size) < 0)
         b3_fatal("Error getting socket address: %s", strerror(errno));
     if(size > sizeof(host->address))
@@ -130,6 +132,7 @@ char *n3_get_host_address(
             address,
             size
         )) {
+            // TODO: turn this into a log_error call.
             b3_fatal(
                 "Error converting host address to string: %s",
                 strerror(errno)
@@ -165,6 +168,7 @@ int n3_compare_hosts(const n3_host *restrict a, const n3_host *restrict b) {
 
 static int new_socket(sa_family_t family) {
     int socket_fd = socket(family, SOCK_DGRAM, 0);
+    // TODO: turn this into a log_error call.
     if(socket_fd < 0)
         b3_fatal("Error creating socket: %s", strerror(errno));
     return socket_fd;
@@ -172,6 +176,7 @@ static int new_socket(sa_family_t family) {
 
 int n3_new_listening_socket(const n3_host *restrict local) {
     int sd = new_socket(local->address.ss_family);
+    // TODO: turn this into a log_error call.
     if(bind(sd, (struct sockaddr *)&local->address, local->size) < 0)
         b3_fatal("Error binding socket: %s", strerror(errno));
     return sd;
@@ -179,6 +184,7 @@ int n3_new_listening_socket(const n3_host *restrict local) {
 
 int n3_new_linked_socket(const n3_host *restrict remote) {
     int sd = new_socket(remote->address.ss_family);
+    // TODO: turn this into a log_error call.
     if(connect(sd, (struct sockaddr *)&remote->address, remote->size) < 0)
         b3_fatal("Error connecting socket: %s", strerror(errno));
     return sd;
@@ -210,6 +216,7 @@ void n3_raw_send(
 
     // TODO: MSG_CONFIRM?
     ssize_t sent = sendmsg(socket_fd, &msg, MSG_DONTWAIT);
+    // TODO: turn these into log_error calls.
     if(sent < 0)
         b3_fatal("Error sending: %s", strerror(errno));
     if((size_t)sent != size)
@@ -238,12 +245,14 @@ size_t n3_raw_receive(
     if(received < 0) {
         if(errno == EAGAIN)
             return 0;
+        // TODO: turn this into a log_error call.
         b3_fatal("Error receiving: %s", strerror(errno));
     }
     // FIXME: this introduces a remotely activatable denial of service, where
     // a malicious remote host can send a huge message, causing the local
     // executable to exit with error.  For testing, I need to know if this ever
     // happens, though, so I'm leaving it in for now.
+    // TODO: turn this into a log_error call.
     if(msg.msg_flags & MSG_TRUNC)
         b3_fatal("Received data truncated, %'zd bytes", received);
 

@@ -46,6 +46,7 @@ struct timespec *get_time(struct timespec *restrict ts) {
 #endif
     ;
 
+    // TODO: turn this into a log_error call.
     if(clock_gettime(clock, ts) != 0)
         b3_fatal("Error getting time: %s", strerror(errno));
     return ts;
@@ -158,23 +159,59 @@ static void fill_proto_header(
 
 static _Bool read_proto_header(
     uint8_t buf[N3_HEADER_SIZE],
+    size_t received_size,
     enum flags *restrict flags,
     n3_channel *restrict channel,
     sequence *restrict seq
 ) {
+    if(received_size < N3_HEADER_SIZE) {
+        log_warning("Incomplete packet, size %'zu; ignoring", received_size);
+        return 0;
+    }
+
     int version = buf[0] >> 4;
     *flags = buf[0] & 0xf;
     *channel = buf[1];
     *seq = (sequence)buf[2] << 8 | (sequence)buf[3];
 
-    if(version != PROTO_VERSION) // TODO: backwards compatibility?
+    // TODO: backwards compatibility?
+    if(version != PROTO_VERSION) {
+        log_warning("Invalid packet version %d; ignoring", version);
         return 0;
-    if(*flags & ~ALL_FLAGS) // Sanity check for unknown flags.
+    }
+    // Sanity check for unknown flags.
+    if(*flags & ~ALL_FLAGS) {
+        log_warning("Invalid packet flags 0x%x; ignoring", *flags);
         return 0;
-    // TODO: issue a warning?
+    }
     // TODO: more checks?
 
     return 1;
+}
+
+static void log_send_packet(
+    enum flags flags,
+    const struct packet *restrict packet,
+    const n3_host *restrict remote
+) {
+    char address[N3_ADDRESS_SIZE] = {""};
+    n3_get_host_address(remote, address, sizeof(address));
+    n3_port port = n3_get_host_port(remote);
+
+    log_n_debug("Sent to %s|%u: ", address, port);
+
+    if(flags & PING) {
+        if(flags & ACK)
+            log_debug("PONG");
+        else
+            log_debug("PING");
+    }
+    else if(flags & ACK)
+        log_debug("ACK %u-%u", packet->channel, packet->seq);
+    else if(flags & FIN)
+        log_debug("FIN");
+    else
+        log_debug("message %u-%u", packet->channel, packet->seq);
 }
 
 static void send_packet(
@@ -205,6 +242,8 @@ static void send_packet(
     packet->time = *now;
     if(flags == 0 || flags == PING)
         link->send_time = *now;
+
+    log_send_packet(flags, packet, &link->remote);
 }
 
 void send_ping(
@@ -221,7 +260,7 @@ void send_ping(
     destroy_packet(&ping);
 }
 
-void send_pong(
+static void send_pong(
     int socket_fd,
     struct link_state *restrict link,
     const struct timespec *restrict now
@@ -235,7 +274,7 @@ void send_pong(
     destroy_packet(&pong);
 }
 
-void send_ack(
+static void send_ack(
     int socket_fd,
     struct link_state *restrict link,
     const struct packet *restrict packet,
@@ -352,18 +391,50 @@ static struct link_state *get_link(
     void *new_link_filter_data
 ) {
     struct link_state *link = find_link_state(&terminal->links, remote);
-    if(!link) {
+    if(link)
+        log_debug(""); // Add newline to line describing packet.
+    else {
         if(terminal->filter_new_link && !terminal->filter_new_link(
             terminal,
             remote,
             new_link_filter_data
-        ))
+        )) {
+            log_debug(", rejected new link; ignoring");
             return NULL;
+        }
 
         link = insert_link_state(&terminal->links, remote);
+
+        log_debug(", created new link");
     }
 
     return link;
+}
+
+static void log_received_from(const n3_host *restrict remote) {
+    char address[N3_ADDRESS_SIZE] = {""};
+    n3_get_host_address(remote, address, sizeof(address));
+    n3_port port = n3_get_host_port(remote);
+
+    log_n_debug("Received from %s|%u: ", address, port);
+}
+
+static void log_received_packet(
+    enum flags flags,
+    const struct packet *restrict packet
+) {
+    if(flags & PING) {
+        if(flags & ACK)
+            log_n_debug("PONG");
+        else
+            log_n_debug("PING");
+    }
+    else if(flags & ACK)
+        log_n_debug("ACK %u-%u", packet->channel, packet->seq);
+    else if(flags & FIN)
+        log_n_debug("FIN");
+    else
+        log_n_debug("message %u-%u", packet->channel, packet->seq);
 }
 
 static struct link_state *receive_packet(
@@ -390,14 +461,17 @@ static struct link_state *receive_packet(
         if(!received)
             break;
 
+        log_received_from(&remote);
+
         struct timespec now;
         get_time(&now);
 
         enum flags flags = 0;
         struct packet p = {.buffer = NULL};
-        if(received < N3_HEADER_SIZE
-                || !read_proto_header(header, &flags, &p.channel, &p.seq))
+        if(!read_proto_header(header, received, &flags, &p.channel, &p.seq))
             continue;
+
+        log_received_packet(flags, &p);
 
         struct link_state *link
                 = get_link(terminal, &remote, new_link_filter_data);

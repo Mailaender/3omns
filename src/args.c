@@ -85,6 +85,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'n':
         args->debug_network = 1;
         break;
+    case 'P':
+        args->protocol_verbosity = atoi(arg);
+        break;
     case 'R':
         puts(INSTALLED_RESOURCES);
         exit(0);
@@ -125,7 +128,9 @@ void parse_args(struct args *restrict args, int argc, char *argv[]) {
                 B3_STRINGIFY(DEFAULT_PORT)")", 1},
         {NULL, 0, NULL, 0, "Debug options:", 2},
         {"debug", 'd', NULL, 0, "Run in debug mode", 2},
-        {"debug-network", 'n', NULL, 0, "Print network communication", 2},
+        {"debug-network", 'n', NULL, 0, "Print network messages", 2},
+        {"protocol-verbosity", 'P', "N", 0, "Packet logging verbosity, "
+                "0=silent, 1=errors, 2=warnings, 3=debug (default: 0)", 2},
         {NULL, 0, NULL, 0, "Informational options:", 3},
         {"default-resources", 'R', NULL, 0, "Print default resources path "
                 "('"INSTALLED_RESOURCES"') and exit", 3},

@@ -28,6 +28,14 @@
 #include <time.h>
 
 
+void log_(n3_verbosity level, _Bool newline, const char *restrict format, ...);
+#define log_error(...) log_(N3_ERRORS, 1, __VA_ARGS__)
+#define log_warning(...) log_(N3_WARNINGS, 1, __VA_ARGS__)
+#define log_debug(...) log_(N3_DEBUG, 1, __VA_ARGS__)
+// Like echo -n, no newline:
+#define log_n_debug(...) log_(N3_DEBUG, 0, __VA_ARGS__)
+
+
 #define PROTO_VERSION 1 // Must fit in 4 bits.
 
 
@@ -164,17 +172,6 @@ struct timespec *get_time(struct timespec *restrict ts);
 void send_ping(
     int socket_fd,
     struct link_state *restrict link,
-    const struct timespec *restrict now
-);
-void send_pong(
-    int socket_fd,
-    struct link_state *restrict link,
-    const struct timespec *restrict now
-);
-void send_ack(
-    int socket_fd,
-    struct link_state *restrict link,
-    const struct packet *restrict packet,
     const struct timespec *restrict now
 );
 void send_fin(

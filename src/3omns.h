@@ -40,8 +40,10 @@ struct args {
     _Bool client;
     const char *hostname;
     n3_port port;
+    n3_verbosity protocol_verbosity;
 };
-#define ARGS_INIT_DEFAULT {NULL, DEFAULT_GAME, 0, 0, 0, 0, NULL, DEFAULT_PORT}
+#define ARGS_INIT_DEFAULT \
+        {NULL, DEFAULT_GAME, 0, 0, 0, 0, NULL, DEFAULT_PORT, N3_SILENT}
 
 void parse_args(struct args *restrict args, int argc, char *argv[]);
 

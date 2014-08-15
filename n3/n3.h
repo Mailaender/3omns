@@ -23,10 +23,22 @@
 
 #include <netinet/in.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <sys/socket.h>
 
 
 // TODO: error reporting (return NULL/false and pass extra char ** for desc.).
+
+typedef enum n3_verbosity n3_verbosity;
+enum n3_verbosity {
+    N3_SILENT = 0, // TODO: currently, N3_SILENT is roughly == to N3_ERRORS.
+    N3_ERRORS = 1,
+    N3_WARNINGS = 2,
+    N3_DEBUG = 3,
+};
+
+void n3_init(n3_verbosity verbosity, FILE *restrict log_file);
+void n3_quit(void);
 
 
 #define N3_ADDRESS_SIZE INET6_ADDRSTRLEN
@@ -124,8 +136,6 @@ size_t n3_get_buffer_size(n3_buffer *restrict buffer);
 size_t n3_get_buffer_cap(n3_buffer *restrict buffer);
 void n3_set_buffer_cap(n3_buffer *restrict buffer, size_t cap);
 
-
-// TODO: debug logging of low-level protocol shenanigans?
 
 typedef uint8_t n3_channel;
 

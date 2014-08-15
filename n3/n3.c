@@ -22,8 +22,10 @@
 #include "internal.h"
 #include "n3.h"
 
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 
@@ -35,6 +37,42 @@ struct n3_link {
     n3_host remote;
 };
 
+
+static n3_verbosity verbosity = N3_SILENT;
+static FILE *log_file = NULL;
+
+
+void n3_init(n3_verbosity verbosity_, FILE *restrict log_file_) {
+    verbosity = verbosity_;
+    log_file = log_file_;
+}
+
+void n3_quit(void) {
+}
+
+void log_(
+    n3_verbosity level,
+    _Bool newline,
+    const char *restrict format,
+    ...
+) {
+    if(level > verbosity || !log_file)
+        return;
+
+    va_list args;
+    va_start(args, format);
+
+    switch(level) {
+    case N3_ERRORS: fputs("ERROR: ", log_file); break;
+    case N3_WARNINGS: fputs("WARNING: ", log_file); break;
+    default: break;
+    }
+    vfprintf(log_file, format, args);
+    if(newline)
+        fputc('\n', log_file);
+
+    va_end(args);
+}
 
 static n3_buffer *default_build_receive_buffer(
     void *buf,

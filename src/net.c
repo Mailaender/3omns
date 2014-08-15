@@ -624,6 +624,8 @@ void init_net(void) {
     if(!args.client && !args.serve)
         return;
 
+    n3_init(args.protocol_verbosity, DEBUG_FILE);
+
     n3_host host;
     if(args.client || (args.serve && args.hostname))
         n3_init_host(&host, args.hostname, args.port);
@@ -652,6 +654,8 @@ void init_net(void) {
 void quit_net(void) {
     n3_free_terminal(terminal);
     terminal = NULL;
+
+    n3_quit();
 }
 
 void update_net(struct round *restrict round) {
