@@ -505,6 +505,7 @@ static struct link_state *receive_packet(
 
 n3_buffer *receive_buffer(
     n3_terminal *restrict terminal,
+    n3_channel *restrict channel,
     void *new_link_filter_data,
     void *remote_unlink_callback_data,
     struct link_state **restrict link
@@ -518,6 +519,9 @@ n3_buffer *receive_buffer(
     );
     if(!*link)
         return NULL;
+
+    if(channel)
+        *channel = p.channel;
 
     n3_buffer *buffer = n3_ref_buffer(p.buffer);
     destroy_packet(&p);

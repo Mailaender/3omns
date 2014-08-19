@@ -190,6 +190,7 @@ void send_buffer(
 
 n3_buffer *receive_buffer(
     n3_terminal *restrict terminal,
+    n3_channel *restrict channel,
     void *new_link_filter_data,
     void *remote_unlink_callback_data,
     struct link_state **restrict link

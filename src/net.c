@@ -169,7 +169,7 @@ static n3_buffer *receive_notification(
     n3_host host_;
     n3_host *h = (host ? host : &host_);
 
-    n3_buffer *buffer = n3_receive(terminal, h, round, round);
+    n3_buffer *buffer = n3_receive(terminal, NULL, h, round, round);
     if(buffer) {
         received_packets++;
         debug_network_print(

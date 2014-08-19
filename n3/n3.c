@@ -206,6 +206,7 @@ void n3_send_to(
 
 n3_buffer *n3_receive(
     n3_terminal *restrict terminal,
+    n3_channel *restrict channel,
     n3_host *restrict remote,
     void *new_link_filter_data,
     void *remote_unlink_callback_data
@@ -213,6 +214,7 @@ n3_buffer *n3_receive(
     struct link_state *link = NULL;
     n3_buffer *buffer = receive_buffer(
         terminal,
+        channel,
         new_link_filter_data,
         remote_unlink_callback_data,
         &link
