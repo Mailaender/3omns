@@ -23,6 +23,7 @@
 #include "n3.h"
 
 #include <stddef.h>
+#include <string.h>
 
 
 static void *default_malloc(size_t size) {
@@ -49,6 +50,16 @@ n3_buffer *n3_new_buffer(size_t size, const n3_allocator *restrict allocator) {
     buffer->size = size;
     buffer->cap = size;
     return n3_ref_buffer(buffer);
+}
+
+n3_buffer *n3_build_buffer(
+    const void *buf,
+    size_t size,
+    const n3_allocator *restrict allocator
+) {
+    n3_buffer *buffer = n3_new_buffer(size, allocator);
+    memcpy(buffer->buf, buf, size);
+    return buffer;
 }
 
 n3_buffer *n3_ref_buffer(n3_buffer *restrict buffer) {

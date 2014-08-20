@@ -128,6 +128,11 @@ struct n3_allocator {
 typedef struct n3_buffer n3_buffer;
 
 n3_buffer *n3_new_buffer(size_t size, const n3_allocator *restrict allocator);
+n3_buffer *n3_build_buffer(
+    const void *buf,
+    size_t size,
+    const n3_allocator *restrict allocator
+);
 n3_buffer *n3_ref_buffer(n3_buffer *restrict buffer);
 void n3_free_buffer(n3_buffer *restrict buffer);
 
@@ -169,7 +174,7 @@ typedef void (*n3_unlink_callback)(
     void *data
 );
 typedef n3_buffer *(*n3_buffer_builder)(
-    void *buf,
+    const void *buf,
     size_t size,
     const n3_allocator *allocator
 );

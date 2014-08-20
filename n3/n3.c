@@ -26,7 +26,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 
 
 #define INIT_LINK_STATES_SIZE 8
@@ -74,16 +73,6 @@ void log_(
     va_end(args);
 }
 
-static n3_buffer *default_build_receive_buffer(
-    void *buf,
-    size_t size,
-    const n3_allocator *allocator
-) {
-    n3_buffer *buffer = n3_new_buffer(size, allocator);
-    memcpy(buffer->buf, buf, size);
-    return buffer;
-}
-
 static n3_terminal *new_terminal(
     int socket_fd,
     n3_link_filter new_link_filter,
@@ -95,7 +84,7 @@ static n3_terminal *new_terminal(
     terminal->options.resend_timeout_ms = N3_DEFAULT_RESEND_TIMEOUT_MS;
     terminal->options.ping_timeout_ms = N3_DEFAULT_PING_TIMEOUT_MS;
     terminal->options.unlink_timeout_ms = N3_DEFAULT_UNLINK_TIMEOUT_MS;
-    terminal->options.build_receive_buffer = default_build_receive_buffer;
+    terminal->options.build_receive_buffer = n3_build_buffer;
     if(options) {
         if(options->max_buffer_size)
             terminal->options.max_buffer_size = options->max_buffer_size;

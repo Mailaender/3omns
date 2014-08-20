@@ -606,7 +606,7 @@ static void handle_remote_unlink(
 }
 
 static n3_buffer *build_receive_buffer(
-    void *restrict buf,
+    const void *restrict buf,
     size_t size,
     const n3_allocator *restrict allocator
 ) {
