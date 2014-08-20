@@ -161,18 +161,24 @@ static inline OL_ITEM_TYPE *OL_ADD(
     return &list->OL_ITEMS_NAME[index];
 }
 
-static inline void OL_REMOVE(
+static inline _Bool OL_REMOVE(
     struct OL_NAME *restrict list,
-    const OL_KEY_TYPE *restrict key
+    const OL_KEY_TYPE *restrict key,
+    OL_ITEM_TYPE *restrict dest
 ) {
     OL_ITEM_TYPE *item = OL_FIND(list, key);
     if(!item)
-        return;
+        return 0;
 
-    OL_DESTROY_ITEM_(item);
+    if(dest)
+        *dest = *item;
+    else
+        OL_DESTROY_ITEM_(item);
 
     ptrdiff_t index = item - list->OL_ITEMS_NAME;
     memmove(item, item + 1, (--list->count - index) * sizeof(*item));
+
+    return 1;
 }
 
 

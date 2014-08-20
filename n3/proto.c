@@ -53,8 +53,8 @@ struct timespec *get_time(struct timespec *restrict ts) {
 }
 
 static void add_time_ms(struct timespec *restrict ts, long ms) {
-    long ns_per_ms = 1000000;
-    long ns_per_s = 1000000000;
+    const long ns_per_ms = 1000000;
+    const long ns_per_s = 1000000000;
 
     ts->tv_nsec += ms * ns_per_ms;
     while(ts->tv_nsec >= ns_per_s) {
@@ -142,6 +142,14 @@ static sequence next_send_sequence(
     sequence seq = ++send_state->seq;
     if(!seq) // Skip 0, which is used for unreliable sends.
         seq = ++send_state->seq;
+    return seq;
+}
+
+static sequence next_recv_sequence(sequence last) {
+    sequence seq = last;
+    seq++;
+    if(!seq)
+        seq++;
     return seq;
 }
 
@@ -344,7 +352,7 @@ static void handle_ack(
     struct simplex_channel_state *send_state
             = get_send_state(link, packet->channel);
 
-    remove_packet(&send_state->pool, &packet->seq);
+    remove_packet(&send_state->pool, &packet->seq, NULL);
 }
 
 static void handle_hup(
@@ -353,7 +361,7 @@ static void handle_hup(
     _Bool timeout,
     void *remote_unlink_callback_data
 ) {
-    remove_link_state(&terminal->links, remote);
+    remove_link_state(&terminal->links, remote, NULL);
 
     if(terminal->options.remote_unlink_callback) {
         terminal->options.remote_unlink_callback(
@@ -363,6 +371,45 @@ static void handle_hup(
             remote_unlink_callback_data
         );
     }
+}
+
+static struct packet *next_received_packet_in_channel(
+    struct link_state *restrict link,
+    n3_channel channel,
+    struct packet *restrict packet
+) {
+    struct simplex_channel_state *recv_state
+            = &link->ordered_states[channel - N3_ORDERED_CHANNEL_MIN].recv;
+    sequence next = next_recv_sequence(recv_state->seq);
+    if(recv_state->pool.count > 0 && recv_state->pool.packets[0].seq == next) {
+        recv_state->seq = next;
+        // TODO: remove by index instead of key.
+        remove_packet(&recv_state->pool, &next, packet);
+        return packet;
+    }
+
+    return NULL;
+}
+
+static struct link_state *next_received_packet(
+    struct link_states *restrict links,
+    struct packet *restrict packet
+) {
+    for(int i = 0; i < links->count; i++) {
+        struct link_state *s = &links->links[i];
+
+        for(int j = 0; j < B3_STATIC_ARRAY_COUNT(s->ordered_states); j++) {
+            struct packet *p = next_received_packet_in_channel(
+                s,
+                j + N3_ORDERED_CHANNEL_MIN,
+                packet
+            );
+            if(p)
+                return s;
+        }
+    }
+
+    return NULL;
 }
 
 static struct packet *handle_message(
@@ -382,7 +429,15 @@ static struct packet *handle_message(
         &terminal->options.receive_allocator
     );
 
-    return packet;
+    if(!N3_IS_ORDERED(packet->channel))
+        return packet;
+
+    struct duplex_channel_state *state
+            = &link->ordered_states[packet->channel - N3_ORDERED_CHANNEL_MIN];
+    sequence seq = packet->seq;
+    add_packet(&state->recv.pool, packet, &seq);
+
+    return next_received_packet_in_channel(link, packet->channel, packet);
 }
 
 static struct link_state *get_link(
@@ -443,7 +498,10 @@ static struct link_state *receive_packet(
     void *remote_unlink_callback_data,
     struct packet *restrict packet
 ) {
-    // TODO: is there a nice way to split this up?
+    struct link_state *link = next_received_packet(&terminal->links, packet);
+    if(link)
+        return link;
+
     while(1) {
         uint8_t header[N3_HEADER_SIZE];
         uint8_t buf[terminal->options.max_buffer_size];
@@ -473,8 +531,7 @@ static struct link_state *receive_packet(
 
         log_received_packet(flags, &p);
 
-        struct link_state *link
-                = get_link(terminal, &remote, new_link_filter_data);
+        link = get_link(terminal, &remote, new_link_filter_data);
         if(!link)
             continue;
 
@@ -493,10 +550,14 @@ static struct link_state *receive_packet(
             continue;
         }
 
-        // TODO: if ordered, don't return the packet directly, but add it to
-        // the queue, then start returning everything sequential from the
-        // queue.
-        *packet = *handle_message(terminal, link, &p, buf, sizes[1], &now);
+        struct packet *out
+                = handle_message(terminal, link, &p, buf, sizes[1], &now);
+        // In this case, we've received an ordered packet out of order, and
+        // don't have anything to return yet.  Keep trying the network.
+        if(!out)
+            continue;
+
+        *packet = *out;
         return link;
     }
 

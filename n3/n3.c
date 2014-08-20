@@ -244,8 +244,8 @@ static void unlink_from(
     struct link_state *link = find_link_state(links, remote);
     if(link) {
         send_fin(socket_fd, link, now);
-        // TODO: don't search for this again inside remove_link_state.
-        remove_link_state(links, remote);
+        // TODO: remove by index instead of key.
+        remove_link_state(links, remote, NULL);
     }
 }
 
