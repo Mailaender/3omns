@@ -18,9 +18,10 @@ PKG_CHECK_MODULES([SDL], [
 	SDL2_image >= 2.0.0
 	SDL2_ttf >= 2.0.12
 ])
-PKG_CHECK_MODULES([LUA], [lua5.2 >= 5.2.0], [],        dnl Linux package name.
-	[PKG_CHECK_MODULES([LUA], [lua-5.2 >= 5.2.0])] dnl BSD package name.
-)
+PKG_CHECK_MODULES([LUA], [lua5.2 >= 5.2.0], [], dnl Linux package name
+	[PKG_CHECK_MODULES([LUA], [lua-5.2 >= 5.2.0], [], dnl BSD
+	[PKG_CHECK_MODULES([LUA], [lua >= 5.2.0])] dnl OpenSUSE (et al.?)
+)])
 AC_CHECK_HEADERS([argp.h], [],
 	[AC_MSG_ERROR([cannot find required header argp.h])]
 )
