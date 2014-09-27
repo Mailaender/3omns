@@ -76,7 +76,7 @@ setup: prereqs $(OTHERCHANGELOGS)
 
 
 $(EXPORTDIR).stamp: gitstamp
-	@echo "Git $(GITVER)'s last commit was on $(GITVER_DATE)." > '$@'
+	@echo "$(PKG) $(GITVER)'s last commit was on $(GITVER_DATE)." > '$@'
 	@touch --date='$(GITVER_DATE)' '$@'
 $(EXPORTDIR).tar: $(EXPORTDIR).stamp
 	git archive --prefix='$(EXPORTDIR)/' --output='$@' '$(GITVER)'
@@ -96,6 +96,11 @@ $(BUILDDISTDIR)/configure: $(BUILDDIR)/$(ORIG)
 	test -x '$@' # configure sanity check.
 	touch --date="`stat -c %y '$<'`" '$@' # Don't re-untar unless needed.
 
+# TODO: a sanity check target that checks $(DEBDIR)/changelog for having the
+# correct version (DEBVER).  If e.g. the NEWS file and existing changelog are
+# old, debuild will just fail because it can't find the correctly named .orig
+# tarball.  Instead, we should just use dch to add "Unknown changes" to a new
+# entry with the correct version.
 $(DEBDIR)/changelog: $(EXPORTDIR)/NEWS
 	test -n '$(PKG)' -a -n '$(DEBVER)' # PKG & DEBVER sanity check.
 	check='$(PKG) $(DEBVER) '; \
