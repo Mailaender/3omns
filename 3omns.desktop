@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=3omns
+GenericName=Bomns
 Comment=old-school arcade-style tile-based bomb-dropping deathmatch game
 Icon=3omns
 Exec=3omns
