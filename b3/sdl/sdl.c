@@ -62,13 +62,13 @@ static b3_input_callback handle_input = NULL;
 void b3_init(void) {
     quit = 0;
 
-    if(SDL_Init(SDL_INIT_NOPARACHUTE | SDL_INIT_VIDEO) != 0)
+    if(SDL_Init(SDL_INIT_NOPARACHUTE) != 0)
         b3_fatal("Error initializing SDL: %s", SDL_GetError());
 
     if((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) != IMG_INIT_PNG)
         b3_fatal("Error initializing SDL_image: %s", IMG_GetError());
 
-    if(TTF_Init())
+    if(TTF_Init() != 0)
         b3_fatal("Error initializing SDL_ttf: %s", TTF_GetError());
 
     b3_tick_frequency = (b3_ticks)SDL_GetPerformanceFrequency();
@@ -85,6 +85,11 @@ void b3_enter_window(
     const b3_size *restrict window_size,
     b3_input_callback input_callback
 ) {
+    if(SDL_WasInit(SDL_INIT_VIDEO) == 0) {
+        if(SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+            b3_fatal("Error initializing SDL video: %s", SDL_GetError());
+    }
+
     window = SDL_CreateWindow(
         window_title,
         SDL_WINDOWPOS_UNDEFINED,
