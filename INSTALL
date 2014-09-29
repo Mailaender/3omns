@@ -48,8 +48,7 @@ by running:
 Build
 -----
 
-If you've cloned 3omns in git or downloaded a source tarball, use autoreconf to
-kick off the build process:
+If you've cloned 3omns in git, use autoreconf to kick off the build process:
 
     autoreconf -i
 
@@ -60,14 +59,14 @@ kick off the build process:
 
 See './configure --help' for build options.
 
-
-Install
--------
-
 Once 3omns is built, you can run it directly out of the build directory without
 installing:
 
     ./3omns
+
+
+Install
+-------
 
 If you decide you want to install it, run something like:
 
