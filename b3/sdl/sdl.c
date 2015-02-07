@@ -271,7 +271,7 @@ void b3_draw_image(b3_image *restrict image, const b3_rect *restrict rect) {
 }
 
 b3_font *b3_load_font(int size, const char *restrict filename, int index) {
-    TTF_Font *ttf = TTF_OpenFontIndex(filename, size, (int)index);
+    TTF_Font *ttf = TTF_OpenFontIndex(filename, size, (long)index);
     if(!ttf)
         b3_fatal("Error loading font %s: %s", filename, TTF_GetError());
 
