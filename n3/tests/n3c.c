@@ -50,8 +50,6 @@ struct state {
 
     n3_host remote_host; // Not used if listening.
     n3_terminal *terminal;
-
-    n3_buffer *input_buffer;
 };
 #define STATE_INIT {.terminal = NULL}
 
@@ -99,16 +97,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 static void parse_args(struct args *restrict args, int argc, char *argv[]) {
     const char *const doc = "nc-like utility using the n3 protocol"
             "\vConnect to HOST:PORT; or with -l, listen for connections on "
-            "BIND:PORT (default BIND: 0.0.0.0).  Send lines of stdin to "
-            "connection(s).  Display received lines on stdout.";
+            "BIND:PORT (default BIND: 0.0.0.0).  Send data from stdin to "
+            "connection(s).  Display received data on stdout.";
     const char *const args_doc = "HOST PORT"
             "\n-l [BIND] PORT";
 
     struct argp_option options[] = {
         {"listen", 'l', NULL, OPTION_NO_USAGE,
                 "Listen for incoming connections"},
-        {"broadcast", 'b', NULL, 0, "With -l, broadcast received lines"},
-        {"identify", 'i', NULL, 0, "With -l, display each line's sender"},
+        {"broadcast", 'b', NULL, 0, "With -l, broadcast received data"},
+        {"identify", 'i', NULL, 0, "With -l, display received data's sender"},
         {"verbose", 'v', NULL, 0, "Increase verbosity (multiple allowed)"},
         {0}
     };
@@ -146,6 +144,8 @@ static void init(
     if(fcntl(STDIN_FILENO, F_SETFL, flags) == -1)
         b3_fatal("Error setting stdin fcntl flags: %s", strerror(errno));
 
+    setbuf(stdout, NULL);
+
     n3_port port;
     int error = parse_port(&port, args->port);
     if(error)
@@ -175,13 +175,11 @@ static void quit(struct state *restrict state) {
     memset(&state->remote_host, 0, sizeof(state->remote_host));
     n3_free_terminal(state->terminal);
     state->terminal = NULL;
-    n3_free_buffer(state->input_buffer);
-    state->input_buffer = NULL;
 
     n3_quit();
 }
 
-static void read_data(struct state *restrict state) {
+static void receive_data(struct state *restrict state) {
     for(
         n3_buffer *data;
         (data = n3_receive(state->terminal, NULL, NULL, NULL, NULL)) != NULL;
@@ -193,62 +191,14 @@ static void read_data(struct state *restrict state) {
     }
 }
 
-static void send_and_free_buffer(
-    n3_buffer *restrict buffer,
-    struct state *restrict state
-) {
-    if(state->args->listen)
-        n3_broadcast(state->terminal, 0, buffer);
-    else
-        n3_send_to(state->terminal, 0, buffer, &state->remote_host);
-
-    n3_free_buffer(buffer);
-}
-
-static void handle_input(ssize_t read_size, struct state *restrict state) {
-    char *buf = n3_get_buffer(state->input_buffer);
-    size_t cap = n3_get_buffer_cap(state->input_buffer);
-
-    // We're examining the last read_size bytes of the buffer (cap has already
-    // been expanded with the new input).
-    char *end = buf + cap;
-    char *start = end - read_size;
-
-    for(char *c = start; c < end; c++) {
-        if(*c == '\n') {
-            char *next = c + 1;
-            ptrdiff_t line_size = next - buf;
-            send_and_free_buffer(n3_build_buffer(buf, line_size, NULL), state);
-
-            ptrdiff_t remaining_size = end - next;
-            memmove(buf, next, remaining_size);
-
-            cap = remaining_size;
-            n3_set_buffer_cap(state->input_buffer, cap);
-
-            start = c = buf; // Don't need to update start, but consistency.
-            end = buf + cap;
-        }
-    }
-
-    if(cap == n3_get_buffer_size(state->input_buffer)) {
-        send_and_free_buffer(state->input_buffer, state);
-        state->input_buffer = NULL;
-    }
-}
-
-static _Bool write_input(struct state *restrict state) {
+static _Bool send_input(struct state *restrict state) {
     while(1) {
-        if(!state->input_buffer) {
-            state->input_buffer = n3_new_buffer(N3_SAFE_BUFFER_SIZE, NULL);
-            n3_set_buffer_cap(state->input_buffer, 0);
-        }
-
-        size_t cap = n3_get_buffer_cap(state->input_buffer);
-        char *buf = (char *)n3_get_buffer(state->input_buffer) + cap;
-        size_t buf_size = n3_get_buffer_size(state->input_buffer) - cap;
-
-        ssize_t read_size = read(STDIN_FILENO, buf, buf_size);
+        // Note: we don't do any buffering of our own, which means we rely on
+        // terminal line mode to give us one line at a time.  For stdin not
+        // connected to a terminal, we just push data out as soon as we get it,
+        // no matter how small.  This could be inefficient, but it's easy.
+        char buf[N3_SAFE_BUFFER_SIZE];
+        ssize_t read_size = read(STDIN_FILENO, buf, sizeof(buf));
         if(read_size == -1) {
             if(errno == EINTR)
                 continue;
@@ -256,18 +206,15 @@ static _Bool write_input(struct state *restrict state) {
                 break;
             b3_fatal("Error reading from stdin: %s", strerror(errno));
         }
-        if(read_size == 0) {
-            if(cap) {
-                send_and_free_buffer(state->input_buffer, state);
-                state->input_buffer = NULL;
-                // TODO: also flush buffer when CTRL+C.
-            }
+        if(read_size == 0)
             return 0;
-        }
 
-        n3_set_buffer_cap(state->input_buffer, cap + read_size);
-
-        handle_input(read_size, state);
+        n3_buffer *buffer = n3_build_buffer(buf, read_size, NULL);
+        if(state->args->listen)
+            n3_broadcast(state->terminal, 0, buffer);
+        else
+            n3_send_to(state->terminal, 0, buffer, &state->remote_host);
+        n3_free_buffer(buffer);
     }
 
     return 1;
@@ -285,9 +232,9 @@ static _Bool pump(struct state *restrict state) {
         b3_fatal("Error polling: %s", strerror(errno));
 
     if(pollfds[1].revents & POLLIN)
-        read_data(state);
+        receive_data(state);
     if(pollfds[0].revents & POLLIN) {
-        if(!write_input(state))
+        if(!send_input(state))
             return 0;
     }
 
