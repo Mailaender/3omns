@@ -50,6 +50,8 @@ struct state {
 
     n3_host remote_host; // Not used if listening.
     n3_terminal *terminal;
+
+    int exit_status;
 };
 #define STATE_INIT {.args = NULL}
 
@@ -202,7 +204,12 @@ static _Bool keep_going(
     struct state *restrict state,
     struct unlink *restrict unlink
 ) {
-    return state->args->listen || !unlink->unlinked;
+    if(state->args->listen || !unlink->unlinked)
+        return 1;
+
+    if(state->exit_status == 0 && unlink->timeout)
+        state->exit_status = 1;
+    return 0;
 }
 
 static _Bool receive_data(struct state *restrict state) {
@@ -252,6 +259,7 @@ static _Bool send_input(struct state *restrict state) {
 
 static _Bool pump(struct state *restrict state) {
     struct pollfd pollfds[] = {
+        // TODO: only poll/read from stdin once a connection is established.
         { .fd = STDIN_FILENO, .events = POLLIN },
         { .fd = n3_get_fd(state->terminal), .events = POLLIN },
         // TODO: also use signalfd, poll for SIGINT/SIGTERM, handle gracefully.
@@ -287,5 +295,5 @@ int main(int argc, char *argv[]) {
         continue;
 
     quit(&state);
-    return 0; // TODO: return nonzero on error.
+    return state.exit_status;
 }
