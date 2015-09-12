@@ -24,6 +24,7 @@
 #include <argp.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <poll.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -214,13 +215,24 @@ static _Bool keep_going(
 
 static _Bool receive_data(struct state *restrict state) {
     struct unlink unlink = UNLINK_INIT;
+    n3_host remote;
 
     for(
         n3_buffer *data;
-        (data = n3_receive(state->terminal, NULL, NULL, NULL, &unlink))
+        (data = n3_receive(state->terminal, NULL, &remote, NULL, &unlink))
                 != NULL;
    ) {
-        // TODO: identify?  Re-broadcast?
+        if(state->args->listen && state->args->identify) {
+            char address[N3_ADDRESS_SIZE];
+            fprintf(
+                stdout,
+                "<%s:%"PRIu16">: ",
+                n3_get_host_address(&remote, address, sizeof(address)),
+                n3_get_host_port(&remote)
+            );
+        }
+
+        // TODO: Re-broadcast?
         fwrite(n3_get_buffer(data), 1, n3_get_buffer_cap(data), stdout);
         n3_free_buffer(data);
     }
