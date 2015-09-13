@@ -200,7 +200,7 @@ n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal);
 void n3_free_terminal(n3_terminal *restrict terminal);
 
 int n3_get_fd(n3_terminal *restrict terminal);
-// TODO: getter for local n3_host.
+n3_host *n3_get_host(n3_terminal *restrict terminal, n3_host *restrict host);
 
 // TODO: n3_get_link_count.
 void n3_for_each_link(

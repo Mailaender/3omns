@@ -145,6 +145,10 @@ int n3_get_fd(n3_terminal *restrict terminal) {
     return terminal->socket_fd;
 }
 
+n3_host *n3_get_host(n3_terminal *restrict terminal, n3_host *restrict host) {
+    return n3_init_host_from_socket_local(host, terminal->socket_fd);
+}
+
 void n3_for_each_link(
     n3_terminal *restrict terminal,
     n3_link_callback callback,

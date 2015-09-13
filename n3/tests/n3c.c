@@ -62,6 +62,11 @@ struct unlink {
 };
 #define UNLINK_INIT {0, 0}
 
+struct rebroadcast {
+    n3_host *from_host;
+    n3_buffer *buffer;
+};
+
 
 const char *argp_program_version = "n3c 0.0+git";
 const char *argp_program_bug_address = "<"PACKAGE_BUGREPORT">";
@@ -213,6 +218,45 @@ static _Bool keep_going(
     return 0;
 }
 
+static n3_buffer *add_identity(
+    n3_buffer *restrict data,
+    const n3_host *restrict host
+) {
+    size_t data_cap = n3_get_buffer_cap(data);
+
+    size_t identity_size = N3_ADDRESS_SIZE + 10; // "<address:port>: ".
+    n3_buffer *buffer = n3_new_buffer(identity_size + data_cap, NULL);
+
+    char address[N3_ADDRESS_SIZE];
+    n3_get_host_address(host, address, sizeof(address));
+    n3_port port = n3_get_host_port(host);
+
+    char *buf = n3_get_buffer(buffer);
+    int identity_cap = snprintf(
+        buf,
+        identity_size,
+        "<%s:%"PRIu16">: ",
+        address,
+        port
+    );
+    memcpy(buf + identity_cap, n3_get_buffer(data), data_cap);
+    n3_set_buffer_cap(buffer, identity_cap + data_cap);
+
+    n3_free_buffer(data);
+    return buffer;
+}
+
+static void resend(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote,
+    void *data
+) {
+    struct rebroadcast *restrict rebroadcast = data;
+
+    if(n3_compare_hosts(remote, rebroadcast->from_host))
+        n3_send_to(terminal, 0, rebroadcast->buffer, remote);
+}
+
 static _Bool receive_data(struct state *restrict state) {
     struct unlink unlink = UNLINK_INIT;
     n3_host remote;
@@ -222,17 +266,15 @@ static _Bool receive_data(struct state *restrict state) {
         (data = n3_receive(state->terminal, NULL, &remote, NULL, &unlink))
                 != NULL;
    ) {
-        if(state->args->listen && state->args->identify) {
-            char address[N3_ADDRESS_SIZE];
-            fprintf(
-                stdout,
-                "<%s:%"PRIu16">: ",
-                n3_get_host_address(&remote, address, sizeof(address)),
-                n3_get_host_port(&remote)
-            );
+        if(state->args->listen && state->args->identify)
+            data = add_identity(data, &remote);
+        if(state->args->listen && state->args->broadcast) {
+            n3_for_each_link(state->terminal, resend, &(struct rebroadcast) {
+                .from_host = &remote,
+                .buffer = data
+            });
         }
 
-        // TODO: Re-broadcast?
         fwrite(n3_get_buffer(data), 1, n3_get_buffer_cap(data), stdout);
         n3_free_buffer(data);
     }
@@ -259,6 +301,12 @@ static _Bool send_input(struct state *restrict state) {
             return 0;
 
         n3_buffer *buffer = n3_build_buffer(buf, read_size, NULL);
+        if(state->args->listen && state->args->identify) {
+            n3_host local;
+            n3_get_host(state->terminal, &local);
+            buffer = add_identity(buffer, &local);
+        }
+
         if(state->args->listen)
             n3_broadcast(state->terminal, 0, buffer);
         else
