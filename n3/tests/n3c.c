@@ -235,7 +235,7 @@ static n3_buffer *add_identity(
     int identity_cap = snprintf(
         buf,
         identity_size,
-        "<%s:%"PRIu16">: ",
+        "<%s|%"PRIu16">: ",
         address,
         port
     );
