@@ -23,6 +23,7 @@
 #include "n3.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -206,7 +207,7 @@ static void log_send_packet(
     n3_get_host_address(remote, address, sizeof(address));
     n3_port port = n3_get_host_port(remote);
 
-    log_n_debug("Sent to %s|%u: ", address, port);
+    log_n_debug("Sent to %s|%"PRIu16": ", address, port);
 
     if(flags & PING) {
         if(flags & ACK)
@@ -215,11 +216,11 @@ static void log_send_packet(
             log_debug("PING");
     }
     else if(flags & ACK)
-        log_debug("ACK %u-%u", packet->channel, packet->seq);
+        log_debug("ACK %"PRIu8"-%"PRIu16, packet->channel, packet->seq);
     else if(flags & FIN)
         log_debug("FIN");
     else
-        log_debug("message %u-%u", packet->channel, packet->seq);
+        log_debug("message %"PRIu8"-%"PRIu16, packet->channel, packet->seq);
 }
 
 static void send_packet(
@@ -471,7 +472,7 @@ static void log_received_from(const n3_host *restrict remote) {
     n3_get_host_address(remote, address, sizeof(address));
     n3_port port = n3_get_host_port(remote);
 
-    log_n_debug("Received from %s|%u: ", address, port);
+    log_n_debug("Received from %s|%"PRIu16": ", address, port);
 }
 
 static void log_received_packet(
@@ -485,11 +486,11 @@ static void log_received_packet(
             log_n_debug("PING");
     }
     else if(flags & ACK)
-        log_n_debug("ACK %u-%u", packet->channel, packet->seq);
+        log_n_debug("ACK %"PRIu8"-%"PRIu16, packet->channel, packet->seq);
     else if(flags & FIN)
         log_n_debug("FIN");
     else
-        log_n_debug("message %u-%u", packet->channel, packet->seq);
+        log_n_debug("message %"PRIu8"-%"PRIu16, packet->channel, packet->seq);
 }
 
 static struct link_state *receive_packet(
