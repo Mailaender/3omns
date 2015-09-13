@@ -145,7 +145,7 @@ static inline OL_ITEM_TYPE *OL_ADD(
     else {
         // TODO: a binary search instead of a scan.
         for(index = 0; index < list->count; index++) {
-            if(OL_COMPARATOR(insert_key, item) < 0)
+            if(OL_COMPARATOR(insert_key, &list->OL_ITEMS_NAME[index]) < 0)
                 break;
         }
 
