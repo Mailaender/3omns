@@ -564,7 +564,7 @@ void process_notifications(struct round *restrict round) {
     n3_host host;
     for(
         n3_buffer *buffer;
-        (buffer = receive_notification(round, &host)) > 0;
+        (buffer = receive_notification(round, &host)) != NULL;
     ) {
         switch(((char *)n3_get_buffer(buffer))[0]) {
         case 'c': process_connect(round, buffer, &host); break;
