@@ -2,7 +2,7 @@
     3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
             <http://chazomaticus.github.io/3omns/>
     l3 - Lua interface library for 3omns
-    Copyright 2014 Charles Lindsay <chaz@chazomatic.us>
+    Copyright 2014-2015 Charles Lindsay <chaz@chazomatic.us>
 
     3omns is free software: you can redistribute it and/or modify it under the
     terms of the GNU General Public License as published by the Free Software
