@@ -193,7 +193,7 @@ struct n3_terminal_options {
 
 n3_terminal *n3_new_terminal(
     const n3_host *restrict local,
-    n3_link_filter new_link_filter,
+    n3_link_filter new_link_filter, // TODO: put in options?
     const n3_terminal_options *restrict options
 );
 n3_terminal *n3_ref_terminal(n3_terminal *restrict terminal);
@@ -202,6 +202,7 @@ void n3_free_terminal(n3_terminal *restrict terminal);
 int n3_get_fd(n3_terminal *restrict terminal);
 // TODO: getter for local n3_host.
 
+// TODO: n3_get_link_count.
 void n3_for_each_link(
     n3_terminal *restrict terminal,
     n3_link_callback callback,
@@ -258,6 +259,8 @@ void n3_send(
     n3_channel channel,
     n3_buffer *restrict buffer
 );
+
+// TODO: n3_update_link, so you don't have to get the terminal and update it?
 
 void n3_unlink(n3_link *restrict link);
 
