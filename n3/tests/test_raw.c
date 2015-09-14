@@ -54,8 +54,8 @@ static void server(int notify_fd) {
     int sd = n3_new_listening_socket(&listen);
 
     uint8_t c = 1;
-    ssize_t notify_written = write(notify_fd, &c, 1);
-    assert(notify_written == 1);
+    ssize_t notify_written = write(notify_fd, &c, sizeof(c));
+    assert(notify_written == sizeof(c));
 
     n3_host test_listen;
     n3_init_host_from_socket_local(&test_listen, sd);
