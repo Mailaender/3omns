@@ -51,7 +51,13 @@ struct state {
     n3_host remote_host; // Not used if listening.
     n3_terminal *terminal;
 };
-#define STATE_INIT {.terminal = NULL}
+#define STATE_INIT {.args = NULL}
+
+struct unlink {
+    _Bool unlinked;
+    _Bool timeout;
+};
+#define UNLINK_INIT {0, 0}
 
 
 const char *argp_program_version = "n3c 0.0+git";
@@ -117,7 +123,7 @@ static void parse_args(struct args *restrict args, int argc, char *argv[]) {
         b3_fatal("Error parsing arguments: %s", strerror(e));
 }
 
-static int parse_port(n3_port *out, const char *string) {
+static int parse_port(n3_port *restrict out, const char *restrict string) {
     char *endptr;
     errno = 0;
     long l = strtol(string, &endptr, 10);
@@ -129,6 +135,18 @@ static int parse_port(n3_port *out, const char *string) {
         return ERANGE;
     *out = (n3_port)l;
     return 0;
+}
+
+static void on_unlink(
+    n3_terminal *restrict terminal,
+    const n3_host *restrict remote,
+    _Bool timeout,
+    void *data
+) {
+    struct unlink *restrict unlink = data;
+
+    unlink->unlinked = 1;
+    unlink->timeout = timeout;
 }
 
 static void init(
@@ -159,13 +177,14 @@ static void init(
     else
         n3_init_host_any_local(&host, port);
 
+    n3_terminal_options options = {.remote_unlink_callback = on_unlink};
     if(args->listen) {
-        state->terminal = n3_new_terminal(&host, NULL, NULL);
+        state->terminal = n3_new_terminal(&host, NULL, &options);
     }
     else {
         state->remote_host = host;
 
-        n3_link *server_link = n3_new_link(&host, NULL);
+        n3_link *server_link = n3_new_link(&host, &options);
         state->terminal = n3_get_terminal(server_link);
         n3_free_link(server_link);
     }
@@ -179,16 +198,27 @@ static void quit(struct state *restrict state) {
     n3_quit();
 }
 
-static void receive_data(struct state *restrict state) {
+static _Bool keep_going(
+    struct state *restrict state,
+    struct unlink *restrict unlink
+) {
+    return state->args->listen || !unlink->unlinked;
+}
+
+static _Bool receive_data(struct state *restrict state) {
+    struct unlink unlink = UNLINK_INIT;
+
     for(
         n3_buffer *data;
-        (data = n3_receive(state->terminal, NULL, NULL, NULL, NULL)) != NULL;
-    ) {
-        // TODO: check for connection ending, close if client.
+        (data = n3_receive(state->terminal, NULL, NULL, NULL, &unlink))
+                != NULL;
+   ) {
         // TODO: identify?  Re-broadcast?
         fwrite(n3_get_buffer(data), 1, n3_get_buffer_cap(data), stdout);
         n3_free_buffer(data);
     }
+
+    return keep_going(state, &unlink);
 }
 
 static _Bool send_input(struct state *restrict state) {
@@ -231,16 +261,19 @@ static _Bool pump(struct state *restrict state) {
             && errno != EINTR)
         b3_fatal("Error polling: %s", strerror(errno));
 
-    if(pollfds[1].revents & POLLIN)
-        receive_data(state);
+    if(pollfds[1].revents & POLLIN) {
+        if(!receive_data(state))
+            return 0;
+    }
     if(pollfds[0].revents & POLLIN) {
         if(!send_input(state))
             return 0;
     }
 
-    n3_update(state->terminal, NULL);
+    struct unlink unlink = UNLINK_INIT;
+    n3_update(state->terminal, &unlink);
 
-    return 1;
+    return keep_going(state, &unlink);
 }
 
 int main(int argc, char *argv[]) {
@@ -254,5 +287,5 @@ int main(int argc, char *argv[]) {
         continue;
 
     quit(&state);
-    return 0;
+    return 0; // TODO: return nonzero on error.
 }
