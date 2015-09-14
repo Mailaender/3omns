@@ -68,7 +68,7 @@ struct rebroadcast {
 };
 
 
-const char *argp_program_version = "n3c 0.0+git";
+const char *argp_program_version = "n3c 0.1";
 const char *argp_program_bug_address = "<"PACKAGE_BUGREPORT">";
 
 
