@@ -68,15 +68,11 @@ static int compare_timespec(
     const struct timespec *restrict t1,
     const struct timespec *restrict t2
 ) {
-    if(t1->tv_sec > t2->tv_sec)
-        return 1;
-    if(t1->tv_sec < t2->tv_sec)
-        return -1;
+    if(t1->tv_sec != t2->tv_sec)
+        return (t1->tv_sec > t2->tv_sec ? 1 : -1);
     // Seconds equal:
-    if(t1->tv_nsec > t2->tv_nsec)
-        return 1;
-    if(t1->tv_nsec < t2->tv_nsec)
-        return -1;
+    if(t1->tv_nsec != t2->tv_nsec)
+        return (t1->tv_nsec > t2->tv_nsec ? 1 : -1);
     return 0;
 }
 
