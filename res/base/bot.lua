@@ -40,7 +40,7 @@ function Bot:co_start()
 
   -- The AI system assumes proper tail-call elimination.  I believe I've
   -- structured everything properly, but I haven't tested.
-  return self:co_hunt()
+  return self:co_rethink()
 end
 
 function Bot:co_yield(elapsed)
@@ -183,7 +183,7 @@ end
 
 -- TODO: go fishing for supers (or run toward an exposed one) when calm.
 
-function Bot:co_next_state(danger)
+function Bot:co_rethink(danger)
   danger = danger or self:get_danger()
 
   if danger then
@@ -237,7 +237,7 @@ function Bot:co_run(danger)
     self:co_random_walk(interrupt_walk)
   end
 
-  return self:co_next_state()
+  return self:co_rethink()
 end
 
 function Bot:co_hunt()
@@ -286,5 +286,5 @@ function Bot:co_hunt()
     self:co_random_walk(interrupt_walk)
   end
 
-  return self:co_next_state()
+  return self:co_rethink()
 end
