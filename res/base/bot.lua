@@ -187,13 +187,13 @@ function Bot:co_rethink(danger)
   danger = danger or self:get_danger()
 
   if danger then
-    return self:co_run(danger)
+    return self:co_run_away(danger)
   else
     return self:co_hunt()
   end
 end
 
-function Bot:co_run(danger)
+function Bot:co_run_away(danger)
   local directions = {
     core.Pos( 0, -1),
     core.Pos( 1, -1),
