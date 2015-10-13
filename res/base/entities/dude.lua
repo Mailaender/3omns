@@ -182,6 +182,6 @@ function Dude:l3_action(backing, action)
   end
 end
 
-function Dude:l3_think(backing, yield_time)
-  return Bot(self, backing, Dude.AI_ACTION_TIME, yield_time):start()
+function Dude:l3_co_think(backing, yield_time)
+  return Bot(self, backing, Dude.AI_ACTION_TIME, yield_time):co_start()
 end

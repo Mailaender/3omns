@@ -34,23 +34,23 @@ function Bot:init(dude, dude_backing, action_time, yield_time)
   self.yield_time = yield_time
 end
 
-function Bot:start()
+function Bot:co_start()
   -- Wait just a tick to be a little more human at the start.
-  self:wait(self.action_time + math.random(0, 5) / 10, 0)
+  self:co_wait(self.action_time + math.random(0, 5) / 10, 0)
 
   -- The AI system assumes proper tail-call elimination.  I believe I've
   -- structured everything properly, but I haven't tested.
-  return self:hunt()
+  return self:co_hunt()
 end
 
-function Bot:yield(elapsed)
+function Bot:co_yield(elapsed)
   coroutine.yield()
   return elapsed + self.yield_time
 end
 
-function Bot:wait(till, elapsed)
+function Bot:co_wait(till, elapsed)
   while elapsed < till do
-    elapsed = self:yield(elapsed)
+    elapsed = self:co_yield(elapsed)
   end
   return elapsed
 end
@@ -61,7 +61,7 @@ function Bot:get_nearest_dudes(pos)
   return dudes
 end
 
-function Bot:random_walk(interrupt)
+function Bot:co_random_walk(interrupt)
   interrupt = interrupt or function() return false end
 
   local elapsed = 0
@@ -75,13 +75,13 @@ function Bot:random_walk(interrupt)
       self.dude:move(dirs[math.random(#dirs)], self.dude_backing)
     end
 
-    elapsed = self:yield(elapsed)
+    elapsed = self:co_yield(elapsed)
   end
 
-  self:wait(next_action, elapsed)
+  self:co_wait(next_action, elapsed)
 end
 
-function Bot:move_to(pos, interrupt)
+function Bot:co_move_to(pos, interrupt)
   interrupt = interrupt or function() return false end
 
   local elapsed = 0
@@ -148,16 +148,16 @@ function Bot:move_to(pos, interrupt)
       end
     end
 
-    elapsed = self:yield(elapsed)
+    elapsed = self:co_yield(elapsed)
   end
 
-  self:wait(next_action, elapsed)
+  self:co_wait(next_action, elapsed)
 end
 
-function Bot:fire()
+function Bot:co_fire()
   self.dude:fire(self.dude_backing)
 
-  self:wait(self.action_time, 0)
+  self:co_wait(self.action_time, 0)
 end
 
 function Bot:get_danger(pos)
@@ -183,17 +183,17 @@ end
 
 -- TODO: go fishing for supers (or run toward an exposed one) when calm.
 
-function Bot:next_state(danger)
+function Bot:co_next_state(danger)
   danger = danger or self:get_danger()
 
   if danger then
-    return self:run(danger)
+    return self:co_run(danger)
   else
-    return self:hunt()
+    return self:co_hunt()
   end
 end
 
-function Bot:run(danger)
+function Bot:co_run(danger)
   local directions = {
     core.Pos( 0, -1),
     core.Pos( 1, -1),
@@ -231,16 +231,16 @@ function Bot:run(danger)
   end
 
   if #safe > 0 then
-    self:move_to(safe[1].pos, interrupt_walk)
+    self:co_move_to(safe[1].pos, interrupt_walk)
   else
     -- TODO: there should always be a safe place.
-    self:random_walk(interrupt_walk)
+    self:co_random_walk(interrupt_walk)
   end
 
-  return self:next_state()
+  return self:co_next_state()
 end
 
-function Bot:hunt()
+function Bot:co_hunt()
   local dudes = self:get_nearest_dudes()
 
   local target
@@ -277,14 +277,14 @@ function Bot:hunt()
     end
 
     if target_cornered then
-      self:fire()
+      self:co_fire()
     else
-      self:move_to(target.pos, interrupt_walk)
+      self:co_move_to(target.pos, interrupt_walk)
     end
   else
     -- TODO: a better idle loop.
-    self:random_walk(interrupt_walk)
+    self:co_random_walk(interrupt_walk)
   end
 
-  return self:next_state()
+  return self:co_next_state()
 end

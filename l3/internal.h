@@ -47,7 +47,7 @@
 #define L3_ENTITY_UPDATE_NAME "l3_update"
 #define L3_ENTITY_ACTION_NAME "l3_action"
 #define L3_ENTITY_SERIALIZE_NAME "l3_serialize"
-#define L3_ENTITY_THINK_AGENT_NAME "l3_think"
+#define L3_ENTITY_THINK_AGENT_NAME "l3_co_think"
 
 
 struct entity_data {
