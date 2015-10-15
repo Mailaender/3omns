@@ -88,8 +88,9 @@ Bot.co_move = Bot.co_act -- Assume action is u/d/l/r, but it's w/e.
 
 function Bot:get_nearest_dudes(pos)
   local dudes = self.dude:get_nearest(Entities.Dude, pos)
-  table.remove(dudes, 1) -- Nix self.
-  return dudes
+  return util.filter_array(dudes, function (d)
+    return d.entity ~= self.dude
+  end)
 end
 
 function Bot:get_danger(pos)
