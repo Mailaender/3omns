@@ -23,9 +23,9 @@ package.loaded[...] = util
 local core = require("core")
 
 
-function util.debug_print(string)
+function util.debug_print(...)
   if l3.DEBUG then
-    print(string)
+    print(...)
   end
 end
 
