@@ -33,6 +33,16 @@ function util.resource(filename)
   return string.format("%s%s", l3.RESOURCE_PATH, filename)
 end
 
+function util.filter_array(a, condition)
+  local b = {}
+  for i, v in ipairs(a) do
+    if condition(v, i, a) then
+      b[#b + 1] = v
+    end
+  end
+  return b
+end
+
 function util.invert_table(t)
   local r = {}
   for k, v in pairs(t) do r[v] = k end

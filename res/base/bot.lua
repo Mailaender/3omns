@@ -149,18 +149,13 @@ function Bot:co_move_to(pos, interrupt)
       local dx = math.abs(path[1].x - self.dude.pos.x)
       local dy = math.abs(path[1].y - self.dude.pos.y)
       if dx > dy then
-        -- TODO: using underscore.lua would help here.
-        local t = {}
-        for _, v in ipairs(valid_actions) do
-          if v ~= "u" and v ~= "d" then t[#t + 1] = v end
-        end
-        valid_actions = t
+        valid_actions = util.filter_array(valid_actions, function (v)
+          return v ~= "u" and v ~= "d"
+        end)
       elseif dy > dx then
-        local t = {}
-        for _, v in ipairs(valid_actions) do
-          if v ~= "l" and v ~= "r" then t[#t + 1] = v end
-        end
-        valid_actions = t
+        valid_actions = util.filter_array(valid_actions, function (v)
+          return v ~= "l" and v ~= "r"
+        end)
       end
     end
 
