@@ -91,12 +91,12 @@ end
 
 TILES = {
   BLANK = string.byte(" "),
-  WALL  = string.byte("X"),
+  WALL = string.byte("X"),
 }
 
 L3_TILE_IMAGES = {
   [TILES.BLANK] = IMAGES.BLANK,
-  [TILES.WALL]  = IMAGES.WALL,
+  [TILES.WALL] = IMAGES.WALL,
 }
 L3_BORDER_IMAGE = IMAGES.WALL
 L3_HEART_IMAGES = IMAGES.HEARTS

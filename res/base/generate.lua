@@ -20,8 +20,8 @@
 local gen = {}
 package.loaded[...] = gen
 
-local core     = require("core")
-local util     = require("util")
+local core = require("core")
+local util = require("util")
 local Entities = require("entities")
 
 
@@ -31,9 +31,9 @@ local MAX_ENTITIES = MAP_SIZE.width * MAP_SIZE.height + 4
 local function generate_spawns(ctx)
   local quads = {
     core.Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2),
-    core.Pos(0,                  0),
+    core.Pos(0, 0),
     core.Pos(MAP_SIZE.width / 2, 0),
-    core.Pos(0,                  MAP_SIZE.height / 2),
+    core.Pos(0, MAP_SIZE.height / 2),
   }
 
   for i, q in ipairs(quads) do
@@ -76,8 +76,8 @@ local function generate_walls(ctx)
     math.floor(MAP_SIZE.height / 4)
   )
   local pos = {
-    core.Pos(fourth.width,                  fourth.height),
-    core.Pos(fourth.width,                  MAP_SIZE.height - fourth.height),
+    core.Pos(fourth.width, fourth.height),
+    core.Pos(fourth.width, MAP_SIZE.height - fourth.height),
     core.Pos(MAP_SIZE.width - fourth.width, fourth.height),
     core.Pos(MAP_SIZE.width - fourth.width, MAP_SIZE.height - fourth.height),
   }

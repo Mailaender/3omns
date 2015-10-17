@@ -20,7 +20,7 @@
 local serial = {}
 package.loaded[...] = serial
 
-local util     = require("util")
+local util = require("util")
 local Entities = require("entities")
 
 

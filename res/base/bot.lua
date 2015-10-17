@@ -22,8 +22,8 @@ local obj = require("object")
 local Bot = obj.class("Bot")
 package.loaded[...] = Bot
 
-local core     = require("core")
-local util     = require("util")
+local core = require("core")
+local util = require("util")
 local Entities = require("entities")
 
 

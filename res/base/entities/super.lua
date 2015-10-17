@@ -17,7 +17,7 @@
   3omns.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-local obj    = require("object")
+local obj = require("object")
 local Entity = require("entities.entity")
 
 local Super = obj.class("Super", Entity)

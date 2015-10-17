@@ -17,16 +17,16 @@
   3omns.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-local obj    = require("object")
+local obj = require("object")
 local Entity = require("entities.entity")
 
 local Bomn = obj.class("Bomn", Entity)
 package.loaded[...] = Bomn
 
-local core   = require("core")
-local util   = require("util")
+local core = require("core")
+local util = require("util")
 local serial = require("serial")
-local Blast  = require("sprites.blast")
+local Blast = require("sprites.blast")
 
 
 Bomn.TIME = 3
@@ -69,8 +69,8 @@ function Bomn:init_base(entities, backing)
 
   Entity.init_base(self, entities, backing)
 
-  self.solid   = false
-  self.time    = Bomn.TIME
+  self.solid = false
+  self.time = Bomn.TIME
   self.dude_id = nil
 
   self:animate(backing)
@@ -88,7 +88,7 @@ function Bomn:serialize()
 end
 
 function Bomn:sync(serialized, start, backing)
-  self.time,    start = serial.deserialize_number(serialized, start)
+  self.time, start = serial.deserialize_number(serialized, start)
   self.dude_id, start = serial.deserialize_number(serialized, start)
   return start
 end

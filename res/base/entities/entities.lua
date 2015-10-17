@@ -27,14 +27,14 @@ local util = require("util")
 
 local Super = require("entities.super")
 local Crate = require("entities.crate")
-local Bomn  = require("entities.bomn")
-local Dude  = require("entities.dude")
+local Bomn = require("entities.bomn")
+local Dude = require("entities.dude")
 
 
 Entities.Super = Super
 Entities.Crate = Crate
-Entities.Bomn  = Bomn
-Entities.Dude  = Dude
+Entities.Bomn = Bomn
+Entities.Dude = Dude
 
 function Entities:init(level)
   self.level = level

@@ -28,8 +28,8 @@ local sync = require("sync")
 
 function Entity:init_base(entities, backing)
   self.entities = entities
-  self.id       = backing:get_id()
-  self.solid    = true -- Whether the entity blocks blasts and player movement.
+  self.id = backing:get_id()
+  self.solid = true -- Whether the entity blocks blasts and player movement.
 
   entities:add(self)
 end

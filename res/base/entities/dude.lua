@@ -17,16 +17,16 @@
   3omns.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
-local obj    = require("object")
+local obj = require("object")
 local Entity = require("entities.entity")
 
 local Dude = obj.class("Dude", Entity)
 package.loaded[...] = Dude
 
-local core     = require("core")
-local serial   = require("serial")
+local core = require("core")
+local serial = require("serial")
 local Entities = require("entities")
-local Bot      = require("bot")
+local Bot = require("bot")
 
 
 Dude.SUPER_TIME = 10
@@ -39,9 +39,9 @@ function Dude:init_base(entities, backing)
   Entity.init_base(self, entities, backing)
 
   -- TODO: teams?
-  self.player     = nil
+  self.player = nil
   self.super_time = 0
-  self.bomn_id    = nil
+  self.bomn_id = nil
 end
 
 function Dude:init(entities, pos, player)
@@ -60,9 +60,9 @@ function Dude:serialize()
 end
 
 function Dude:sync(serialized, start, backing)
-  self.player,     start = serial.deserialize_number(serialized, start)
+  self.player, start = serial.deserialize_number(serialized, start)
   self.super_time, start = serial.deserialize_number(serialized, start)
-  self.bomn_id,    start = serial.deserialize_number(serialized, start)
+  self.bomn_id, start = serial.deserialize_number(serialized, start)
 
   -- Don't worry about set_dude()-ing here -- the level already knows what dude
   -- is what, since it was sync'd with the map data.

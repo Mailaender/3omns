@@ -20,8 +20,8 @@
 local sync = {}
 package.loaded[...] = sync
 
-local serial   = require("serial")
-local obj      = require("object")
+local serial = require("serial")
+local obj = require("object")
 local Entities = require("entities")
 
 
