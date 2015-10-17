@@ -1,3 +1,10 @@
+3omns 0.1+git (in development)
+------------------------------
+
+  * Fixed some bot AI bugs
+  * Revamped networking code to add reliability
+  * Added the -R command line option to print resources path
+
 3omns 0.1 (2014 June 9)
 -----------------------
 
