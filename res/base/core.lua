@@ -21,6 +21,89 @@ local core = {}
 package.loaded[...] = core
 
 
+core.IMAGES = nil
+core.TILES = nil
+
+function core.init()
+  if core.IMAGES then
+    return false
+  end
+
+  local seed = os.time()
+  math.randomseed(seed)
+
+  if not l3.CLIENT then
+    core.debug_print("Seed: " .. seed)
+  end
+
+  local sprites = l3.image.load(core.resource("/gfx/sprites.png"))
+  local TILE_SIZE = 16
+
+  local function SpriteRect(x, y)
+    return core.Rect(x, y, TILE_SIZE, TILE_SIZE)
+  end
+
+  core.IMAGES = {
+    BLANK = sprites:sub(SpriteRect( 0, 0)),
+    WALL  = sprites:sub(SpriteRect(16, 0)),
+    CRATE = sprites:sub(SpriteRect(32, 0)),
+    SUPER = sprites:sub(SpriteRect(48, 0)),
+    DUDES = {
+      sprites:sub(SpriteRect( 0, 16)),
+      sprites:sub(SpriteRect(16, 16)),
+      sprites:sub(SpriteRect(32, 16)),
+      sprites:sub(SpriteRect(48, 16)),
+    },
+    SUPER_DUDES = {
+      sprites:sub(SpriteRect( 0, 32)),
+      sprites:sub(SpriteRect(16, 32)),
+      sprites:sub(SpriteRect(32, 32)),
+      sprites:sub(SpriteRect(48, 32)),
+    },
+    HEARTS = {
+      sprites:sub(SpriteRect( 0, 48)),
+      sprites:sub(SpriteRect(16, 48)),
+      sprites:sub(SpriteRect(32, 48)),
+      sprites:sub(SpriteRect(48, 48)),
+    },
+    BLASTS = {
+      sprites:sub(SpriteRect( 0, 64)),
+      sprites:sub(SpriteRect(16, 64)),
+      sprites:sub(SpriteRect(32, 64)),
+      sprites:sub(SpriteRect(48, 64)),
+      sprites:sub(SpriteRect( 0, 80)),
+      sprites:sub(SpriteRect(16, 80)),
+      sprites:sub(SpriteRect(32, 80)),
+      sprites:sub(SpriteRect(48, 80)),
+    },
+    BOMNS = {
+      sprites:sub(SpriteRect(64, 16)),
+      sprites:sub(SpriteRect(64, 32)),
+      sprites:sub(SpriteRect(64, 48)),
+      sprites:sub(SpriteRect(64, 64)),
+      sprites:sub(SpriteRect(64, 80)),
+      sprites:sub(SpriteRect(64,  0)), -- Last one is generic, not labeled.
+    },
+  }
+
+  core.TILES = {
+    BLANK = string.byte(" "),
+    WALL = string.byte("X"),
+  }
+
+  return true
+end
+
+function core.debug_print(...)
+  if l3.DEBUG then
+    print(...)
+  end
+end
+
+function core.resource(filename)
+  return string.format("%s%s", l3.RESOURCE_PATH, filename)
+end
+
 function core.Pos(x, y)
   return {x = x, y = y}
 end

@@ -73,10 +73,11 @@ function Dude:sync(serialized, start, backing)
 end
 
 function Dude:set_visual(backing)
-  self:set_image(
-    (self:is_super() and IMAGES.SUPER_DUDES or IMAGES.DUDES)[self.player],
-    backing
-  )
+  local image = self:is_super()
+      and core.IMAGES.SUPER_DUDES
+      or core.IMAGES.DUDES
+
+  self:set_image(image[self.player], backing)
   self:set_z_order(1, backing)
   return self
 end

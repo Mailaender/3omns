@@ -23,6 +23,7 @@ local Entity = require("entities.entity")
 local Crate = obj.class("Crate", Entity)
 package.loaded[...] = Crate
 
+local core = require("core")
 local serial = require("serial")
 
 
@@ -34,7 +35,7 @@ function Crate:init_base(entities, backing)
   -- nothing after it.
   self.held_type = nil
 
-  self:set_image(IMAGES.CRATE, backing)
+  self:set_image(core.IMAGES.CRATE, backing)
   self:set_z_order(0, backing)
 end
 

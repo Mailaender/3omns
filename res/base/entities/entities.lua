@@ -96,7 +96,7 @@ function Entities:pos_valid(pos)
 end
 
 function Entities:walkable(pos)
-  return self:pos_valid(pos) and self:get_tile(pos) ~= TILES.WALL
+  return self:pos_valid(pos) and self:get_tile(pos) ~= core.TILES.WALL
 end
 
 function Entities:get_entity(pos)

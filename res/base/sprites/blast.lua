@@ -23,6 +23,7 @@ local Sprite = require("sprites.sprite")
 local Blast = obj.class("Blast", Sprite)
 package.loaded[...] = Blast
 
+local core = require("core")
 local util = require("util")
 
 
@@ -31,12 +32,12 @@ Blast.TIME = 1
 function Blast:init_animation()
   self.animation = {}
 
-  local frame_duration = Blast.TIME / #IMAGES.BLASTS
-  for i, v in ipairs(IMAGES.BLASTS) do
+  local frame_duration = Blast.TIME / #core.IMAGES.BLASTS
+  for i, v in ipairs(core.IMAGES.BLASTS) do
     local a = {
       time = Blast.TIME - (i - 1) * frame_duration,
       image = v,
-      z_order = #IMAGES.BLASTS - i,
+      z_order = #core.IMAGES.BLASTS - i,
     }
     if i > 1 then
       a.time = a.time + math.random() * 0.05 - 0.025

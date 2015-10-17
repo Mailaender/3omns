@@ -23,13 +23,15 @@ local Entity = require("entities.entity")
 local Super = obj.class("Super", Entity)
 package.loaded[...] = Super
 
+local core = require("core")
+
 
 function Super:init_base(entities, backing)
   Entity.init_base(self, entities, backing)
 
   self.solid = false
 
-  self:set_image(IMAGES.SUPER, backing)
+  self:set_image(core.IMAGES.SUPER, backing)
   self:set_z_order(0, backing)
 end
 

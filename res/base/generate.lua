@@ -104,7 +104,7 @@ function Generator:add_walls()
     end
 
     for _, w in ipairs(walls) do
-      self.level:set_tile(w, TILES.WALL)
+      self.level:set_tile(w, core.TILES.WALL)
     end
   end
 
@@ -118,7 +118,7 @@ function Generator:fill_space()
   for x = 1, MAP_SIZE.width do
     for y = 1, MAP_SIZE.height do
       if self.level:get_tile(core.Pos(x, y)) == 0 then
-        self.level:set_tile(core.Pos(x, y), TILES.BLANK)
+        self.level:set_tile(core.Pos(x, y), core.TILES.BLANK)
       end
     end
   end
@@ -131,7 +131,7 @@ function Generator:spawn_dudes()
 end
 
 function Generator:is_empty(pos)
-  return self.level:get_tile(pos) ~= TILES.WALL
+  return self.level:get_tile(pos) ~= core.TILES.WALL
       and not self.entities:get_entity(pos)
 end
 

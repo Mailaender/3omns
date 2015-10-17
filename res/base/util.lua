@@ -23,16 +23,6 @@ package.loaded[...] = util
 local core = require("core")
 
 
-function util.debug_print(...)
-  if l3.DEBUG then
-    print(...)
-  end
-end
-
-function util.resource(filename)
-  return string.format("%s%s", l3.RESOURCE_PATH, filename)
-end
-
 function util.filter_array(a, condition)
   local b = {}
   for i, v in ipairs(a) do

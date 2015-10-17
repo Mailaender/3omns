@@ -38,29 +38,29 @@ local function init_animation()
   if Bomn.ANIMATION then return end
 
   Bomn.ANIMATION = {
-    {time = 5.0,  image = IMAGES.BOMNS[5],             z_order = 2},
-    {time = 4.75, image = nil,                         z_order = 2},
-    {time = 4.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-    {time = 4.25, image = nil,                         z_order = 2},
-    {time = 4.0,  image = IMAGES.BOMNS[4],             z_order = 2},
-    {time = 3.75, image = nil,                         z_order = 2},
-    {time = 3.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-    {time = 3.25, image = nil,                         z_order = 2},
-    {time = 3.0,  image = IMAGES.BOMNS[3],             z_order = 2},
-    {time = 2.75, image = nil,                         z_order = 2},
-    {time = 2.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-    {time = 2.25, image = nil,                         z_order = 2},
-    {time = 2.0,  image = IMAGES.BOMNS[2],             z_order = 2},
-    {time = 1.75, image = nil,                         z_order = 2},
-    {time = 1.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-    {time = 1.25, image = nil,                         z_order = 2},
-    {time = 1.0,  image = IMAGES.BOMNS[1],             z_order = 2},
-    {time = 0.75, image = nil,                         z_order = 2},
-    {time = 0.5,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-    {time = 0.4,  image = nil,                         z_order = 2},
-    {time = 0.3,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
-    {time = 0.2,  image = nil,                         z_order = 2},
-    {time = 0.1,  image = IMAGES.BOMNS[#IMAGES.BOMNS], z_order = 2},
+    {time = 5.0,  image = core.IMAGES.BOMNS[5],                  z_order = 2},
+    {time = 4.75, image = nil,                                   z_order = 2},
+    {time = 4.5,  image = core.IMAGES.BOMNS[#core.IMAGES.BOMNS], z_order = 2},
+    {time = 4.25, image = nil,                                   z_order = 2},
+    {time = 4.0,  image = core.IMAGES.BOMNS[4],                  z_order = 2},
+    {time = 3.75, image = nil,                                   z_order = 2},
+    {time = 3.5,  image = core.IMAGES.BOMNS[#core.IMAGES.BOMNS], z_order = 2},
+    {time = 3.25, image = nil,                                   z_order = 2},
+    {time = 3.0,  image = core.IMAGES.BOMNS[3],                  z_order = 2},
+    {time = 2.75, image = nil,                                   z_order = 2},
+    {time = 2.5,  image = core.IMAGES.BOMNS[#core.IMAGES.BOMNS], z_order = 2},
+    {time = 2.25, image = nil,                                   z_order = 2},
+    {time = 2.0,  image = core.IMAGES.BOMNS[2],                  z_order = 2},
+    {time = 1.75, image = nil,                                   z_order = 2},
+    {time = 1.5,  image = core.IMAGES.BOMNS[#core.IMAGES.BOMNS], z_order = 2},
+    {time = 1.25, image = nil,                                   z_order = 2},
+    {time = 1.0,  image = core.IMAGES.BOMNS[1],                  z_order = 2},
+    {time = 0.75, image = nil,                                   z_order = 2},
+    {time = 0.5,  image = core.IMAGES.BOMNS[#core.IMAGES.BOMNS], z_order = 2},
+    {time = 0.4,  image = nil,                                   z_order = 2},
+    {time = 0.3,  image = core.IMAGES.BOMNS[#core.IMAGES.BOMNS], z_order = 2},
+    {time = 0.2,  image = nil,                                   z_order = 2},
+    {time = 0.1,  image = core.IMAGES.BOMNS[#core.IMAGES.BOMNS], z_order = 2},
   }
 end
 
@@ -109,8 +109,7 @@ function Bomn:explode(backing)
   local to_blast = {}
   util.circle_contig(self.pos, Bomn.RADIUS, function(edge_pos)
     util.line(self.pos, edge_pos, function(pos)
-      if not self.entities:pos_valid(pos)
-          or self.entities:get_tile(pos) == TILES.WALL then
+      if not self.entities:walkable(pos) then
         return false
       end
 
