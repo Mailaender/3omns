@@ -52,4 +52,8 @@ local function init()
   return true
 end
 
+-- TODO: it might be more awesome to have this file return the function
+-- (without invoking it) and let the C code call it at its leisure (before
+-- anything else is done in lua, obvz).  Sadly, as rad as that would be, I
+-- can't see how it would actually be useful, so I haven't done it.
 init()
