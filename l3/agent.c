@@ -60,8 +60,6 @@ void l3_free_agent(l3_agent *restrict agent) {
     }
 }
 
-// elapsed is only read on the first call to this function.  It's assumed to be
-// the same for each subsequent call.
 _Bool l3_think_agent(l3_agent *restrict agent, b3_ticks elapsed) {
     if(agent->done)
         return 1;
@@ -89,10 +87,12 @@ _Bool l3_think_agent(l3_agent *restrict agent, b3_ticks elapsed) {
         }
 
         lua_insert(thread, -2);
+        arg_count++;
         lua_rawgeti(thread, LUA_REGISTRYINDEX, entity_data->entity_ref);
-        lua_pushnumber(thread, (lua_Number)b3_ticks_to_secs(elapsed));
-        arg_count = 3;
+        arg_count++;
     }
+    lua_pushnumber(thread, (lua_Number)b3_ticks_to_secs(elapsed));
+    arg_count++;
 
     int result = lua_resume(thread, l, arg_count);
 

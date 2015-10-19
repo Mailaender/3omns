@@ -27,11 +27,10 @@ local util = require("util")
 local Entities = require("entities")
 
 
-function Bot:init(dude, dude_backing, action_time, yield_time)
+function Bot:init(dude, dude_backing, action_time, elapsed)
   self.dude = dude
   self.dude_backing = dude_backing
   self.action_time = action_time
-  self.yield_time = yield_time
 end
 
 function Bot:co_start()
@@ -54,11 +53,6 @@ function Bot:co_rethink(danger)
   return self:co_hunt()
 end
 
-function Bot:co_yield()
-  coroutine.yield()
-  return self.yield_time
-end
-
 function Bot:do_until(act, done)
   local elapsed = 0
   while not done(elapsed) do
@@ -69,7 +63,9 @@ end
 
 function Bot:co_wait(duration)
   return self:do_until(
-    function() return self:co_yield() end,
+    -- l3_think_agent pushes the elapsed time yielded so coroutine.yield() will
+    -- return it.
+    coroutine.yield,
     function(elapsed) return elapsed >= duration end
   )
 end
