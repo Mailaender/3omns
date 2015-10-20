@@ -184,5 +184,5 @@ function Dude:l3_action(backing, action)
 end
 
 function Dude:l3_co_think(backing, elapsed)
-  return Bot(self, backing, Dude.AI_ACTION_TIME, elapsed):co_start()
+  return Bot(self, backing, Dude.AI_ACTION_TIME):co_start(elapsed)
 end

@@ -27,14 +27,15 @@ local util = require("util")
 local Entities = require("entities")
 
 
-function Bot:init(dude, dude_backing, action_time, elapsed)
+function Bot:init(dude, dude_backing, action_time)
   self.dude = dude
   self.dude_backing = dude_backing
   self.action_time = action_time
 end
 
-function Bot:co_start()
-  -- Wait just a tick to be a little more human at the start.
+function Bot:co_start(elapsed)
+  -- Wait just a tick (beyond what's already elapsed, which we ignore) to be a
+  -- little more human at the start.
   self:co_wait(self.action_time + math.random(0, 5) / 10)
 
   while true do
