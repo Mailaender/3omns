@@ -1,4 +1,5 @@
 BASE = \
+	base/bot.lua \
 	base/core.lua \
 	base/entities/bomn.lua \
 	base/entities/crate.lua \
