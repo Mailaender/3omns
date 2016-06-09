@@ -1,6 +1,6 @@
 --[[
   3omns - old-school arcade-style tile-based bomb-dropping deathmatch jam
-          <http://chazomaticus.github.io/3omns/>
+          <https://chazomaticus.github.io/3omns/>
   base - base game logic for 3omns
   Copyright 2014-2015 Charles Lindsay <chaz@chazomatic.us>
 
