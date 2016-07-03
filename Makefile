@@ -1,9 +1,9 @@
 GITVER = 0.1
 DISTROS = trusty
 
-DISTEXT = tar.xz
+DIST_EXT = tar.xz
 
-BUILDDIR = build
+WORKDIR = build
 
 PKG := ${shell git show '$(GITVER):configure.ac' \
 		| grep '^AC_INIT(' \
@@ -16,34 +16,34 @@ GITVER_DATE := $(shell git log -1 --date=iso8601 --format=%cd $(GITVER))
 GITVER_PATH := $(shell echo '$(GITVER)' | sed -r 's/[^a-zA-Z0-9.]/_/g')
 EXPORTDIR = $(PKG)-git-$(GITVER_PATH)
 DISTDIR = $(PKG)-$(DEBVER)
-DIST = $(DISTDIR).$(DISTEXT)
-ORIG = $(PKG)_$(DEBVER).orig.$(DISTEXT)
+DIST = $(DISTDIR).$(DIST_EXT)
+ORIG = $(PKG)_$(DEBVER).orig.$(DIST_EXT)
 
-BUILDDISTDIR = $(BUILDDIR)/$(DISTDIR)
+BUILDDIR = $(WORKDIR)/$(DISTDIR)
 
-MAINDISTRO = $(firstword $(DISTROS))
-OTHERDISTROS = $(filter-out $(MAINDISTRO), $(DISTROS))
+MAIN_DISTRO = $(firstword $(DISTROS))
+OTHER_DISTROS = $(filter-out $(MAIN_DISTRO), $(DISTROS))
 
 DEBDIR = debian
 
-BUILDDEBDIR = $(BUILDDISTDIR)/$(DEBDIR)
+BUILDDEBDIR = $(BUILDDIR)/$(DEBDIR)
 
-CHANGELOGDIR = $(BUILDDIR)/changelogs
-CHANGELOGPRE = $(CHANGELOGDIR)/changelog.
-MAINCHANGELOG = $(CHANGELOGPRE)$(MAINDISTRO)
-OTHERCHANGELOGS = $(OTHERDISTROS:%=$(CHANGELOGPRE)%)
+CHANGELOGDIR = $(WORKDIR)/changelogs
+CHANGELOG_PRE = $(CHANGELOGDIR)/changelog.
+MAIN_CHANGELOG = $(CHANGELOG_PRE)$(MAIN_DISTRO)
+OTHER_CHANGELOGS = $(OTHER_DISTROS:%=$(CHANGELOG_PRE)%)
 
-PKGFILEPRE = $(BUILDDIR)/$(PKG)_$(DEBVER)-1~
-PKGFILEPOST = 1
-PKGFILES = $(DISTROS:%=$(PKGFILEPRE)%$(PKGFILEPOST))
+PKGFILE_PRE = $(WORKDIR)/$(PKG)_$(DEBVER)-1~
+PKGFILE_POST = 1
+PKGFILES = $(DISTROS:%=$(PKGFILE_PRE)%$(PKGFILE_POST))
 
-SOURCEPOST = $(PKGFILEPOST)_source.changes
-SOURCES = $(PKGFILES:%$(PKGFILEPOST)=%$(SOURCEPOST))
+SOURCECHANGES_POST = $(PKGFILE_POST)_source.changes
+SOURCECHANGES = $(PKGFILES:%$(PKGFILE_POST)=%$(SOURCECHANGES_POST))
 
-SOURCESCHECK = $(DISTROS:%=%-sourcecheck)
+SOURCECHECKS = $(DISTROS:%=%-sourcecheck)
 
-SOURCEDSCPOST = $(PKGFILEPOST).dsc
-SOURCEDSCS = $(PKGFILES:%$(PKGFILEPOST)=%$(SOURCEDSCPOST))
+SOURCEDSC_POST = $(PKGFILE_POST).dsc
+SOURCEDSCS = $(PKGFILES:%$(PKGFILE_POST)=%$(SOURCEDSC_POST))
 
 PBUILDERDIR = ~/pbuilder
 PBUILDERUPDATES = $(DISTROS:%=pbuilder-%-update)
@@ -59,18 +59,18 @@ all: sourcescheck
 
 # TODO: behave nicely when the changelog is newer than the GITVER's NEWS file.
 
-sources: $(SOURCES)
-sourcescheck: $(SOURCESCHECK)
+sources: $(SOURCECHANGES)
+sourcescheck: $(SOURCECHECKS)
 	@echo
-	@echo "Source packages in $(BUILDDIR) have been checked and are" \
-			"ready for uploading."
+	@echo "Source packages in $(WORKDIR) have been checked and are ready" \
+			"for uploading."
 
 
-prereqs: $(BUILDDISTDIR)/configure $(BUILDDEBDIR)/changelog
+prereqs: $(BUILDDIR)/configure $(BUILDDEBDIR)/changelog
 
-setup: prereqs $(OTHERCHANGELOGS)
+setup: prereqs $(OTHER_CHANGELOGS)
 	@echo
-	@echo "Updated $(DEBDIR)/changelog and set up $(BUILDDIR) for deb" \
+	@echo "Updated $(DEBDIR)/changelog and set up $(WORKDIR) for deb" \
 			"building, with extra"
 	@echo "changelogs in $(CHANGELOGDIR)."
 
@@ -88,10 +88,10 @@ $(EXPORTDIR)/$(DIST): $(EXPORTDIR)/configure.ac
 	cd '$(<D)' && autoreconf -i && ./configure && make distcheck
 	test -f '$@' # DIST sanity check.
 
-$(BUILDDIR)/$(ORIG): $(EXPORTDIR)/$(DIST)
+$(WORKDIR)/$(ORIG): $(EXPORTDIR)/$(DIST)
 	mkdir -p '$(@D)'
 	cp -a '$<' '$@'
-$(BUILDDISTDIR)/configure: $(BUILDDIR)/$(ORIG)
+$(BUILDDIR)/configure: $(WORKDIR)/$(ORIG)
 	cd '$(<D)' && tar xJf '$(<F)'
 	test -x '$@' # configure sanity check.
 	touch --date="`stat -c %y '$<'`" '$@' # Don't re-untar unless needed.
@@ -106,7 +106,7 @@ $(DEBDIR)/changelog: $(EXPORTDIR)/NEWS
 	check='$(PKG) $(DEBVER) '; \
 		actual=$$(head -n1 '$<' | cut -c-"`expr length "$$check"`"); \
 		test "$$check" = "$$actual" # NEWS format sanity check.
-	./news2changelog '$(MAINDISTRO)' < '$<'
+	./news2changelog '$(MAIN_DISTRO)' < '$<'
 	check='$(PKG) ($(DEBVER)-'; \
 		actual=$$(head -n1 '$@' | cut -c-"`expr length "$$check"`"); \
 		test "$$check" = "$$actual" # Gen'd changelog sanity check.
@@ -114,23 +114,23 @@ $(BUILDDEBDIR)/changelog: $(DEBDIR)/changelog
 	mkdir -p '$(dir $(@D))'
 	cp -a '$(<D)' '$(dir $(@D))'
 	test -f '$@' # changelog sanity check.
-$(MAINCHANGELOG): $(DEBDIR)/changelog
-	! echo '$(MAINDISTRO)' | grep -Eq '[^a-zA-Z0-9_]' # MAINDISTRO sanity.
+$(MAIN_CHANGELOG): $(DEBDIR)/changelog
+	! echo '$(MAIN_DISTRO)' | grep -Eq '[^a-zA-Z0-9_]' # Check MAIN_DISTRO.
 	mkdir -p '$(@D)'
 	cp -a '$<' '$@'
-$(OTHERCHANGELOGS): $(MAINCHANGELOG)
-	! echo '$(@:$(CHANGELOGPRE)%=%)' \
-			| grep -Eq '[^a-zA-Z0-9_]' # OTHERDISTROS sanity check.
-	sed -r '1 s/$(MAINDISTRO)/$(@:$(CHANGELOGPRE)%=%)/g' < '$<' > '$@'
+$(OTHER_CHANGELOGS): $(MAIN_CHANGELOG)
+	! echo '$(@:$(CHANGELOG_PRE)%=%)' \
+			| grep -Eq '[^a-zA-Z0-9_]' # OTHER_DISTROS sanity.
+	sed -r '1 s/$(MAIN_DISTRO)/$(@:$(CHANGELOG_PRE)%=%)/g' < '$<' > '$@'
 
-$(SOURCES): prereqs
-$(SOURCES): $(PKGFILEPRE)%$(SOURCEPOST) : $(CHANGELOGPRE)%
-	cp -a '$(CHANGELOGPRE)$*' '$(BUILDDEBDIR)/changelog'
-	cd '$(BUILDDISTDIR)' && debuild -S
+$(SOURCECHANGES): prereqs
+$(SOURCECHANGES): $(PKGFILE_PRE)%$(SOURCECHANGES_POST) : $(CHANGELOG_PRE)%
+	cp -a '$(CHANGELOG_PRE)$*' '$(BUILDDEBDIR)/changelog'
+	cd '$(BUILDDIR)' && debuild -S
 	test -f '$@' # Source sanity check.
 
 # TODO: this won't be right if we build any binary debs.
-$(SOURCEDSCS): %$(SOURCEDSCPOST) : %$(SOURCEPOST)
+$(SOURCEDSCS): %$(SOURCEDSC_POST) : %$(SOURCECHANGES_POST)
 
 $(PBUILDERUPDATES): pbuilder-%-update :
 	test -f $(PBUILDERDIR)'/$*-base.tgz' \
@@ -138,10 +138,10 @@ $(PBUILDERUPDATES): pbuilder-%-update :
 			|| pbuilder-dist '$*' create
 	test -f $(PBUILDERDIR)'/$*-base.tgz' # pbuilder-dist sanity check.
 
-$(SOURCESCHECK): %-sourcecheck : pbuilder-%-update
-$(SOURCESCHECK): %-sourcecheck : $(PKGFILEPRE)%$(SOURCEDSCPOST)
+$(SOURCECHECKS): %-sourcecheck : pbuilder-%-update
+$(SOURCECHECKS): %-sourcecheck : $(PKGFILE_PRE)%$(SOURCEDSC_POST)
 	pbuilder-dist '$*' build '$<'
 
 
-.PHONY: all gitstamp $(PBUILDERUPDATES) prereqs setup sources sourcescheck \
-		$(SOURCESCHECK)
+.PHONY: all gitstamp $(PBUILDERUPDATES) prereqs setup $(SOURCECHECKS) sources \
+		sourcescheck
