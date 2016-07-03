@@ -97,7 +97,6 @@ current version:
 * Limited to 2 human players and 2 bots
 * Bot AI isn't very good
 * In LAN play, all connected computers can control both human players
-* Net play is entirely unreliable outside of the LAN
 * Sometimes in LAN play clients won't see bomb explosions
 
 RESOURCES
