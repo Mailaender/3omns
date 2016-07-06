@@ -19,17 +19,18 @@ DISTDIR = $(PKG)-$(DEBVER)
 DIST = $(DISTDIR).$(DIST_EXT)
 ORIG = $(PKG)_$(DEBVER).orig.$(DIST_EXT)
 
-BUILDDIR = $(WORKDIR)/$(DISTDIR)
+EXPORT = $(WORKDIR)/export/$(EXPORTDIR)
+BUILD = $(WORKDIR)/$(DISTDIR)
 
 MAIN_DISTRO = $(firstword $(DISTROS))
 OTHER_DISTROS = $(filter-out $(MAIN_DISTRO), $(DISTROS))
 
 DEBDIR = debian
 
-BUILDDEBDIR = $(BUILDDIR)/$(DEBDIR)
+BUILDDEB = $(BUILD)/$(DEBDIR)
 
-CHANGELOGDIR = $(WORKDIR)/changelogs
-CHANGELOG_PRE = $(CHANGELOGDIR)/changelog.
+CHANGELOGS = $(WORKDIR)/changelogs
+CHANGELOG_PRE = $(CHANGELOGS)/changelog.
 MAIN_CHANGELOG = $(CHANGELOG_PRE)$(MAIN_DISTRO)
 OTHER_CHANGELOGS = $(OTHER_DISTROS:%=$(CHANGELOG_PRE)%)
 
@@ -45,7 +46,7 @@ SOURCECHECKS = $(DISTROS:%=%-sourcecheck)
 SOURCEDSC_POST = $(PKGFILE_POST).dsc
 SOURCEDSCS = $(PKGFILES:%$(PKGFILE_POST)=%$(SOURCEDSC_POST))
 
-PBUILDERDIR = ~/pbuilder
+PBUILDER = ~/pbuilder
 PBUILDERUPDATES = $(DISTROS:%=pbuilder-%-update)
 
 
@@ -66,32 +67,32 @@ sourcescheck: $(SOURCECHECKS)
 			"for uploading."
 
 
-prereqs: $(BUILDDIR)/configure $(BUILDDEBDIR)/changelog
+prereqs: $(BUILD)/configure $(BUILDDEB)/changelog
 
 setup: prereqs $(OTHER_CHANGELOGS)
 	@echo
 	@echo "Updated $(DEBDIR)/changelog and set up $(WORKDIR) for deb" \
 			"building, with extra"
-	@echo "changelogs in $(CHANGELOGDIR)."
+	@echo "changelogs in $(CHANGELOGS)."
 
 
-$(EXPORTDIR).stamp: gitstamp
+$(EXPORT).stamp: gitstamp
+	@mkdir -p '$(@D)'
 	@echo "$(PKG) $(GITVER)'s last commit was on $(GITVER_DATE)." > '$@'
 	@touch --date='$(GITVER_DATE)' '$@'
-$(EXPORTDIR).tar: $(EXPORTDIR).stamp
+$(EXPORT).tar: $(EXPORT).stamp
 	git archive --prefix='$(EXPORTDIR)/' --output='$@' '$(GITVER)'
 	touch --date='$(GITVER_DATE)' '$@'
-$(EXPORTDIR)/configure.ac $(EXPORTDIR)/NEWS: $(EXPORTDIR).tar
-	tar xf '$<'
+$(EXPORT)/configure.ac $(EXPORT)/NEWS: $(EXPORT).tar
+	cd '$(<D)' && tar xf '$(<F)'
 	test -f '$@' # configure.ac & NEWS sanity check.
-$(EXPORTDIR)/$(DIST): $(EXPORTDIR)/configure.ac
+$(EXPORT)/$(DIST): $(EXPORT)/configure.ac
 	cd '$(<D)' && autoreconf -i && ./configure && make distcheck
 	test -f '$@' # DIST sanity check.
 
-$(WORKDIR)/$(ORIG): $(EXPORTDIR)/$(DIST)
-	mkdir -p '$(@D)'
+$(WORKDIR)/$(ORIG): $(EXPORT)/$(DIST)
 	cp -a '$<' '$@'
-$(BUILDDIR)/configure: $(WORKDIR)/$(ORIG)
+$(BUILD)/configure: $(WORKDIR)/$(ORIG)
 	cd '$(<D)' && tar xJf '$(<F)'
 	test -x '$@' # configure sanity check.
 	touch --date="`stat -c %y '$<'`" '$@' # Don't re-untar unless needed.
@@ -101,7 +102,7 @@ $(BUILDDIR)/configure: $(WORKDIR)/$(ORIG)
 # old, debuild will just fail because it can't find the correctly named .orig
 # tarball.  Instead, we should just use dch to add "Unknown changes" to a new
 # entry with the correct version.
-$(DEBDIR)/changelog: $(EXPORTDIR)/NEWS
+$(DEBDIR)/changelog: $(EXPORT)/NEWS
 	test -n '$(PKG)' -a -n '$(DEBVER)' # PKG & DEBVER sanity check.
 	check='$(PKG) $(DEBVER) '; \
 		actual=$$(head -n1 '$<' | cut -c-"`expr length "$$check"`"); \
@@ -110,7 +111,7 @@ $(DEBDIR)/changelog: $(EXPORTDIR)/NEWS
 	check='$(PKG) ($(DEBVER)-'; \
 		actual=$$(head -n1 '$@' | cut -c-"`expr length "$$check"`"); \
 		test "$$check" = "$$actual" # Gen'd changelog sanity check.
-$(BUILDDEBDIR)/changelog: $(DEBDIR)/changelog
+$(BUILDDEB)/changelog: $(DEBDIR)/changelog
 	mkdir -p '$(dir $(@D))'
 	cp -a '$(<D)' '$(dir $(@D))'
 	test -f '$@' # changelog sanity check.
@@ -125,18 +126,18 @@ $(OTHER_CHANGELOGS): $(MAIN_CHANGELOG)
 
 $(SOURCECHANGES): prereqs
 $(SOURCECHANGES): $(PKGFILE_PRE)%$(SOURCECHANGES_POST) : $(CHANGELOG_PRE)%
-	cp -a '$(CHANGELOG_PRE)$*' '$(BUILDDEBDIR)/changelog'
-	cd '$(BUILDDIR)' && debuild -S
+	cp -a '$(CHANGELOG_PRE)$*' '$(BUILDDEB)/changelog'
+	cd '$(BUILD)' && debuild -S
 	test -f '$@' # Source sanity check.
 
 # TODO: this won't be right if we build any binary debs.
 $(SOURCEDSCS): %$(SOURCEDSC_POST) : %$(SOURCECHANGES_POST)
 
 $(PBUILDERUPDATES): pbuilder-%-update :
-	test -f $(PBUILDERDIR)'/$*-base.tgz' \
+	test -f $(PBUILDER)'/$*-base.tgz' \
 			&& pbuilder-dist '$*' update \
 			|| pbuilder-dist '$*' create
-	test -f $(PBUILDERDIR)'/$*-base.tgz' # pbuilder-dist sanity check.
+	test -f $(PBUILDER)'/$*-base.tgz' # pbuilder-dist sanity check.
 
 $(SOURCECHECKS): %-sourcecheck : pbuilder-%-update
 $(SOURCECHECKS): %-sourcecheck : $(PKGFILE_PRE)%$(SOURCEDSC_POST)
