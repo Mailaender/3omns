@@ -1,5 +1,5 @@
-GITVER = 0.1
-DISTROS = trusty
+GITVER = 0.2
+DISTROS = xenial trusty
 
 DIST_EXT = tar.xz
 
