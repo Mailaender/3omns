@@ -111,10 +111,6 @@ $(DEBDIR)/changelog: $(EXPORT)/NEWS
 	check='$(PKG) ($(DEBVER)-'; \
 		actual=$$(head -n1 '$@' | cut -c-"`expr length "$$check"`"); \
 		test "$$check" = "$$actual" # Gen'd changelog sanity check.
-$(BUILDDEB)/changelog: $(DEBDIR)/changelog
-	mkdir -p '$(dir $(@D))'
-	cp -a '$(<D)' '$(dir $(@D))'
-	test -f '$@' # changelog sanity check.
 $(MAIN_CHANGELOG): $(DEBDIR)/changelog
 	! echo '$(MAIN_DISTRO)' | grep -Eq '[^a-zA-Z0-9_]' # Check MAIN_DISTRO.
 	mkdir -p '$(@D)'
@@ -123,6 +119,11 @@ $(OTHER_CHANGELOGS): $(MAIN_CHANGELOG)
 	! echo '$(@:$(CHANGELOG_PRE)%=%)' \
 			| grep -Eq '[^a-zA-Z0-9_]' # OTHER_DISTROS sanity.
 	sed -r '1 s/$(MAIN_DISTRO)/$(@:$(CHANGELOG_PRE)%=%)/g' < '$<' > '$@'
+
+$(BUILDDEB)/changelog: $(DEBDIR)/changelog
+	mkdir -p '$(dir $(@D))'
+	cp -a '$(<D)' '$(dir $(@D))'
+	test -f '$@' # changelog sanity check.
 
 $(SOURCECHANGES): prereqs
 $(SOURCECHANGES): $(PKGFILE_PRE)%$(SOURCECHANGES_POST) : $(CHANGELOG_PRE)%
