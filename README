@@ -1,0 +1,55 @@
+3omns debian branch
+===================
+
+This branch contains the debian packaging metadata for 3omns, as used to
+populate the [3omns PPA](https://launchpad.net/~chazomaticus/+archive/3omns).
+
+It also contains a makefile that I started to help automate the debian build
+and release process.  Unfortunately, it doesn't work very well.  After using it
+a few times, I'm convinced make is the wrong tool here.  For one thing, debuild
+makes it difficult to define granular make targets, since it reads from or
+writes to the same paths when invoked in different contexts (e.g. one changelog
+regardless of how many releases you're targeting, the same `.dsc` artifact
+whether building source or binary packages, etc.), requiring files to be
+shuffled around precariously.  Also, it's difficult to juggle file timestamps
+between git and your working tree so targets are properly identified as up to
+date or not (e.g. if you check out debian after making NEWS changes, your
+changelog will be more recent than the exported NEWS and make won't bother
+updating it).
+
+If I had more time to work on this, I'd make some changes.  Here are my current
+ideas:
+
+1. Add a script to manually update the canonical changelog properly.  This
+   could supersede `news2changelog`, automatically processing the NEWS from the
+   git version specified on the command line or something.  It doesn't have to
+   be fancy, as long as you can simply run the script after cutting a new
+   release tag on master, and have the changelog end up in the right state.
+   Requiring this update to happen manually means there's no ambiguity at
+   package build time whether it needs to be updated then, or the version in
+   your working tree should be considered correct.  There are lots of details
+   here I'm glossing over, I'm sure.
+2. Change the makefile into a simple bash script.  It can be written to behave
+   like make, allowing you to specify what actions to take on the command line,
+   and picking back up where it left off if re-run.  This will be more flexible
+   and easier to code and maintain.
+
+How to Build a New Release
+--------------------------
+
+Because of the squirrelly nature of the current system, these steps are
+necessary to build the source packages for PPA uploading for a new release.
+
+Prerequisites: the tag for the new release should already exist on the master
+branch, with correct NEWS etc.
+
+1. Edit the makefile to update the `GITVER` and list of `DISTROS` you want to
+   target.
+2. Run something like:
+
+       touch --date 'last year' debian/changelog
+
+   The exact date doesn't matter; you just want it to end up with a timestamp
+   before the last commit on NEWS in the release tag.
+3. Run `make` and hold onto your butts.  Further instructions are displayed at
+   the end of the make run.
