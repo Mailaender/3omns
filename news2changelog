@@ -87,7 +87,7 @@ add_changes() {
   dch $create --package="$pkg" -v "$fullver" -u "$urgency" -D "$distro" \
       "${changes[0]}" || error "dch failed to create a new version"
   for c in "${changes[@]:1}"; do
-    dch "$c" || error "dch failed to append changes"
+    dch -a "$c" || error "dch failed to append changes"
   done
 }
 
