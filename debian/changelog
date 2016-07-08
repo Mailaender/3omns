@@ -1,3 +1,11 @@
+3omns (0.2-1~xenial1) xenial; urgency=low
+
+  * Fixed some bot AI bugs
+  * Revamped networking code to add reliability
+  * Added the -R command line option to print resources path
+
+ -- Charles Lindsay <chaz@chazomatic.us>  Thu, 07 Jul 2016 20:14:02 -0700
+
 3omns (0.1-2~trusty1) trusty; urgency=low
 
   * Initial alpha release
