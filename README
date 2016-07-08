@@ -15,7 +15,7 @@ Features
 
 * 2-player deathmatch
 * Bot AI
-* Same-keyboard or LAN play
+* Same-keyboard or network play
 
 How to Play
 -----------
@@ -25,7 +25,7 @@ running Ubuntu Trusty, you can skip building from source and simply add the
 3omns PPA; see <https://launchpad.net/~chazomaticus/+archive/3omns>.
 
 Once 3omns is installed, run `3omns` to play.  See also `3omns --help` for
-options, including how to play over the LAN.
+options, including how to play over a network.
 
 The red player uses the arrow keys to move and R-Ctrl to drop bombs.  The blue
 player uses WASD to move and L-Ctrl to drop bombs.  Damage players (and destroy
@@ -38,8 +38,8 @@ Bugs of Note
 
 * Limited to 2 human players and 2 bots
 * Bot AI isn't very good
-* In LAN play, all connected computers can control both human players
-* Sometimes in LAN play clients won't see bomb explosions
+* In network play, all connected computers can control both human players
+* Sometimes in network play clients won't see bomb explosions
 
 
 Enjoy!

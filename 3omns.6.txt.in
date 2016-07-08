@@ -29,8 +29,8 @@ crates) by catching them in a bomb blast or ``punching'' them by walking into
 them.  You can disarm opponent bombs by walking over them.  A few crates
 contain powerups that briefly make you invulnerable.
 
-3omns supports play over a LAN using the *--serve* or *--connect* options (see
-<<net-options,Network Play Options>> below).
+3omns supports play over a network using the *--serve* or *--connect* options
+(see <<net-options,Network Play Options>> below).
 
 OPTIONS
 -------
@@ -96,8 +96,8 @@ current version:
 
 * Limited to 2 human players and 2 bots
 * Bot AI isn't very good
-* In LAN play, all connected computers can control both human players
-* Sometimes in LAN play clients won't see bomb explosions
+* In network play, all connected computers can control both human players
+* Sometimes in network play clients won't see bomb explosions
 
 RESOURCES
 ---------
