@@ -45,11 +45,8 @@ branch, with correct NEWS etc.
 
 1. Edit the makefile to update the `GITVER` and list of `DISTROS` you want to
    target.
-2. Run something like:
-
-       touch --date 'last year' debian/changelog
-
-   The exact date doesn't matter; you just want it to end up with a timestamp
-   before the last commit on NEWS in the release tag.
+2. Run something like `touch --date 'last year' debian/changelog`.  The exact
+   date doesn't matter; you just want it to end up with a timestamp before the
+   last commit on NEWS in the release tag.
 3. Run `make` and hold onto your butts.  Further instructions are displayed at
    the end of the make run.
