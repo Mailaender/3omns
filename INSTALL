@@ -1,16 +1,17 @@
 Building and Installing 3omns
 =============================
 
-If you happen to be running Ubuntu Trusty and just want to see the latest
-release of 3omns in action, you can skip building it yourself and install it
-from the 3omns PPA (see https://launchpad.net/~chazomaticus/+archive/3omns):
+If you happen to be running Ubuntu Xenial or Trusty and just want to see the
+latest release of 3omns in action, you can skip building it yourself and
+install it from the 3omns PPA (see
+https://launchpad.net/~chazomaticus/+archive/3omns):
 
     sudo add-apt-repository ppa:chazomaticus/3omns
     sudo apt-get update
     sudo apt-get install 3omns
 
-If you want the latest from git or aren't running Trusty, you can build and
-optionally install 3omns from source by following these instructions.
+If you want the latest from git or aren't running Xenial or Trusty, you can
+build and optionally install 3omns from source by following these instructions.
 
 
 Dependencies
@@ -23,13 +24,13 @@ Dependencies
   * SDL 2.0 (http://www.libsdl.org/download-2.0.php)
   * SDL_image 2.0 (http://www.libsdl.org/projects/SDL_image/)
   * SDL_ttf 2.0 (http://www.libsdl.org/projects/SDL_ttf/)
-  * Lua 5.2 (http://www.lua.org/download.html)
+  * Lua 5.3 (http://www.lua.org/download.html)
 
-On Ubuntu Trusty, you can install the development versions of these libraries
+On Ubuntu Xenial, you can install the development versions of these libraries
 by running:
 
-    sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
-            liblua5.2-dev
+    sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
+            liblua5.3-dev
 
 3omns also depends on GNU glibc's argp library
 (https://www.gnu.org/software/libc/manual/html_node/Argp.html).  In Linux, argp
@@ -38,11 +39,10 @@ a standalone version and tell 3omns's build files where to find it.
 
 The 3omns build process optionally depends on AsciiDoc (http://asciidoc.org/)
 to generate the manpage.  AsciiDoc may also depend on some 3rd party tools to
-function properly.  In Ubuntu Trusty, you can install the correct dependencies
+function properly.  In Ubuntu Xenial, you can install the correct dependencies
 by running:
 
-    sudo apt-get install asciidoc libxml2-utils xsltproc docbook-xml \
-            docbook-xsl
+    sudo apt install asciidoc libxml2-utils xsltproc docbook-xml docbook-xsl
 
 
 Build
