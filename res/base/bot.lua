@@ -36,7 +36,7 @@ end
 function Bot:co_start(elapsed)
   -- Wait just a tick (beyond what's already elapsed, which we ignore) to be a
   -- little more human at the start.
-  self:co_wait(self.action_time + math.random(0, 5) / 10)
+  self:co_wait(self.action_time + math.random(0, 5) / 10.0)
 
   while true do
     self:co_rethink()
@@ -55,7 +55,7 @@ function Bot:co_rethink(danger)
 end
 
 function Bot:do_until(act, done)
-  local elapsed = 0
+  local elapsed = 0.0
   while not done(elapsed) do
     elapsed = elapsed + act()
   end
@@ -229,7 +229,7 @@ function Bot:co_run_away(danger)
   -- TODO: omit paths (unless it's the only one) that go through a dude.
 
   local function interrupt(elapsed)
-    return elapsed > 3
+    return elapsed > 3.0
   end
 
   if #safe == 0 then
@@ -252,7 +252,7 @@ function Bot:co_hunt()
   end
 
   local function interrupt(elapsed)
-    return elapsed > 1 or self:get_danger()
+    return elapsed > 1.0 or self:get_danger()
   end
 
   if not target then

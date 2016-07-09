@@ -27,7 +27,7 @@ local core = require("core")
 local util = require("util")
 
 
-Blast.TIME = 1
+Blast.TIME = 1.0
 
 function Blast:init_animation()
   self.animation = {}
@@ -63,7 +63,7 @@ end
 
 function Blast:l3_update(backing, elapsed)
   self.time = self.time - elapsed
-  if self.time <= 0 then
+  if self.time <= 0.0 then
     self:destroy(backing)
     return
   end

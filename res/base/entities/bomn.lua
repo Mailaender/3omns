@@ -29,7 +29,7 @@ local serial = require("serial")
 local Blast = require("sprites.blast")
 
 
-Bomn.TIME = 3
+Bomn.TIME = 3.0
 Bomn.RADIUS = 8
 
 Bomn.ANIMATION = nil
@@ -149,7 +149,7 @@ end
 
 function Bomn:l3_update(backing, elapsed)
   self.time = self.time - elapsed
-  if self.time <= 0 then
+  if self.time <= 0.0 then
     self:explode(backing)
     return
   end

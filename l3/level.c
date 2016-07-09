@@ -40,7 +40,7 @@ l3_level *push_new_level(lua_State *restrict l) {
 
 static int level_new(lua_State *restrict l) {
     b3_size size = check_size(l, 1);
-    int max_entities = luaL_checkint(l, 2);
+    int max_entities = (int)luaL_checkinteger(l, 2);
 
     l3_level *level = push_new_level(l);
 
@@ -84,14 +84,14 @@ static int level_get_tile(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
     b3_pos pos = check_map_pos(l, 2, level->map);
 
-    lua_pushunsigned(l, (lua_Unsigned)b3_get_map_tile(level->map, &pos));
+    lua_pushinteger(l, (lua_Integer)b3_get_map_tile(level->map, &pos));
     return 1;
 }
 
 static int level_set_tile(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
     b3_pos pos = check_map_pos(l, 2, level->map);
-    b3_tile tile = (b3_tile)luaL_checkunsigned(l, 3);
+    b3_tile tile = (b3_tile)luaL_checkinteger(l, 3);
 
     b3_set_map_tile(level->map, &pos, tile);
 
@@ -231,7 +231,7 @@ static int sprentity_set_image(lua_State *restrict l) {
 // Works on either "sprites" or entities.
 static int sprentity_set_z_order(lua_State *restrict l) {
     b3_entity *entity = check_sprentity(l, 1);
-    int z_order = luaL_checkint(l, 2);
+    int z_order = (int)luaL_checkinteger(l, 2);
 
     b3_set_entity_z_order(entity, z_order);
 
@@ -263,7 +263,7 @@ static int level_new_entity(lua_State *restrict l) {
 
 static int level_get_entity(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
-    b3_entity_id id = (b3_entity_id)luaL_checkunsigned(l, 2);
+    b3_entity_id id = (b3_entity_id)luaL_checkinteger(l, 2);
 
     b3_entity *entity = b3_get_entity(level->entities, id);
     if(entity) {
@@ -279,14 +279,14 @@ static int level_get_entity(lua_State *restrict l) {
 
 static int level_set_dude(lua_State *restrict l) {
     l3_level *level = check_level(l, 1);
-    int i = luaL_checkint(l, 2) - 1;
+    int i = (int)luaL_checkinteger(l, 2) - 1;
     luaL_argcheck(
         l,
         i >= 0 && i < L3_DUDE_COUNT,
         2,
         "dude index out of bounds"
     );
-    b3_entity_id id = (b3_entity_id)luaL_checkunsigned(l, 3);
+    b3_entity_id id = (b3_entity_id)luaL_checkinteger(l, 3);
 
     level->dude_ids[i] = id;
 
@@ -298,7 +298,7 @@ static int entity_get_id(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
 
     b3_entity_id id = b3_get_entity_id(entity);
-    lua_pushunsigned(l, (lua_Unsigned)id);
+    lua_pushinteger(l, (lua_Integer)id);
     return 1;
 }
 
@@ -328,7 +328,7 @@ static int entity_get_life(lua_State *restrict l) {
 
 static int entity_set_life(lua_State *restrict l) {
     b3_entity *entity = check_entity(l, 1);
-    int life = luaL_checkint(l, 2);
+    int life = (int)luaL_checkinteger(l, 2);
 
     b3_set_entity_life(entity, life);
 

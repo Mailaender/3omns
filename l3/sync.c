@@ -130,7 +130,7 @@ void l3_sync_deleted(b3_entity_id ids[], int count) {
     lua_createtable(lua, count, 0);
     for(int i = 0; i < count; i++) {
         lua_pushinteger(lua, (lua_Integer)(i + 1));
-        lua_pushunsigned(lua, (lua_Unsigned)ids[i]);
+        lua_pushinteger(lua, (lua_Integer)ids[i]);
         lua_settable(lua, -3);
     }
 

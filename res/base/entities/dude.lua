@@ -29,7 +29,7 @@ local Entities = require("entities")
 local Bot = require("bot")
 
 
-Dude.SUPER_TIME = 10
+Dude.SUPER_TIME = 10.0
 Dude.BUMP_DAMAGE = 1
 Dude.BLAST_DAMAGE = 5
 
@@ -83,7 +83,7 @@ function Dude:set_visual(backing)
 end
 
 function Dude:is_super()
-  return self.super_time > 0
+  return self.super_time > 0.0
 end
 
 function Dude:can_fire()
@@ -98,7 +98,7 @@ function Dude:superify(backing)
 end
 
 function Dude:unsuperify(backing)
-  self.super_time = 0
+  self.super_time = 0.0
 
   -- If we ever call unsuperify before the time is actually out, we'll also
   -- need a self:set_dirty(backing) call here.
@@ -169,7 +169,7 @@ function Dude:l3_update(backing, elapsed)
 
   if self:is_super() then
     self.super_time = self.super_time - elapsed
-    if self.super_time <= 0 then
+    if self.super_time <= 0.0 then
       self:unsuperify(backing)
     end
   end

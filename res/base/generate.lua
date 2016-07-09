@@ -56,16 +56,16 @@ end
 
 function Generator:set_spawns()
   local quads = {
-    core.Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2),
+    core.Pos(MAP_SIZE.width // 2, MAP_SIZE.height // 2),
     core.Pos(0, 0),
-    core.Pos(MAP_SIZE.width / 2, 0),
-    core.Pos(0, MAP_SIZE.height / 2),
+    core.Pos(MAP_SIZE.width // 2, 0),
+    core.Pos(0, MAP_SIZE.height // 2),
   }
 
   for i, q in ipairs(quads) do
     self.spawns[i] = core.Pos(
-      math.random(q.x + 2, q.x + MAP_SIZE.width  / 2 - 2),
-      math.random(q.y + 2, q.y + MAP_SIZE.height / 2 - 2)
+      math.random(q.x + 2, q.x + MAP_SIZE.width  // 2 - 2),
+      math.random(q.y + 2, q.y + MAP_SIZE.height // 2 - 2)
     )
   end
 end
@@ -79,8 +79,8 @@ end
 
 function Generator:add_walls()
   local fourth = core.Size(
-    math.floor(MAP_SIZE.width  / 4),
-    math.floor(MAP_SIZE.height / 4)
+    math.floor(MAP_SIZE.width  // 4),
+    math.floor(MAP_SIZE.height // 4)
   )
   local pos = {
     core.Pos(fourth.width, fourth.height),
@@ -111,7 +111,7 @@ function Generator:add_walls()
   for _, p in ipairs(pos) do
     wall_grid(p)
   end
-  wall_grid(core.Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2))
+  wall_grid(core.Pos(MAP_SIZE.width // 2, MAP_SIZE.height // 2))
 end
 
 function Generator:fill_space()
@@ -139,8 +139,8 @@ function Generator:spawn_crates()
   local function bisect(a, b)
     -- Rounded up or down at random.
     return core.Pos(
-      math.floor((a.x + b.x) / 2 + 0.5 * math.random(0, 1)),
-      math.floor((a.y + b.y) / 2 + 0.5 * math.random(0, 1))
+      math.floor((a.x + b.x) / 2.0 + 0.5 * math.random(0, 1)),
+      math.floor((a.y + b.y) / 2.0 + 0.5 * math.random(0, 1))
     )
   end
 
@@ -163,7 +163,7 @@ function Generator:spawn_crates()
     return true
   end
 
-  local center = core.Pos(MAP_SIZE.width / 2, MAP_SIZE.height / 2)
+  local center = core.Pos(MAP_SIZE.width // 2, MAP_SIZE.height // 2)
 
   span_dir = core.Pos(0, 1)
   util.line(center, bisect(self.spawns[1], self.spawns[3]), crates)

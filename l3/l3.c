@@ -128,7 +128,7 @@ static void set_tile_images(lua_State *restrict l) {
         b3_fatal("Missing global table %s", L3_TILE_IMAGES_NAME);
 
     for(int i = 0; i < B3_TILE_COUNT; i++) {
-        lua_pushunsigned(l, (lua_Unsigned)i);
+        lua_pushinteger(l, (lua_Integer)i);
         lua_gettable(l, -2);
 
         b3_image **p_image = luaL_testudata(l, -1, IMAGE_METATABLE);
